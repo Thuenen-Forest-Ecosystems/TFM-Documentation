@@ -2,8 +2,8 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Terrestrial Forest Monitoring -  Documentation",
-  description: "Monitoring of terrestrial location-based natural data.",
+  title: "TFM -  Documentation",
+  description: "Terrestrial Forest Monitoring of location-based natural data.",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -22,7 +22,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
+      { icon: 'github', link: 'https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation' }
     ]
   },
   base: '/TFM-Documentation/'
