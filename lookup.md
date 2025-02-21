@@ -18,7 +18,7 @@ By default, the lookup schema returns all records in the lookup table. You can f
 
 ::: code-group
 
-```R
+```R-vue
 library(httr)
 
 headers = c( 
@@ -31,7 +31,7 @@ res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/", add_headers(headers))
 cat(content(res, 'text'))
 ```
 
-```Python
+```Python-vue
 import requests
 
 url = "https://ci.thuenen.de/rest/v1/"
@@ -47,7 +47,7 @@ response = requests.request("GET", url, headers=headers, data=payload)
 print(response.text)
 ```
 
-```JavaScript
+```JavaScript-vue
 var https = require('follow-redirects').https;
 var fs = require('fs');
 
@@ -94,7 +94,7 @@ To retrieve a complete lookup table, you can add the **tablename** to the URL. Y
 
 ::: code-group
 
-```R
+```R-vue
 library(httr)
 
 headers = c(
@@ -107,7 +107,7 @@ res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/lookup_tree_species", ad
 cat(content(res, 'text'))
 ```
 
-```Python
+```Python-vue
 import requests
 
 url = "https://ci.thuenen.de/rest/v1/lookup_tree_species"
@@ -123,7 +123,7 @@ response = requests.request("GET", url, headers=headers, data=payload)
 print(response.text)
 ```
 
-```JavaScript
+```JavaScript-vue
 var myHeaders = new Headers();
 myHeaders.append("apikey", "{{ apikey }}");
 myHeaders.append("Accept-Profile", "lookup");
@@ -140,7 +140,7 @@ fetch("https://ci.thuenen.de/rest/v1/lookup_tree_species", requestOptions)
   .catch(error => console.log('error', error));
 ```
 
-```cURL
+```cURL-vue
 curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species' \
 --header 'apikey: {{ apikey }}' \
 --header 'Accept-Profile: lookup'
@@ -160,7 +160,7 @@ Find the complete [list of available query parameters](https://docs.postgrest.or
 
 ::: code-group
 
-```R
+```R-vue
 library(httr)
 
 headers = c(
@@ -173,7 +173,7 @@ res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/lookup_tree_species?code
 cat(content(res, 'text'))
 ```
 
-```Python
+```Python-vue
 import requests
 
 url = "https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100"
@@ -190,7 +190,7 @@ print(response.text)
 
 ```
 
-```JavaScript
+```JavaScript-vue
 var myHeaders = new Headers();
 myHeaders.append("apikey", "{{ apikey }}");
 myHeaders.append("Accept-Profile", "lookup");
@@ -207,7 +207,7 @@ fetch("https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100", requestOp
   .catch(error => console.log('error', error));
 ```
 
-```cURL
+```cURL-vue
 curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100' \
 --header 'apikey: {{ apikey }}' \
 --header 'Accept-Profile: lookup'
