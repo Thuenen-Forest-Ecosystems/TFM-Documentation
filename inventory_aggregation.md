@@ -9,14 +9,11 @@ For performance reasons, the API does not allow to aggregate data on the fly. In
 
 
 
-## Mean DBH of sycamore maple in NRW
+## Mean DBH grouped by tree species in NRW
 
-NRW Lookup code: 5  
-sycamore maple Lookup code: 140
+In this example, we will query meassured tree data from the inventory archive in North Rhine-Westphalia (NRW). We will then calculate the mean diameter at breast height (DBH) for each tree species.
 
-[]()
-
-```R
+```R-vue
 # Install necessary packages if not already installed
 if (!require(httr)) install.packages("httr")
 if (!require(jsonlite)) install.packages("jsonlite")
@@ -92,3 +89,5 @@ if (nrow(tree_data) > 0) {
   cat("No tree data found in the response.\n")
 }
 ```
+
+[Source Code (R)](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/aggregate_acer_nrw.R)
