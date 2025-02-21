@@ -25,8 +25,19 @@ export default defineConfig({
         text: 'API',
         items: [
           { text: 'General', link: '/general-api' },
-          { text: 'Lookup', link: '/lookup' },
-          { text: 'Inventory', link: '/inventory_archive' }
+          { text: 'Lookup', link: '/lookup' }
+        ]
+      },
+      {
+        text: 'Inventory',
+        items: [
+          { text: 'By Location', link: '/inventory_archive' },
+          { text: 'Aggregation', link: '/inventory_aggregation' }
+        ]
+      },
+      {
+        items: [
+          { text: 'Migration', link: '/migration' }
         ]
       }
     ],
