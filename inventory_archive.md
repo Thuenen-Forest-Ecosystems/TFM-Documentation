@@ -47,10 +47,10 @@ The response will be a list of clusters that are located in the Federal State of
 
 The clusters can be queried using an overlaying 1km x 1km grid. Querying a grid cell by its `inspire_grid_cell` value will return all clusters that are located within the grid cell.
 
-In the example below, the grid cell `eq.4337_2684` is queried. This grid cell is located in the south of Germany.
+In the example below, the grid cell `eq.1kmN2688E4341` is queried. This grid cell is located in the south of Germany.
 
 ```cURL-vue
-curl -X GET "https://ci.thuenen.de/rest/v1/cluster?inspire_grid_cell=eq.4337_2684"  -H "Accept-Profile: inventory_archive"  -H "apikey: {{ apikey }}"
+curl -X GET "https://ci.thuenen.de/rest/v1/cluster?inspire_grid_cell=eq.1kmN2688E4341"  -H "Accept-Profile: inventory_archive"  -H "apikey: {{ apikey }}"
 ```
 
 More information and download (as csv & GeoPackage) of the grid cells can be found at the [bkg](https://gdz.bkg.bund.de/index.php/default/geographische-gitter-fur-deutschland-in-lambert-projektion-geogitter-inspire.html).
