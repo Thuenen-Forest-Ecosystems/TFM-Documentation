@@ -29,6 +29,7 @@ headers = c(
 res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/", add_headers(headers))
 
 cat(content(res, 'text'))
+
 ```
 
 ```Python-vue
@@ -105,6 +106,12 @@ headers = c(
 res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/lookup_tree_species", add_headers(headers))
 
 cat(content(res, 'text'))
+
+# JSON to data.frame
+install.packages("jsonlite");
+library(jsonlite)
+
+df <- as.data.frame(jsonlite::fromJSON(content(res, 'text')))
 ```
 
 ```Python-vue
