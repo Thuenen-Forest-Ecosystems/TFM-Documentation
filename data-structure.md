@@ -1,4 +1,4 @@
-# Data Structure
+# Data Structure 
 
 The data can be found in the inventory_archive schema. The inventory_archive schema contains the following tables:
 ```
@@ -32,6 +32,7 @@ Formerly: `Totholz`
 ## Regeneration
 
 Formerly: `Regeneration`
+
 
 ## Structure_lt4m
 
