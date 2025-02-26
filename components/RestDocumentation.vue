@@ -50,7 +50,6 @@ import { ref, onMounted } from 'vue';
                         {{required}}  
                     </Badge>
                 </span>
-                
             </p>
             <h3>Properties</h3>
             <table>

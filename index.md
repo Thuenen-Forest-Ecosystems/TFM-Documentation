@@ -3,7 +3,7 @@
 layout: home
 
 hero:
-  name: "Inventory of Forest Ecosystems"
+  name: "Terrestrial Inventory"
   text: "Database"
   tagline: "Thünen Institute of Forest Ecosystems"
   image:
