@@ -3,23 +3,20 @@
 layout: home
 
 hero:
-  name: "Terrestrial Forest Monitoring -  Documentation"
-  text: "Monitoring of terrestrial location-based natural data."
-  tagline: My great project tagline
+  name: "Inventory of Forest Ecosystems"
+  text: "Database"
+  tagline: "Thünen Institute of Forest Ecosystems"
+  image:
+    src: /bwi_image.svg
+    alt: Bundeswaldinventur
   actions:
     - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
+      text: Getting Started
+      link: /getting-started
     - theme: alt
-      text: API Examples
-      link: /api-examples
+      text: API
+      link: /general-api
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
 

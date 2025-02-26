@@ -2,12 +2,12 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "TFM -  Documentation",
-  description: "Terrestrial Forest Monitoring of location-based natural data.",
+  title: "BWI",
+  description: "Documentation for accessing Inventory of Forest Ecosystems",
   lang: 'en',
-  tmp: 'tmp wwwwww',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
+    logo: '/bwi_image.svg',
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting Started', link: '/getting-started' },
@@ -44,7 +44,11 @@ export default defineConfig({
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Thuenen-Forest-Ecosystems/TFM-Server' }
-    ]
+    ],
+    footer: {
+      message: 'Service of the <b>Thünen Institute</b>',
+      copyright: '<a href="https://www.thuenen.de/en/legal-notice-and-data-privacy">Legal notice</a>  <a href="https://www.thuenen.de/en/data-protection-statement">Data Protection Statement</a>'
+    }
   },
   base: '/TFM-Documentation/'
 })
