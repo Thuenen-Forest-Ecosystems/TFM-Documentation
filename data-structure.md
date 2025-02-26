@@ -1,7 +1,8 @@
 # Data Structure 
 
-The data can be found in the inventory_archive schema. The inventory_archive schema contains the following tables:
-```
+The data can be found in the `inventory_archive` schema. The inventory_archive schema contains the following tables:
+::: code-group
+```txt [Sructure]
 - inventory_archive
     - cluster 
         - plot
@@ -12,36 +13,13 @@ The data can be found in the inventory_archive schema. The inventory_archive sch
             - subplot_position
             - tree
 ```
+```cUrl-vue [Request Schema]
+curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0"
+```
+:::
 
-## Cluster
+<script setup>
+  import DashboardButton from './components/REstDocumentation.vue'
+</script>
 
-Formerly: `Trakte`
-
-## Plot
-
-Formerly: `Ecken`
-
-## Edges
-
-Formerly: `Ränder`
-
-## Deadwood
-
-Formerly: `Totholz`
-
-## Regeneration
-
-Formerly: `Regeneration`
-
-
-## Structure_lt4m
-
-Formerly: `Bestand_lt4m`
-
-## Subplot_position
-
-Formerly: `Teilflächen`
-
-## Tree
-
-Formerly: `WZP`
+<DashboardButton />
