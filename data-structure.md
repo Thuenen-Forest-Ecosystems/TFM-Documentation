@@ -19,7 +19,7 @@ curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "a
 :::
 
 <script setup>
-  import DashboardButton from '/components/REstDocumentation.vue'
+  import DashboardButton from './components/RestDocumentation.vue'
 </script>
 
 <DashboardButton />
