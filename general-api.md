@@ -37,11 +37,11 @@ The API can return data in either CSV or JSON format. The format is specified in
 ::: code-group
 
 ```cURL-vue [JSON (default)]
-curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept: application/json"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
+curl -X GET "https://ci.thuenen.de/rest/v1/lookup_tree_species"  -H "Accept: application/json"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
 ```
 
 ```cURL-vue [CSV]
-curl -X GET "https://ci.thuenen.de/rest/v1/"   -H "Accept: text/csv"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
+curl -X GET "https://ci.thuenen.de/rest/v1/lookup_tree_species"   -H "Accept: text/csv"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
 ```
 
 :::
