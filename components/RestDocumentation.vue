@@ -1,32 +1,61 @@
-import { ref, onMounted } from 'vue';
+<script setup>    
+    import { ref, onMounted, getCurrentInstance } from 'vue'
+    import { useAttrs } from 'vue';
+    import { createClient } from '@supabase/supabase-js'
 
-<script setup>
-    const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0';
-    import { ref, onMounted } from 'vue'
+    const instance = getCurrentInstance();
+    const apikey = instance.appContext.config.globalProperties.$apikey;
+    const url = instance.appContext.config.globalProperties.$url;
+   
+    const supabase = createClient(url, apikey)
 
-    const url = 'https://ci.thuenen.de/rest/v1/';
+
+    const contentProfile = useAttrs('content-profile');
+    
     const schema = ref(null);
 
-    async function _requestRestSchema() {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
+    async function _requestRestSchema(token) {
+        let data = null, error = null;
+        try{
+            const headers = {
                 'Content-Type': 'application/json',
-                'Content-Profile': 'inventory_archive',
+                'Accept-Profile': contentProfile.contentProfile,
                 'apikey': apikey,
-                //'Authorization': 'Bearer ' + process.env.SUPABASE_SERVICE_ROLE,
-                'Prefer': 'resolution=merge-duplicates'
+            };
+            if(token){
+                headers['Authorization'] = `Bearer ${token}`;
             }
-        });
-        const data = await response.json()
-        return data
+            const response = await fetch(`${url}/rest/v1/`, {
+                method: 'GET',
+                headers
+            });
+            
+            if(response.status !== 200){
+                error = await response.json();
+            }else{
+                data = await response.json();
+            }
+        } catch (error) {
+            error = error;
+        }
+        return {data, error};
     }
 
     onMounted(async () => {
-        const data = await _requestRestSchema();
-        schema.value = data;
-        console.log('mounted', schema.value);
+        const result = await supabase.auth.getSession();
+        
+        if(result.data.session){
+            const {data, error} = await _requestRestSchema(result.data.session.access_token);
+            if(data){
+                schema.value = data;
+            }else{
+                console.error(error);
+            }
+        }
     })
+    /*supabase.auth.onAuthStateChange((event, session) => {
+        console.log(event, session);
+    });*/
 
     const filterProperties = (properties) => {
         return Object.entries(properties).filter(([key, value]) => key !== 'intkey');

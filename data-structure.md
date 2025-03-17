@@ -1,3 +1,7 @@
+<script setup>
+  import DashboardButton from './components/RestDocumentation.vue'
+</script>
+
 # Data Structure 
 
 The data can be found in the `inventory_archive` schema. The inventory_archive schema contains the following tables:
@@ -18,8 +22,4 @@ curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "a
 ```
 :::
 
-<script setup>
-  import DashboardButton from './components/RestDocumentation.vue'
-</script>
-
-<DashboardButton />
+<DashboardButton contentProfile="inventory_archive" />

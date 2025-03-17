@@ -11,36 +11,49 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting Started', link: '/getting-started' },
-      { text: 'API', link: '/general-api' }
+      { text: 'API', link: '/general-api' },
+      { text: 'Login', link: '/dashboard/login' },
     ],
 
-    sidebar: [
-      {
-        items: [
-          { text: 'Getting Started', link: '/getting-started' },
-          { text: 'Data Structure', link: '/data-structure' }
-        ]
-      },
-      {
-        text: 'API',
-        items: [
-          { text: 'General', link: '/general-api' },
-          { text: 'Lookup', link: '/lookup' }
-        ]
-      },
-      {
-        text: 'Inventory',
-        items: [
-          { text: 'By Location', link: '/inventory_archive' },
-          { text: 'Aggregation', link: '/inventory_aggregation' }
-        ]
-      },
-      {
-        items: [
-          { text: 'Migration', link: '/migration' }
-        ]
-      }
-    ],
+    sidebar: {
+      '/': [
+        {
+          items: [
+            { text: 'Getting Started', link: '/getting-started' },
+            { text: 'Data Structure', link: '/data-structure' }
+          ]
+        },
+        {
+          text: 'API',
+          items: [
+            { text: 'General', link: '/general-api' },
+            { text: 'Lookup', link: '/lookup' }
+          ]
+        },
+        {
+          text: 'Inventory',
+          items: [
+            { text: 'By Location', link: '/inventory_archive' },
+            { text: 'Aggregation', link: '/inventory_aggregation' }
+          ]
+        },
+        {
+          items: [
+            { text: 'Migration', link: '/migration' }
+          ]
+        },
+      ],
+    
+      '/dashboard/': [
+        {
+          text: 'Dashboard',
+          items: [
+            { text: 'Profile', link: '/dashboard/profile' },
+            { text: 'Derived', link: '/dashboard/derived' },
+          ]
+        }
+      ]
+    },
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Thuenen-Forest-Ecosystems/TFM-Server' }
