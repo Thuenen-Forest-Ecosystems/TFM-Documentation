@@ -15,6 +15,7 @@
     const is_admin = ref(false);
     const state_responsible = ref(null);
     const troop_id = ref(null);
+    const state_responsible_name = ref(null);
 
     function parseJwt (token) {
         var base64Url = token.split('.')[1];
@@ -26,6 +27,16 @@
         return JSON.parse(jsonPayload);
     };
 
+    async function _getStateResponsibleName(stateCode){
+        await supabase.schema('lookup').from('lookup_state').select('name_de, name_en').eq('code', stateCode).single().then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            state_responsible_name.value = data.name_de;
+        });
+    }
+
     onMounted(async () => {
         const { data, error } = await supabase.auth.getSession()
         if (data) {
@@ -35,7 +46,7 @@
             is_admin.value = jwtPayload.value.is_admin;
             state_responsible.value = jwtPayload.value.state_responsible;
             troop_id.value = jwtPayload.value.troop_id;
-
+            _getStateResponsibleName(state_responsible.value);
         }
     });
 
@@ -60,6 +71,14 @@ Admins can access, change and delete derived data.
 {{is_admin}}
 ```
 
+## Supervisor
+
+The state you are responsible for:
+
+```txt-vue
+{{state_responsible_name || state_responsible}}
+```
+
 ## Troop
 
 Your are part of the troop with the id:
@@ -67,6 +86,8 @@ Your are part of the troop with the id:
 ```txt-vue
 {{troop_id}}
 ```
+
+
 
 <LoginForm>
    

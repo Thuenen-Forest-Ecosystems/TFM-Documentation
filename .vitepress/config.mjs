@@ -49,7 +49,13 @@ export default defineConfig({
           text: 'Dashboard',
           items: [
             { text: 'Profile', link: '/dashboard/profile' },
+          ]
+        },
+        {
+          text: 'Internal',
+          items: [
             { text: 'Derived', link: '/dashboard/derived' },
+            { text: 'Query Example', link: '/dashboard/authenticated' },
           ]
         }
       ]
