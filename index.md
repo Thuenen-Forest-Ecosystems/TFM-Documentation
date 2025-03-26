@@ -3,8 +3,8 @@
 layout: home
 
 hero:
-  name: "Terrestrial Inventory"
-  text: "Database"
+  name: "German National Forest Inventory"
+  text: "Database of field data"
   tagline: "Thünen Institute of Forest Ecosystems"
   image:
     src: /bwi_image.svg
