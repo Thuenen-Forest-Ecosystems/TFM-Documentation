@@ -177,8 +177,8 @@ In order to make it work as simple as possible it combines the javascript functi
 
 ```
 
-```Plain-R-vue
-# This example shows conceptually how to:
+```R-vue
+# This example in plain R shows conceptually how to:
 # - get a list of clusters and 
 # - retrieve the json tree of the data belonging to the clusters in the list from different related tables (plots, trees, ...)
 # - show the retrieved json tree as expandable view
@@ -262,7 +262,12 @@ print(paste("View generiert in:",round(end_time - start_time_view, 2),"sec."))
 # Have fun!
 ```
 
-```Shiny-R-vue
+```R-vue
+# This example of a Shiny R app shows conceptually how to:
+# - get a list of clusters and 
+# - retrieve the json tree of the data belonging to the clusters in the list from different related tables (plots, trees, ...)
+# - show the retrieved json tree as expandable view
+
 # Load necessary packages
 library(shiny)
 library(httr)
@@ -429,4 +434,126 @@ display.mode="showcase"
 shinyApp(ui = ui, server = server)
 ```
 
+```VB-vue
+' This example shows conceptually how to:
+' - get a list of clusters from the cluster endpoint as json,
+' - retrieve the details of this clusters (as json, no dependend tables, but some more columns) in a loop over the cluster list and
+' - insert the retrieved json data in an excel sheet,
+' Because Excel worksheets are primarily for flat tables, we do not use linked data from other tables here (like we do in the other language examples).
+
+' Explanations:
+' - XMLHTTP Object: The script creates an XMLHTTP object to perform HTTP requests.
+' - Headers: The required headers, including the API key and Accept-Profile, are set.
+' - Fetching Data : The script fetches the list of clusters from the first endpoint and then iterates through each item to fetch detailed data from the endpoint as defined.
+' - Parsing JSON : The JsonConverter object is used to parse JSON responses. Make sure you have the JsonConverter module in your VBA project. You can get it from https://github.com/VBA-tools/VBA-JSON.
+' - Writing to Excel : The script writes the fetched details to the active worksheet, with each item's details starting on a new row.
+
+' Requirements:
+' - JsonConverter Module : You need to import the JsonConverter module into your VBA project. You can download it from here  and import it into your VBA project (File > Import File...).
+
+' References:
+' - Ensure you have the "Microsoft XML, v6.0" reference enabled in your VBA editor (Tools > References > Check "Microsoft XML, v6.0").
+
+' Caveat:
+' This might not work in all versions of MS Excel (or other MS applications) because of "reasons":
+' 1. Some MS applications on some platforms or security rules might not allow to execute code like macros at all.
+' 2. If code excecution is generally possible, some warnings about "active content" or "macro security" might appear.
+' 3. Tested in Windows Excel 2021 only.
+
+' Let's start the magic ;)...
+Sub ImportDataIntoExcel()
+    ' First, we need some declarations (some maybe actually superfluous here, too lazy to fix that ;))
+    Dim Http As Object
+    Dim json As Object
+    Dim Url As String
+    Dim base_url As String
+    Dim list_endpoint As String
+    Dim detail_endpoint As String
+    Dim ws As Worksheet
+    Dim Headers As String
+    Dim lastRow As Long
+    Dim samples As Integer
+    Dim item_id As String
+    Dim itemDetails As Object
+    Dim Item As Object
+    Dim row As Long
+    Dim StartTime
+    ' Now we have to set some parameters
+    ' The number of clusters (100 should be enought for the example here)
+    samples = 100
+    ' Base URL of the API
+    base_url = "https://ci.thuenen.de/rest/v1/"
+    ' The endpoint to get the list of clusters (samples defines how many)
+    list_endpoint = base_url & "cluster?select=cluster_name&cluster_name=lt." & samples
+    ' The endpoint's stub to get details
+    detail_endpoint = base_url & "cluster?cluster_name=eq."
+    ' We measure times just to get an idea of the performance
+    StartTime = Time    ' Return current system time.
+    ' Create a new XMLHTTP object
+    Set Http = CreateObject("MSXML2.XMLHTTP")
+    ' Get the list of clusters
+    Http.Open "GET", list_endpoint, False
+    Http.SetRequestHeader "Accept-Profile", "inventory_archive"
+    Http.SetRequestHeader "apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0"
+    Http.Send
+    If Http.Status = 200 Then
+        ' Use JsonConverter to parse the data response
+        Set json = JsonConverter.ParseJson(Http.ResponseText)
+        ' Set the worksheet
+        Set ws = ThisWorkbook.Sheets(1)
+        ' Clear the worksheet
+        ws.Cells.Clear
+                ' We measure times just to get an idea of the performance
+                ListEndTime = Time
+                ' Time for fetching cluster list
+                ListTime = DateDiff("s", StartTime, ListEndTime)
+                ' Write timing info to the worksheet
+                ws.Cells(2, 1).Value = "Zeit für Traktliste [sec.]"
+                ws.Cells(2, 2).Value = ListTime
+                ws.Cells(3, 1).Value = "Hole Details..."
+        ' Initialize the row to start writing data to the worksheet
+        row = 5
+        ' Loop through each cluster and fetch details
+        For Each Item In json
+            item_id = Item("cluster_name")
+            ' Get details for the cluster
+            Http.Open "GET", detail_endpoint & item_id & "&select=id,cluster_name,state_responsible,topo_map_sheet,grid_density,cluster_status,cluster_situation", False
+            Http.SetRequestHeader "Accept-Profile", "inventory_archive"
+            Http.SetRequestHeader "apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0"
+            Http.Send
+            If Http.Status = 200 Then
+                ' Again use the JsonConverter to parse data response
+                Set itemDetails = JsonConverter.ParseJson(Http.ResponseText)
+                ' Just an index for the columns
+                i = 1
+                ' write column names to the worksheet (repetition actually superfluous here, too lazy to fix that ;))
+                For Each Key In itemDetails(1).Keys
+                        ws.Cells(4, i).Value = Key
+                        i = i + 1
+                    Next Key
+                ' Write cluster details to the worksheet
+                For Each Item2 In itemDetails
+                    i = 1
+                    For Each Key In itemDetails(1).Keys
+                        ws.Cells(row, i).Value = Item2(Key)
+                        i = i + 1
+                    Next Key
+                Next Item2
+            End If
+        ' Move to the next row for the next cluster
+        row = row + 1
+        Next Item
+    Else
+        MsgBox "Failed to retrieve the list of items: " & Http.Status
+    End If
+    ' We measure times just to get an idea of the performance
+    DetailEndTime = Time
+        ' Time for fetching details
+        ListTime = DateDiff("s", ListEndTime, DetailEndTime)
+        ' Write timing info to the worksheet
+        ws.Cells(3, 1).Value = "Zeit für Traktliste [sec.]"
+        ws.Cells(3, 2).Value = ListTime
+End Sub
+' Have fun ;)...
+```
 :::
