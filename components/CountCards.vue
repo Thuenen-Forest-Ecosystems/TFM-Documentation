@@ -8,99 +8,240 @@
 
     const supabase = createClient(url, apikey);
 
+    const plainPlotIdsArray = ref(null);
+    const access_token = ref('');
+    const jwtPayload = ref({});
+    const is_admin = ref(false);
+    const state_responsible = ref(null);
+    const troop_id = ref(null);
+    const state_responsible_name = ref(null);
+
+
     const countTables = ref([
         {
             name: 'plot',
+            key: 'id',
             count: 0,
-            loading: false
-        },
-        {
-            name: 'cluster',
-            count: 0,
-            loading: false
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
         },
         {
             name: 'tree',
+            key: 'plot_id',
             count: 0,
-            loading: false
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'deadwood',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'position',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'regeneration',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'edges',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'plot_landmark',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'structure_gt4m',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'structure_lt4m',
+            key: 'plot_id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
         }
     ]);
 
-    const count = async (table, plotIdArray) => {
+    function parseJwt (token) {
+        var base64Url = token.split('.')[1];
+        var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
 
-        // https://ci.thuenen.de/rest/v1/cluster?select=plot%28*%29&state_responsible=eq.5
-        //const { count, error } = await supabase.schema('inventory_archive').from(table.name).select('*', { count: 'exact', head: true }).eq('state_responsible', 5);
-        let count = 0, error = null;
-        
-        
-        if(table.name === 'plot'){
-            //const { data:plotsData, error: plotsError, count: plotsCount } = await supabase.schema('inventory_archive').from('plot').select('*').in('cluster_id', plotIdArray);
-            //const { data:plotsData, error: plotsError, count: plotsCount } = await supabase.schema('inventory_archive').from('cluster').select('plot!fk_plot_cluster(id)').eq('state_responsible', 5);//.in('cluster_id', plotIdArray);
-            count = plotIdArray.length * 4;
-        }else if(table.name === 'tree'){
-            // *,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*)
-            const { data:treesData, error: treesError } = await supabase.schema('inventory_archive').from('cluster').select('plot!fk_plot_cluster(id, tree(*, plot_id))').eq('state_responsible', 5);//.in('cluster_id', plotIdArray);
-            for (const cluster of treesData) {
-                for (const plot of cluster.plot) {
-                    count += plot.tree.length;
-                }
-            }
-            console.log(treesData);
-        }else if(table.name === 'cluster'){
-            count = plotIdArray.length;
-        }
-
-        if (error) {
-            console.error(error, count);
-        }
-
-        table.count = count;
-    }
+        return JSON.parse(jsonPayload);
+    };
 
     onMounted(async () => {
-        let { data, error } = await supabase.schema('inventory_archive').from('cluster').select('id').eq('state_responsible', 5);
-        const plotIdArray = data.map(plot => plot.id);
-        countTables.value.forEach(table => {
-            count(table, plotIdArray);
-        });
+        const { data, error } = await supabase.auth.getSession()
+        console.log('session', data);
+        if (data) {
+            access_token.value = data.session.access_token;
+            jwtPayload.value = parseJwt(data.session.access_token);
+            console.log(jwtPayload.value.is_admin);
+            is_admin.value = jwtPayload.value.is_admin;
+            state_responsible.value = jwtPayload.value.state_responsible;
+            troop_id.value = jwtPayload.value.troop_id;
+            _getStateResponsibleName(state_responsible.value);
+        }
     });
 
-    const testDownload = async () => {
-        console.log('testDownload');
-        const { data, error } = await supabase.schema('inventory_archive').from('cluster').select('plot(*)').eq('state_responsible', 5);
-        console.log(data);
+    async function _getStateResponsibleName(stateCode){
+        await supabase.schema('lookup').from('lookup_state').select('name_de, name_en').eq('code', stateCode).single().then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            state_responsible_name.value = data.name_de;
+        });
     }
 
     const downloadTable = async (table) => {
         table.loading = true;
-        //const { data, error } = await supabase.schema('inventory_archive').from('cluster').select('plot!fk_plot_cluster(id)').eq('state_responsible', 5);
-        const { data, error } = await supabase.schema('inventory_archive').from(table.name).select('*').csv();
+
+        if(table.data){
+            saveAsFile(table.data, table.name + '.csv');
+            table.loading = false;
+            return;
+        }
+
+        if(!plainPlotIdsArray.value){
+            let { data, error } = await supabase.schema('inventory_archive').from('plot').select('id').eq('federal_state', state_responsible.value);
+            plainPlotIdsArray.value = data.map(cluster => cluster.id);
+        }
+        if(plainPlotIdsArray.value.length === 0){
+            alert('No plots found');
+            table.loading = false;
+            return;
+        }
+
+        table.data = await requestTreeByPlotIds(table, plainPlotIdsArray.value);
         table.loading = false;
-        if (error) {
-            console.error(error);
+        if (table.data) {
+            saveAsFile(table.data, table.name + '.csv');
         }else{
-            let csvContent = "data:text/csv;charset=utf-8," + data;
-            var encodedUri = encodeURI(csvContent);
-            var link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", table.name + ".csv");
-            document.body.appendChild(link); // Required for FF
-            link.click();
+            console.error('Error downloading table', table.name);
         }
         
     }
+    const requestTreeByPlotIds = async (table, plotIdArray = []) => {
+        let totalResponseCsv = '';
+        // split in chunks of 100
+        const chunkSize = 100;
+        const chunks = [];
+        for (let i = 0; i < plotIdArray.length; i += chunkSize) {
+            chunks.push(plotIdArray.slice(i, i + chunkSize));
+        }
+        // request trees for each chunk
+        table.totalChunks = chunks.length;
+        table.chunkLoaded = 0;
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const { data:treesData, error: treesError } = await supabase.schema('inventory_archive').from(table.name).select('*').in(table.key || 'plot_id', chunk).csv();
+            if (treesError) {
+                console.error(treesError);
+            }else{
+                // check if empty
+                // remove f
+                const lines = treesData.split('\n');
+                table.currentRowsCount += lines.length - 1;
 
+                if(totalResponseCsv !== ''){
+                    // remove first line from treesData and add it to totalResponseCsv
+                    
+                    const data = lines.slice(1).join('\n');
+                   
+                    totalResponseCsv += data;
+                }else{
+                    totalResponseCsv = treesData;
+                }
+            }
+            table.chunkLoaded = i + 1;
+        }
+        return totalResponseCsv;
+    }
+
+
+    const saveAsFile = (data, filename) => {
+        const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+    }
 
 </script>
 
 <template>
-    <div style="margin-top:20px;">
+    
+    <div v-if="state_responsible" style="margin-top:20px;">
+        <h2>{{state_responsible_name}}</h2>
         <div class="card square" v-for="table in countTables">
             <div class="table-name">{{table.name.toUpperCase()}}</div>
-            <p>≈ {{table.count}} Rows</p>
-            <div v-if="table.loading">Loading...</div>
+            
+            <div v-if="table.loading && table.chunkLoaded < table.totalChunks">
+                <p>{{ (table.chunkLoaded * 100 / table.totalChunks).toFixed(2) }} %</p>
+            </div>
+
+            <div v-if="table.currentRowsCount > 0">
+                <p> {{ table.currentRowsCount.toLocaleString() }} Rows</p>
+            </div>
+
+            <p v-if="table.loading">Loading...</p>
             <a v-else href="#" @click="downloadTable(table)">Download</a>
         </div>
+    </div>
+    <div v-else>
+        <p>Loading...</p>
     </div>
 </template>
 
