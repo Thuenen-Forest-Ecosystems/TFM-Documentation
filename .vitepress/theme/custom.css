@@ -1,7 +1,16 @@
 
 /* .vitepress/theme/custom.css */
 :root {
-    --vp-c-brand-1: #d57b16;
-    --vp-c-brand-2: #8bb63a;
-    --vp-c-brand-3: #8bb63a;
-  }
+  --vp-c-brand-1: #d57b16;
+  --vp-c-brand-2: #8bb63a;
+  --vp-c-brand-3: #8bb63a;
+}
+
+
+.center {
+  margin: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
