@@ -22,7 +22,7 @@ async function getDetails(itemId) {
       return response.json();
     })
     .then(data => {
-      content.innerHTML += `<pre><code>${JSON.stringify(data[0], null, 1)}</code></pre>`;
+      content.innerHTML += `<pre><pretty-json expand="1"><code>${JSON.stringify(data[0], null, 1)}</code></pretty-json></pre>`;
   });
 
 }
@@ -44,7 +44,7 @@ async function getGridcell(coordinate) {
       })
       .then(data => {
         GridCell = data.features[0].properties.ID_1km;
-        content.innerHTML = `<pre>GridCell:<code>${JSON.stringify(GridCell, null, 1)}</code></pre>`;
+        content.innerHTML = `<pre><b>GridCell:<code>${JSON.stringify(GridCell, null, 1)}</code></b></pre>`;
          (async () => {  
            await getDetails(GridCell);
          })();
