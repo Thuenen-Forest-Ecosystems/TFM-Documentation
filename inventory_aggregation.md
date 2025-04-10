@@ -151,10 +151,30 @@ requestHand.get_response()
 
 dfData = requestHand.return_response_dataFrame().set_index('cluster_name')
 dfPlots = pd.concat([pd.DataFrame.from_records(df).assign(cluster_name=key) for key, df in dfData.loc[:,'plot'].items()], ignore_index=True)
+# Set cluster_name as index, to keep information in DataFrame for trees
 dfPlots.set_index('cluster_name',inplace=True)
+# Get all trees out of dfPlots
 dfTrees = pd.concat([pd.DataFrame.from_records(df).assign(cluster_name=key) for key, df in dfPlots.loc[:,'tree'].items()], ignore_index=True)
 
+# print summary
 print(dfTrees.groupby('tree_species')['dbh'].describe())
+
+# Part with named tree species
+# prepare to get lookup table
+endPoint = 'lookup_tree_species'
+requestHand = RequestHandler(baseUrl=baseUrl,
+                             token=authToken,
+                             endPoint=endPoint,
+                             profile='lookup'
+                             )
+
+# get lookup table
+requestHand.get_response()
+dfLookupTreeSpec = requestHand.return_response_dataFrame()
+
+# Join with lookup table for tree species and print summary
+print(dfTrees.join(dfLookupTreeSpec.set_index('code'), on=['tree_species'], how='left')[['dbh','tree_species','name_de']].groupby('name_de')['dbh'].describe())
+
 ```
 :::
 
