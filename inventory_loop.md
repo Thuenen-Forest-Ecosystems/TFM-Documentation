@@ -1350,10 +1350,16 @@ for cluster in dfClusterList[dfClusterList.keys()[0]].values:
         dfDetails = requestHand.return_response_dataFrame()
 
 dfDetails.reset_index(drop=True, inplace=True)
+print("Downlodzeit Details: ", time.time() - start)
+
 dfPlots = pd.concat([pd.DataFrame.from_records(df).assign(key=key) for key, df in dfDetails.loc[:,'plot'].items()], ignore_index=True)
 dfTrees = pd.concat([pd.DataFrame.from_records(df).assign(key=key) for key, df in dfPlots.loc[:,'tree'].items()], ignore_index=True)
 
-print("Downlodzeit Details: ", time.time() - start)
+print(dfDetails)
+print(20*'-')
+print(dfPlots)
+print(20*'-')
+print(dfTrees)
 ```
 
 ```VB-vue [VB for Excel]
