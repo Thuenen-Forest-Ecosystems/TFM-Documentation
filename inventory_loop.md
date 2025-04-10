@@ -1273,6 +1273,89 @@ display.mode="showcase"
 shinyApp(ui = ui, server = server)
 ```
 
+```python-vue
+import pandas as pd
+import requests
+import time 
+
+class BearerAuth(requests.auth.AuthBase):
+    def __init__(self, token, profile):
+        self.token = token
+        self.profile = profile
+    def __call__(self, r):
+        r.headers["apikey"] = self.token
+        r.headers["Accept-Profile"] = self.profile
+        return r
+    
+class RequestHandler():
+    def __init__(self, baseUrl, token=None, profile=None, endPoint=None):
+        self.baseUrl = baseUrl
+        self.token = token
+        self.profile = profile
+        self.set_endpoint(endPoint)
+    
+    def set_endpoint(self, endPoint):
+        self.endPoint = endPoint
+
+    def get_response(self):
+        if(not self.set_endpoint):
+            return
+        self.response = requests.get(self.baseUrl+self.endPoint, auth=BearerAuth(self.token, self.profile))
+    
+    def check_status(self):
+        if(self.response.status_code in [200]): # TODO weitere hinzufügen
+            self._isAuthorized = True
+        else:
+            self._isAuthorized = False
+
+    def isAuthorized(self):
+        self.check_status()
+        return self._isAuthorized
+
+    def return_response_dataFrame(self) -> pd.DataFrame:
+        """
+        """
+        if(self.isAuthorized()):
+            return pd.DataFrame.from_records(self.response.json())
+        else:
+            print("Failed to retrieve data")
+
+
+
+start = time.time()
+maxSamples=10
+baseUrl = "https://ci.thuenen.de/rest/v1/"
+authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0'
+acctProfile = 'inventory_archive'
+listEndPoint = f'cluster?select=cluster_name&cluster_name=lt.{maxSamples}'
+detailEndpoint = "cluster?cluster_name=eq."
+requestHand = RequestHandler(baseUrl=baseUrl,
+                             token=authToken,
+                             profile=acctProfile,
+                             endPoint=listEndPoint
+                             )
+
+requestHand.get_response()
+dfClusterList = requestHand.return_response_dataFrame()
+
+print("Downloadzeit Traktliste: ", time.time() - start)
+
+start = time.time()
+for cluster in dfClusterList[dfClusterList.keys()[0]].values:
+    requestHand.set_endpoint(f'{detailEndpoint}{cluster}&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))')
+    requestHand.get_response()
+    try:
+        dfDetails = pd.concat([dfDetails, requestHand.return_response_dataFrame()])
+    except:
+        dfDetails = requestHand.return_response_dataFrame()
+
+dfDetails.reset_index(drop=True, inplace=True)
+dfPlots = pd.concat([pd.DataFrame.from_records(df).assign(key=key) for key, df in dfDetails.loc[:,'plot'].items()], ignore_index=True)
+dfTrees = pd.concat([pd.DataFrame.from_records(df).assign(key=key) for key, df in dfPlots.loc[:,'tree'].items()], ignore_index=True)
+
+print("Downlodzeit Details: ", time.time() - start)
+```
+
 ```VB-vue [VB for Excel]
 ' This example shows conceptually how to:
 ' - get a list of clusters from the cluster endpoint as json,
