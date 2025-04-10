@@ -127,3 +127,21 @@ map.on("singleclick", function (evt) {
   })();
 }
 );
+
+function switchbluegrid() {
+  //alert(layers[1].getOpacity()  );
+  if (layers[1].getOpacity() == 0.4 ) {
+    layers[1].setOpacity(0);
+  } else if (layers[1].getOpacity() == 0) {
+    layers[1].setOpacity(0.4);
+  }
+}
+
+function switchhelpergrid() {
+  //alert(layers[2].getOpacity()  );
+  if (layers[2].getOpacity() == 0.4 ) {
+    layers[2].setOpacity(0);
+  } else if (layers[2].getOpacity() == 0) {
+    layers[2].setOpacity(0.4);
+  }
+}
