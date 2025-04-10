@@ -1303,7 +1303,7 @@ class RequestHandler():
         self.response = requests.get(self.baseUrl+self.endPoint, auth=BearerAuth(self.token, self.profile))
     
     def check_status(self):
-        if(self.response.status_code in [200]): # TODO weitere hinzufügen
+        if(self.response.status_code in [200]):
             self._isAuthorized = True
         else:
             self._isAuthorized = False
