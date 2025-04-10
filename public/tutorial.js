@@ -22,7 +22,64 @@ async function getDetails(itemId) {
       return response.json();
     })
     .then(data => {
+      //console.log(JSON.stringify(data[0], null, 1));
       content.innerHTML += `<pre><pretty-json expand="1"><code>${JSON.stringify(data[0], null, 1)}</code></pretty-json></pre>`;
+      const data2 = [
+        // Fügen Sie hier das angehängte JSON ein
+        JSON.stringify(data[0], null, 1)
+      ];
+      
+let treeCount = 0;
+let dbhSum = 0;
+let treeHeightSum = 0;
+let minDbh = Infinity;
+let maxDbh = -Infinity;
+let minTreeHeight = Infinity;
+let maxTreeHeight = -Infinity;
+
+data.forEach(source => {
+  if (source.plot) {
+    source.plot.forEach(plot => {
+      if (plot.tree) {
+        plot.tree.forEach(tree => {
+          treeCount++;
+
+          if (tree.dbh !== null && tree.dbh !== undefined) {
+            const dbh = parseFloat(tree.dbh);
+            dbhSum += dbh;
+            if (dbh < minDbh) minDbh = dbh;
+            if (dbh > maxDbh) maxDbh = dbh;
+          }
+
+          if (tree.tree_height !== null && tree.tree_height !== undefined) {
+            const treeHeight = parseFloat(tree.tree_height);
+            treeHeightSum += treeHeight;
+            if (treeHeight < minTreeHeight) minTreeHeight = treeHeight;
+            if (treeHeight > maxTreeHeight) maxTreeHeight = treeHeight;
+          }
+        });
+      }
+    });
+  }
+});
+
+const dbhAverage = Math.round(dbhSum / treeCount);
+const treeHeightAverage = Math.round(treeHeightSum / treeCount);
+
+console.log(`Anzahl der tree-Elemente: ${treeCount}`);
+console.log(`Minimaler dbh-Wert: ${minDbh}`);
+console.log(`Maximaler dbh-Wert: ${maxDbh}`);
+console.log(`Durchschnittlicher dbh-Wert: ${dbhAverage}`);
+console.log(`Minimaler tree_height-Wert: ${minTreeHeight}`);
+console.log(`Maximaler tree_height-Wert: ${maxTreeHeight}`);
+console.log(`Durchschnittlicher tree_height-Wert: ${treeHeightAverage}`);
+if (treeCount > 0) {
+content.innerHTML += `Der Trakt hier enhhält <code>${treeCount}</code> Bäume.</br>Deren Durchmesser reichen von <code>${minDbh}</code> mm bis <code>${maxDbh}</code> mm, im Mittel <code>${dbhAverage}</code> mm.</br>Die Baumhöhen reichen von <code>${minTreeHeight}</code> dm bis <code>${maxTreeHeight}</code> dm, im Mittel <code>${treeHeightAverage}</code> dm.`;
+}
+else {
+  content.innerHTML += `Diese Zelle enhhält keine Daten zu Bäumen.`;
+}
+
   });
 
 }
