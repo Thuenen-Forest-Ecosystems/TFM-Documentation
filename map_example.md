@@ -19,4 +19,4 @@ If a cell not containing a NFI cluster is clicked, the popup shows a message aco
 [Source Code of supplementary JS](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/pretty-json.js) taken from https://github.com/mohsen1/pretty-json
 
 
-Have fun with the [example application](./map.html)!
+Have fun with the [example application](https://thuenen-forest-ecosystems.github.io/TFM-Documentation/map.html)!
