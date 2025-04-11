@@ -1,91 +1,116 @@
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <style>
-    #map {
-      width: 100%;
-      height: 1600px;
-    }
-    /* Add in CSS required for popup*/
-    .ol-popup {
-      position: absolute;
-      background-color: white;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-      padding: 15px;
-      border-radius: 10px;
-      border: 1px solid #cccccc;
-      bottom: 12px;
-      left: -50px;
-      min-width: 360px;
-      overflow: auto;
-      max-height: 370px;
+  <head>
+    <!-- Sets the character encoding for the HTML document -->
+    <meta charset="utf-8" />
 
-    }
+    <style>
+      /* Sets the CSS styles for the map container, making it take the full width and a height of 1600 pixels */
+      #map {
+        width: 100%;
+        height: 1600px;
+      }
 
-    .ol-popup:after,
-    .ol-popup:before {
-      top: 100%;
-      border: solid transparent;
-      content: " ";
-      height: 0;
-      width: 0;
-      position: absolute;
-      pointer-events: none;
-    }
+      /* Add in CSS required for popup */
+      /* Styles for the popup component, including positioning, background color, box shadow, padding, border, and other properties */
+      .ol-popup {
+        position: absolute;
+        background-color: white;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #cccccc;
+        bottom: 12px;
+        left: -50px;
+        min-width: 360px;
+        overflow: auto;
+        max-height: 370px;
+      }
 
-    .ol-popup:after {
-      border-top-color: white;
-      border-width: 10px;
-      left: 48px;
-      margin-left: -10px;
-    }
+      /* Defines the styles for the arrow shapes for the popup, using ::after and ::before pseudo-elements */
+      .ol-popup:after,
+      .ol-popup:before {
+        top: 100%;
+        border: solid transparent;
+        content: " ";
+        height: 0;
+        width: 0;
+        position: absolute;
+        pointer-events: none;
+      }
 
-    .ol-popup:before {
-      border-top-color: #cccccc;
-      border-width: 11px;
-      left: 48px;
-      margin-left: -11px;
-    }
+      /* Sets the styles for the ::after pseudo-element, which creates the top part of the arrow pointing upwards */
+      .ol-popup:after {
+        border-top-color: white;
+        border-width: 10px;
+        left: 48px;
+        margin-left: -10px;
+      }
 
-    .ol-popup-closer {
-      text-decoration: none;
-      position: absolute;
-      top: 5px;
-      right: 8px;
-    }
+      /* Sets the styles for the ::before pseudo-element, which creates the bottom part of the arrow pointing upwards */
+      .ol-popup:before {
+        border-top-color: #cccccc;
+        border-width: 11px;
+        left: 48px;
+        margin-left: -11px;
+      }
 
-    .ol-popup-closer:after {
-      content: "✖";
-      color: #A9A9A9;
-    }
+      /* Defines the styles for the popup closer button, positioning it absolutely at the top right of the popup */
+      .ol-popup-closer {
+        text-decoration: none;
+        position: absolute;
+        top: 5px;
+        right: 8px;
+      }
 
-  </style>
+      /* Uses the ::after pseudo-element to insert a close icon (✖) into the popup closer button */
+      .ol-popup-closer:after {
+        content: "✖";
+        color: #a9a9a9;
+      }
+    </style>
 
-  <title>NFI OpenLayers Popup Example</title>
-  <meta name="description" content="NFI OpenLayers Popup Example">
-  <meta name="author" content="CCMEP">
+    <!-- Provides the title of the document -->
+    <title>NFI OpenLayers Popup Example</title>
 
-<!--   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css" type="text/css"/>
-  <script src="https://cdn.jsdelivr.net/npm/ol@v7.3.0/dist/ol.js"></script>
- -->
-  <link rel="stylesheet" href="./ol.css" type="text/css"/>
-  <script src="./ol.js"></script>
-  <script defer src="./pretty-json.js"></script>
+    <!-- Meta tags providing the description and author of the document -->
+    <meta name="description" content="NFI OpenLayers Popup Example" />
+    <meta name="author" content="KD" />
 
-</head>
+    <!-- Includes the OpenLayers CSS and JavaScript libraries -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/ol@v7.3.0/ol.css"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/ol@v7.3.0/dist/ol.js"></script>
 
-<body>
-  <div align="left">
-    <button onclick="switchbluegrid()">Toggle visibility of Inspire 1km grid (blue)</button>&nbsp;&nbsp;
-    <button onclick="switchhelpergrid()">Toggle visibility of HelperGrid (2012 NFI plots)</button>
-    &nbsp;&nbsp;Click on the map to show data of NFI clusters!
-  </div>
-  <div id="map" style="height: 800px;"></div>
-  <div id="popup" class="ol-popup">
-    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-    <div id="popup-content"></div>
-  </div>
+    <!-- Includes an additional JavaScript file (pretty-json.js) for formatting JSON -->
+    <script defer src="./pretty-json.js"></script>
+  </head>
 
-  <script src="./tutorial.js"></script>
-</body>
+  <body>
+    <!-- Control buttons for various functions such as navigation and layer visibility toggling -->
+    <div align="left">
+      <button onclick="back2main()">Back to Documentation</button>&nbsp;&nbsp;
+      <button onclick="switchbluegrid()">
+        Toggle visibility of Inspire 1km grid (blue)</button
+      >&nbsp;&nbsp;
+      <button onclick="switchhelpergrid()">
+        Toggle visibility of HelperGrid (2012 NFI plots)
+      </button>
+      &nbsp;&nbsp;Click on the map to show data of NFI clusters!
+    </div>
+
+    <!-- Main container for the map, with a set height of 800 pixels -->
+    <div id="map" style="height: 800px"></div>
+
+    <!-- Defines the popup structure, including the closer button and the content area -->
+    <div id="popup" class="ol-popup">
+      <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+      <div id="popup-content"></div>
+    </div>
+
+    <!-- Includes the main JavaScript file (tutorial.js) for this example -->
+    <script src="./tutorial.js"></script>
+  </body>
 </html>
