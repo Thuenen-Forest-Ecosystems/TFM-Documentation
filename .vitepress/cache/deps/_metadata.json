@@ -1,46 +1,142 @@
 {
-  "hash": "581e3087",
-  "configHash": "e540d8dd",
-  "lockfileHash": "1e3b8358",
-  "browserHash": "d45067b1",
+  "hash": "2dfa7e38",
+  "configHash": "877ade36",
+  "lockfileHash": "6328ab61",
+  "browserHash": "4c2c6dea",
   "optimized": {
     "vue": {
       "src": "../../../node_modules/vue/dist/vue.runtime.esm-bundler.js",
       "file": "vue.js",
-      "fileHash": "1268a4c7",
+      "fileHash": "18c7b16b",
       "needsInterop": false
     },
     "vitepress > @vue/devtools-api": {
       "src": "../../../node_modules/@vue/devtools-api/dist/index.js",
       "file": "vitepress___@vue_devtools-api.js",
-      "fileHash": "672eb4c1",
+      "fileHash": "5b22a6a5",
       "needsInterop": false
     },
     "vitepress > @vueuse/core": {
       "src": "../../../node_modules/@vueuse/core/index.mjs",
       "file": "vitepress___@vueuse_core.js",
-      "fileHash": "aa16be79",
+      "fileHash": "9219a81a",
+      "needsInterop": false
+    },
+    "vuetify": {
+      "src": "../../../node_modules/vuetify/lib/framework.js",
+      "file": "vuetify.js",
+      "fileHash": "a4b18da7",
+      "needsInterop": false
+    },
+    "vuetify/components": {
+      "src": "../../../node_modules/vuetify/lib/components/index.js",
+      "file": "vuetify_components.js",
+      "fileHash": "681baa30",
+      "needsInterop": false
+    },
+    "vuetify/directives": {
+      "src": "../../../node_modules/vuetify/lib/directives/index.js",
+      "file": "vuetify_directives.js",
+      "fileHash": "b5467415",
       "needsInterop": false
     },
     "@supabase/supabase-js": {
       "src": "../../../node_modules/@supabase/supabase-js/dist/module/index.js",
       "file": "@supabase_supabase-js.js",
-      "fileHash": "aa7a1c90",
+      "fileHash": "20e99207",
+      "needsInterop": false
+    },
+    "vuetify/components/VAvatar": {
+      "src": "../../../node_modules/vuetify/lib/components/VAvatar/index.js",
+      "file": "vuetify_components_VAvatar.js",
+      "fileHash": "9212dff8",
+      "needsInterop": false
+    },
+    "vuetify/components/VBtn": {
+      "src": "../../../node_modules/vuetify/lib/components/VBtn/index.js",
+      "file": "vuetify_components_VBtn.js",
+      "fileHash": "1f55a835",
+      "needsInterop": false
+    },
+    "vuetify/components/VIcon": {
+      "src": "../../../node_modules/vuetify/lib/components/VIcon/index.js",
+      "file": "vuetify_components_VIcon.js",
+      "fileHash": "46de99d9",
+      "needsInterop": false
+    },
+    "vuetify/components/VList": {
+      "src": "../../../node_modules/vuetify/lib/components/VList/index.js",
+      "file": "vuetify_components_VList.js",
+      "fileHash": "5f80ba86",
       "needsInterop": false
     }
   },
   "chunks": {
-    "chunk-VJWGEPT5": {
-      "file": "chunk-VJWGEPT5.js"
+    "chunk-G3353M3Q": {
+      "file": "chunk-G3353M3Q.js"
     },
     "browser-AVCI4DDI": {
       "file": "browser-AVCI4DDI.js"
     },
+    "browser-3INGEYRB": {
+      "file": "browser-3INGEYRB.js"
+    },
     "chunk-SVAUV5FW": {
       "file": "chunk-SVAUV5FW.js"
     },
-    "browser-3INGEYRB": {
-      "file": "browser-3INGEYRB.js"
+    "chunk-5J57A7DB": {
+      "file": "chunk-5J57A7DB.js"
+    },
+    "chunk-Q5I5TGHL": {
+      "file": "chunk-Q5I5TGHL.js"
+    },
+    "chunk-XI7KFXU3": {
+      "file": "chunk-XI7KFXU3.js"
+    },
+    "chunk-FCFJATFX": {
+      "file": "chunk-FCFJATFX.js"
+    },
+    "chunk-KO43FRKF": {
+      "file": "chunk-KO43FRKF.js"
+    },
+    "chunk-66DMJ3VU": {
+      "file": "chunk-66DMJ3VU.js"
+    },
+    "chunk-MB47AWRT": {
+      "file": "chunk-MB47AWRT.js"
+    },
+    "chunk-PTLYBRV5": {
+      "file": "chunk-PTLYBRV5.js"
+    },
+    "chunk-RDJ4YHAL": {
+      "file": "chunk-RDJ4YHAL.js"
+    },
+    "chunk-IPRHOC35": {
+      "file": "chunk-IPRHOC35.js"
+    },
+    "chunk-CRMGL2B4": {
+      "file": "chunk-CRMGL2B4.js"
+    },
+    "chunk-QWC5G57T": {
+      "file": "chunk-QWC5G57T.js"
+    },
+    "chunk-GG4H6NB6": {
+      "file": "chunk-GG4H6NB6.js"
+    },
+    "chunk-JAPZLOBW": {
+      "file": "chunk-JAPZLOBW.js"
+    },
+    "chunk-DIB6IWNB": {
+      "file": "chunk-DIB6IWNB.js"
+    },
+    "chunk-KGDBS67N": {
+      "file": "chunk-KGDBS67N.js"
+    },
+    "chunk-F2JOI4IG": {
+      "file": "chunk-F2JOI4IG.js"
+    },
+    "chunk-VJWGEPT5": {
+      "file": "chunk-VJWGEPT5.js"
     },
     "chunk-V4OQ3NZ2": {
       "file": "chunk-V4OQ3NZ2.js"

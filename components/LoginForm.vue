@@ -10,6 +10,7 @@
     const contentProfile = useAttrs();
 
     const supabase = createClient(url, apikey)
+    console.log(url, apikey)
 
     const currentSession = ref({});
     const authErrors = ref(null);
@@ -88,7 +89,18 @@
         }
     }
     const logout = async () => {
+       
+        supabase.auth.signOut().then(() => {
+            console.log('signed out');
+            authErrors.value = null;
+        }).catch((error) => {
+            console.log(error);
+        }).finally(() => {
+            console.log('finally');
+        });
+        return;
         const { error } = await supabase.auth.signOut();
+        
         if (error) {
             authErrors.value = error.message;
         }else{
@@ -96,14 +108,12 @@
         }
     }
 
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-        currentSession.value = session;
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
         
-        //console.log(parseJwt(session?.access_token));
-        access_token.value = session?.access_token;
+        currentSession.value = session;
 
         if(event === 'SIGNED_IN' && contentProfile.forward){
-            window.location.replace("./profile");
+            //window.location.replace("./profile");
         }
     });
 

@@ -1,4 +1,6 @@
 import { defineConfig } from 'vitepress'
+import vuetify from 'vite-plugin-vuetify'
+
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -72,5 +74,23 @@ export default defineConfig({
       copyright: '<a href="https://www.thuenen.de/en/legal-notice-and-data-privacy">Legal notice</a>  <a href="https://www.thuenen.de/en/data-protection-statement">Data Protection Statement</a>'
     }
   },
-  base: '/TFM-Documentation/'
+  base: '/TFM-Documentation/',
+  vite: {
+    plugins: [
+      vuetify(),
+    ],
+    // Prevent Vuetify from optimizing imports by default
+    ssr: {
+      noExternal: ['vuetify']
+    },
+    resolve: {
+      alias: {
+        '@': '/src',
+      },
+    },
+    optimizeDeps: {
+      //exclude: ['@deck.gl/core', '@deck.gl/layers', '@deck.gl/geo-layers']
+    },
+    assetsInclude: ['**/*.wgsl'],
+  }
 })

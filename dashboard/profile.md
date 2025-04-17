@@ -1,12 +1,13 @@
 <script setup>
     import LoginForm from '../components/LoginForm.vue';
     import Credentials from '../components/Credentials.vue';
-    const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0';
-    import { ref, onMounted } from 'vue';
+    import { ref, onMounted, getCurrentInstance } from 'vue';
     import { createClient } from '@supabase/supabase-js';
 
-    let url = 'https://ci.thuenen.de/';
-    //url = 'http://127.0.0.1:54321';
+    const instance = getCurrentInstance();
+    const apikey = instance.appContext.config.globalProperties.$apikey;
+    const url = instance.appContext.config.globalProperties.$url;
+
     const supabase = createClient(url, apikey);
 
     const data = ref({});
@@ -39,7 +40,8 @@
 
     onMounted(async () => {
         const { data, error } = await supabase.auth.getSession()
-        if (data) {
+        if (data.session) {
+            console.log(data.session);
             access_token.value = data.session.access_token;
             jwtPayload.value = parseJwt(data.session.access_token);
             console.log(jwtPayload.value.is_admin);
@@ -51,6 +53,9 @@
     });
 
 </script>
+
+<LoginForm>
+
 # Profile
 
 This page contains the profile data related to your account.
@@ -89,6 +94,6 @@ Your are part of the troop with the id:
 
 
 
-<LoginForm>
+
    
 </LoginForm>

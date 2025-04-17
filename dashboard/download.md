@@ -6,10 +6,12 @@
   import CountCards from '../components/CountCards.vue';
 </script>
 
-# Inventory
-
-Download inventory data related to your account.
-
 <LoginForm>
+
+  # Inventory
+
+  Download inventory data related to your account.
+
+
   <CountCards />
 </LoginForm>

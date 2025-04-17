@@ -9,6 +9,7 @@
     const supabase = createClient(url, apikey);
 
     const plainPlotIdsArray = ref(null);
+    const plainClusterIdsArray = ref(null);
     const access_token = ref('');
     const jwtPayload = ref({});
     const is_admin = ref(false);
@@ -17,10 +18,35 @@
     const state_responsible_name = ref(null);
 
 
+    /**
+     * 
+     * Use either the wellknown or terraformer-wkt-parser library (or potentially others with WKT parsing capabilities) to correctly convert PostGIS geometry strings to GeoJSON in your JavaScript code.
+     */
+
     const countTables = ref([
+        {
+            name: 'cluster',
+            key: 'id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
         {
             name: 'plot',
             key: 'id',
+            count: 0,
+            totalChunks: 0,
+            chunkLoaded: 0,
+            currentRowsCount: 0,
+            loading: false,
+            data: null
+        },
+        {
+            name: 'plot_coordinates',
+            key: 'plot_id',
             count: 0,
             totalChunks: 0,
             chunkLoaded: 0,
@@ -123,10 +149,20 @@
     onMounted(async () => {
         const { data, error } = await supabase.auth.getSession()
         console.log('session', data);
+
+        const { data: userProfile, error: userProfileError } = await supabase.from('users_profile').select().single();
+        if (userProfileError) {
+            console.error(userProfileError);
+        } else {
+            state_responsible.value = userProfile.state_responsible;
+            troop_id.value = userProfile.troop_id;
+            is_admin.value = userProfile.is_admin;
+        }
+        return;
+
         if (data) {
             access_token.value = data.session.access_token;
             jwtPayload.value = parseJwt(data.session.access_token);
-            console.log(jwtPayload.value.is_admin);
             is_admin.value = jwtPayload.value.is_admin;
             state_responsible.value = jwtPayload.value.state_responsible;
             troop_id.value = jwtPayload.value.troop_id;
@@ -145,62 +181,85 @@
     }
 
     const downloadTable = async (table) => {
+
+        if(table.loading === true) return;
         table.loading = true;
 
+        const fileName = table.name + '_' + new Date().toISOString() + '.csv';
+
         if(table.data){
-            saveAsFile(table.data, table.name + '.csv');
+            saveAsFile(table.data, fileName);
             table.loading = false;
             return;
         }
 
         if(!plainPlotIdsArray.value){
             let { data, error } = await supabase.schema('inventory_archive').from('plot').select('id').eq('federal_state', state_responsible.value);
-            plainPlotIdsArray.value = data.map(cluster => cluster.id);
+            plainPlotIdsArray.value = data.map(plot => plot.id);
+        }
+        if(!plainClusterIdsArray.value){
+            let result = await supabase.schema('inventory_archive').from('cluster').select('id').eq('state_responsible', state_responsible.value);
+            plainClusterIdsArray.value = result.data.map(cluster => cluster.id);
         }
         if(plainPlotIdsArray.value.length === 0){
             alert('No plots found');
             table.loading = false;
             return;
         }
-
-        table.data = await requestTreeByPlotIds(table, plainPlotIdsArray.value);
-        table.loading = false;
+        table.data = await requestTreeByPlotIds(table, plainPlotIdsArray.value, plainClusterIdsArray.value);
+       
         if (table.data) {
-            saveAsFile(table.data, table.name + '.csv');
+            saveAsFile(table.data, fileName);
         }else{
             console.error('Error downloading table', table.name);
         }
-        
+        table.loading = false;
     }
-    const requestTreeByPlotIds = async (table, plotIdArray = []) => {
+    const requestTreeByPlotIds = async (table, plotIdArray = [], clusterIdArray = []) => {
         let totalResponseCsv = '';
         // split in chunks of 100
         const chunkSize = 100;
         const chunks = [];
-        for (let i = 0; i < plotIdArray.length; i += chunkSize) {
-            chunks.push(plotIdArray.slice(i, i + chunkSize));
+        if(table.name === 'cluster'){
+            for (let i = 0; i < clusterIdArray.length; i += chunkSize) {
+                chunks.push(clusterIdArray.slice(i, i + chunkSize));
+            }
+        }else{
+            for (let i = 0; i < plotIdArray.length; i += chunkSize) {
+                chunks.push(plotIdArray.slice(i, i + chunkSize));
+            }
         }
+        
         // request trees for each chunk
         table.totalChunks = chunks.length;
         table.chunkLoaded = 0;
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
-            const { data:treesData, error: treesError } = await supabase.schema('inventory_archive').from(table.name).select('*').in(table.key || 'plot_id', chunk).csv();
+
+            const {data: treesData, error: treesError} = await supabase.schema('inventory_archive').from(table.name).select('*').in(table.key || 'plot_id', chunk).csv();
+
             if (treesError) {
                 console.error(treesError);
             }else{
+                
                 // check if empty
-                // remove f
-                const lines = treesData.split('\n');
+                const linesRaw = treesData.split('\n');
+                // remove empty lines
+                const lines = linesRaw.filter(line => line.trim() !== '');
+                if(lines.length === 0){
+                    continue;
+                }
+
                 table.currentRowsCount += lines.length - 1;
 
                 if(totalResponseCsv !== ''){
                     // remove first line from treesData and add it to totalResponseCsv
                     
                     const data = lines.slice(1).join('\n');
-                   
-                    totalResponseCsv += data;
+                    
+                    totalResponseCsv += '\n' + data;
                 }else{
+                    console.log(lines);
                     totalResponseCsv = treesData;
                 }
             }
@@ -222,26 +281,27 @@
 </script>
 
 <template>
-    
     <div v-if="state_responsible" style="margin-top:20px;">
-        <h2>{{state_responsible_name}}</h2>
-        <div class="card square" v-for="table in countTables">
-            <div class="table-name">{{table.name.toUpperCase()}}</div>
-            
-            <div v-if="table.loading && table.chunkLoaded < table.totalChunks">
-                <p>{{ (table.chunkLoaded * 100 / table.totalChunks).toFixed(2) }} %</p>
-            </div>
+        <v-list-item
+            v-for="table in countTables"
+            :key="table.name"
+            :subtitle="table.totalChunks == 0 ? '' : (table.chunkLoaded * 100 / table.totalChunks).toFixed(2) + ' %'"
+            :title="table.name"
+        >
+            <template v-slot:prepend>
+                <v-icon color="white">mdi-format-list-bulleted</v-icon>
+            </template>
 
-            <div v-if="table.currentRowsCount > 0">
-                <p> {{ table.currentRowsCount.toLocaleString() }} Rows</p>
-            </div>
-
-            <p v-if="table.loading">Loading...</p>
-            <a v-else href="#" @click="downloadTable(table)">Download</a>
-        </div>
-    </div>
-    <div v-else>
-        <p>Loading...</p>
+            <template v-slot:append>
+            <v-btn
+                color="grey-lighten-1"
+                icon="mdi-download"
+                variant="text"
+                :disabled="table.loading"
+                @click="downloadTable(table)"
+            ></v-btn>
+            </template>
+        </v-list-item>
     </div>
 </template>
 
