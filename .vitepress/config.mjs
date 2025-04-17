@@ -37,7 +37,8 @@ export default defineConfig({
           items: [
             { text: 'By Location', link: '/inventory_archive' },
             { text: 'Aggregation', link: '/inventory_aggregation' },
-            { text: 'Loop for bigger datasets', link: '/inventory_loop' }
+            { text: 'Loop for bigger datasets', link: '/inventory_loop' },
+            { text: 'Map application example', link: '/map_example' }
 
           ]
         },
