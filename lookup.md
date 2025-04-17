@@ -147,7 +147,7 @@ fetch("https://ci.thuenen.de/rest/v1/lookup_tree_species", requestOptions)
   .catch(error => console.log('error', error));
 ```
 
-```cURL-vue
+```txt-vue
 curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species' \
 --header 'apikey: {{ apikey }}' \
 --header 'Accept-Profile: lookup'
@@ -214,7 +214,7 @@ fetch("https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100", requestOp
   .catch(error => console.log('error', error));
 ```
 
-```cURL-vue
+```txt-vue
 curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100' \
 --header 'apikey: {{ apikey }}' \
 --header 'Accept-Profile: lookup'

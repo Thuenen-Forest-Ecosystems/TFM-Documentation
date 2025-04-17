@@ -15,7 +15,7 @@ In the example below, the column `code` from the table `lookup_state` is queried
 
 ::: code-group
 
-```cURL-vue{2} [REQUEST]
+```txt-vue{2} [REQUEST]
 curl -X GET "https://ci.thuenen.de/rest/v1/lookup_state"  
     -d "name_de=like.Hessen"
     -d "select=code"
@@ -36,7 +36,7 @@ With knowledge of the Federal State code, the clusters can be queried by Federal
 
 ::: code-group
 
-```cURL-vue
+```txt-vue
 curl --globoff GET "https://ci.thuenen.de/rest/v1/cluster?states_affected=cd.{6}"  -H "Accept-Profile: inventory_archive"  -H "apikey: {{ apikey }}"
 ```
 :::
@@ -49,7 +49,7 @@ The clusters can be queried using an overlaying 1km x 1km grid. Querying a grid 
 
 In the example below, the grid cell `eq.1kmN2688E4341` is queried. This grid cell is located in the south of Germany.
 
-```cURL-vue
+```txt-vue
 curl -X GET "https://ci.thuenen.de/rest/v1/cluster?inspire_grid_cell=eq.1kmN2688E4341"  -H "Accept-Profile: inventory_archive"  -H "apikey: {{ apikey }}"
 ```
 

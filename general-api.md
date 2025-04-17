@@ -16,7 +16,7 @@ The base URL for the API is `https://ci.thuenen.de/rest/v1/`. All requests shoul
 
 The API requires an API key to be passed in the header of each request. The API key is a JSON Web Token (JWT) and is used to authenticate the user. The API key is passed in the `apikey` header.
 
-```cURL-vue
+```txt-vue
 
 curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "apikey: {{ apikey }}"
 
@@ -26,7 +26,7 @@ curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "apikey: {{ apikey }}"
 
 The second header required is the `Accept-Profile` header. This header is used to specify the schema that the response should be formatted in. The available schemas are `lookup` or `inventory_archive`.
 
-```cURL-vue
+```txt-vue
 curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
 ```
 
@@ -36,11 +36,11 @@ The API can return data in either CSV or JSON format. The format is specified in
 
 ::: code-group
 
-```cURL-vue [JSON (default)]
+```txt-vue [JSON (default)]
 curl -X GET "https://ci.thuenen.de/rest/v1/lookup_tree_species"  -H "Accept: application/json"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
 ```
 
-```cURL-vue [CSV]
+```txt-vue [CSV]
 curl -X GET "https://ci.thuenen.de/rest/v1/lookup_tree_species"   -H "Accept: text/csv"  -H "Accept-Profile: lookup"  -H "apikey: {{ apikey }}"
 ```
 
@@ -56,7 +56,7 @@ To paginate the response, you can add the `limit` and `offset` query parameters 
 
 **Example:** Requesting the count of records in the `Plot` table:
 
-```cURL-vue [count]
+```txt-vue [count]
 curl -X GET "https://ci.thuenen.de/rest/v1/plot?limit=20&offset=25" -I -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}" -H "Prefer: count=exact"
 ```
 

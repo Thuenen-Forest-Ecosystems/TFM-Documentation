@@ -1,6 +1,6 @@
 # Simple map application as showcase for data visualization in a map 
 
-[Here](https://thuenen-forest-ecosystems.github.io/TFM-Documentation/map.html), we demonstrate conceptually how to create a map with [openlayers](https://openlayers.org/) to visualize data from the [API](./general-api.md).
+We demonstrate conceptually how to create a map with [openlayers](https://openlayers.org/) to visualize data from the [API](./general-api.md).
 
 As the geogrphical positions of the NFI clusters have to be kept confidential, the public NFI data in the API is referenced to the 1x1 km LAEA grid cells.
 Therefore we use this cells to show the data of NFI clusters at their approximate position on the map.
@@ -22,12 +22,25 @@ This information is displayed only for grid cells that contain a NFI cluster som
 
 If a cell is clicked that does not contain a NFI cluster, the popup displays a corresponding message.
 
+<v-card style="border-radius: 10px">
+    <iframe
+        marginwidth="0"
+        marginheight="0"
+        src="/TFM-Documentation/map.html"
+        width="100%"
+        height="750"
+        style="border: 1px solid black">
+    </iframe>
+</v-card>
+
 [Source Code of HTML](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/map.html)
 
 [Source Code of main JS](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/tutorial.js)
 
+<!--
 [Source Code of supplementary JS](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/pretty-json.js) taken from [Github](https://github.com/mohsen1/pretty-json)
 
 Have fun with the [example application](https://thuenen-forest-ecosystems.github.io/TFM-Documentation/map.html)!
+-->
 
 Feedback is welcome.

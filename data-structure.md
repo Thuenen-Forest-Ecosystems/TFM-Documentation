@@ -17,7 +17,7 @@ The data can be found in the `inventory_archive` schema. The inventory_archive s
             - subplot_position
             - tree
 ```
-```cUrl-vue [Request Schema]
+```txt-vue [Request Schema]
 curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0"
 ```
 :::

@@ -18,7 +18,7 @@ The following example calls the API to retrieve a list of clusternames (the clus
 
 ::: code-group
 
-```cURL-vue{2} [REQUEST]
+```txt-vue{2} [REQUEST]
 curl -X GET "https://ci.thuenen.de/rest/v1/cluster?select=cluster_name&cluster_name=lt.10"  
     -H "Accept-Profile: inventory_archive" 
     -H "apikey: {{ apikey }}"
@@ -46,7 +46,7 @@ The following example retrieves a quite complete dataset for cluster "8" includi
 CAVEAT: In bash there might be a need to escape the "!" (changing it to "\\!"), because "!" might interpreted as a special character in bash.
 
 ::: code-group
-```cURL-vue{2} [REQUEST]
+```txt-vue{2} [REQUEST]
 curl -X GET "https://ci.thuenen.de/rest/v1/cluster?cluster_name=eq.8&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))" -H "Accept: application/vnd.pgrst.object+json" -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}"
 ```
 ```JSON [RESPONSE]
