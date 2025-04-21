@@ -10,11 +10,12 @@
     const contentProfile = useAttrs();
 
     const supabase = createClient(url, apikey)
-    console.log(url, apikey)
 
     const currentSession = ref({});
     const authErrors = ref(null);
+    const authSuccess = ref(null);
     const is_signeUp = ref(false);
+    const forgottenPassword = ref(false);
 
     const username= ref(null);
     const password = ref(null);
@@ -79,6 +80,9 @@
         const { data, error } = await supabase.auth.signUp({
             email: username.value,
             password: password.value,
+            options: {
+                emailRedirectTo: window.location.origin + '/TFM-Documentation/dashboard/profile',
+            }
         });
         if (error) {
             authErrors.value = error.message;
@@ -99,12 +103,22 @@
             console.log('finally');
         });
         return;
-        const { error } = await supabase.auth.signOut();
-        
+    }
+    const passwordReset = async () => {
+        authErrors.value = null;
+        if (!username.value) {
+            authErrors.value = 'Please enter username';
+            return;
+        }
+        const { data, error } = await supabase.auth.resetPasswordForEmail(username.value, {
+            redirectTo: window.location.origin + '/TFM-Documentation/dashboard/reset-password'
+        });
         if (error) {
             authErrors.value = error.message;
         }else{
-            window.location.replace("./login");
+            authSuccess.value = 'Please check your email to reset your password';
+            signedUp.value = true;
+            authErrors.value = null;
         }
     }
 
@@ -120,36 +134,87 @@
 </script>
 
 <template>
+    <v-chip color="green" v-if="authSuccess" class="my-2">
+        <span>{{ authSuccess }}</span>
+    </v-chip>
+    <v-chip color="red" v-if="authErrors" class="my-2">
+        <span>{{ authErrors }}</span>
+    </v-chip>
 
     <div v-if="!currentSession?.user">
-        <div v-if="is_signeUp">
-
-            <h1>Sign Up</h1><br/>
+        <div v-if="forgottenPassword && !authSuccess">
+            <h1>Forgot Password</h1><br/>
             <p v-if="authErrors">{{authErrors}}</p>
-            <p v-if="signedUp">Please check your email to confirm your account</p>
-            <p v-if="signedUp">If you do not receive an email, please check your spam folder</p>
-            <p v-else>
-                <input type="text" v-model.trim="username" placeholder="Username" /><br/>
-                <input type="password" v-model.trim="password" placeholder="Password" /><br/>
-                <input type="password" v-model.trim="password_repeat" placeholder="Repeat Password" /><br/>
-                <button class="raised-button" @click="signUp">SIGN UP</button>
-            </p>
+            <input type="text" v-model.trim="username" placeholder="Username" /><br/>
+            <v-btn rounded="xl" @click="passwordReset" color="primary">
+                 RESET
+            </v-btn>
             <p>
-                <button @click="is_signeUp = false">LOGIN</button>
+                <button @click="forgottenPassword = false">LOGIN</button>
             </p>
         </div>
         <div v-else>
+            <div v-if="is_signeUp">
+
+                <h1>Sign Up</h1><br/>
+                <p v-if="authErrors">{{authErrors}}</p>
+                <p v-if="signedUp">Please check your email to confirm your account</p>
+                <p v-if="signedUp">If you do not receive an email, please check your spam folder</p>
+                <p v-else>
+                    <input type="text" v-model.trim="username" placeholder="Username" /><br/>
+                    <input type="password" v-model.trim="password" placeholder="Password" /><br/>
+                    <input type="password" v-model.trim="password_repeat" placeholder="Repeat Password" /><br/>
+                    <button class="raised-button" @click="signUp">SIGN UP</button>
+
+                </p>
+                <hr/>
+                <p>
+                    You already have an account? <br/>
+                    <v-btn rounded="xl"  @click="is_signeUp = false" class="my-4">
+                        LOGIN
+                    </v-btn>
+                </p>
+            </div>
+            <div v-else>
+                
+                <h1>Login</h1>
+                
+                <v-text-field
+                    label="E-Mail"
+                    persistent-hint
+                    type="text"
+                    v-model.trim="username"
+                    class="my-4"
+                    rounded="xl"
+                    variant="solo"
+                ></v-text-field>
+                <v-text-field
+                    label="Password"
+                    persistent-hint
+                    type="password"
+                    v-model.trim="password"
+                    class="my-4"
+                    rounded="xl"
+                    variant="solo"
+                ></v-text-field>
+
+                <v-btn rounded="xl"  @click="login" color="primary">
+                    ANMELDEN
+                </v-btn>
             
-            <h1>Login</h1><br/>
-            <p  v-if="authErrors">{{authErrors}}</p>
-            <input type="text" v-model.trim="username" placeholder="Username" /><br/>
-            <input type="password" v-model.trim="password" placeholder="Password" /><br/>
-            <button class="raised-button" @click="login">ANMELDEN</button>
-            <p>
-                <button  @click="is_signeUp = true">SIGN UP</button>
-            </p>
-        </div>  
-        
+                <p style="text-align: center;">
+                    <v-btn rounded="xl"  @click="forgottenPassword = true" class="my-4">
+                        Forgot Password
+                    </v-btn>
+                </p>
+
+                <p>
+                    <small>
+                        You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:karsten.dunger@thuenen.de">administrator</a>.
+                    </small>
+                </p>
+            </div>  
+        </div>
     </div>
     <div v-else>
         <div>

@@ -148,9 +148,8 @@
 
     onMounted(async () => {
         const { data, error } = await supabase.auth.getSession()
-        console.log('session', data);
-
-        const { data: userProfile, error: userProfileError } = await supabase.from('users_profile').select().single();
+        const user = data.session.user;
+        const { data: userProfile, error: userProfileError } = await supabase.from('users_profile').select().eq('id', user.id).single();
         if (userProfileError) {
             console.error(userProfileError);
         } else {
@@ -294,12 +293,12 @@
 
             <template v-slot:append>
             <v-btn
+                prepend-icon="mdi-download"
                 color="grey-lighten-1"
-                icon="mdi-download"
-                variant="text"
                 :disabled="table.loading"
+                rounded="xl"
                 @click="downloadTable(table)"
-            ></v-btn>
+            >csv</v-btn>
             </template>
         </v-list-item>
     </div>

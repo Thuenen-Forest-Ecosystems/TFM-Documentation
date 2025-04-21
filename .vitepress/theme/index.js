@@ -2,16 +2,20 @@ import { h, watch, ref } from 'vue'
 import { useData } from 'vitepress'
 import { isDark } from './composables/useGlobalTheme'
 
+import DashboardButton from '../../components/DashboardButton.vue'
+
 
 import DefaultTheme from 'vitepress/theme'
 import './custom.css'
+
 let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAiVEZNIiwKICAiaWF0IjogMTczOTkxOTYwMCwKICAiZXhwIjogMTg5NzY4NjAwMAp9.L28Sk6wzRLoUh1wLz_TjeY_rtUp3UX3-6UttadUEoC0';
 let url = 'https://ci.thuenen.de';
 
 // Local development
-url = 'http://127.0.0.1:54321';
-apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'; 
-
+if(import.meta.env.DEV) {
+  url = 'http://127.0.0.1:54321';
+  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'; 
+}
 
 // Vuetify
 import 'vuetify/styles'
@@ -29,7 +33,7 @@ const vuetify = createVuetify({
         light: {
           dark: false,
           colors: {
-            primary: '#3eaf7c',
+            primary: '#8bb63a',
             secondary: '#10B981',
             accent: '#8256D0',
             error: '#E74C3C',
@@ -41,7 +45,7 @@ const vuetify = createVuetify({
         dark: {
           dark: true,
           colors: {
-            primary: '#3eaf7c',
+            primary: '#8bb63a',
             secondary: '#10B981',
             accent: '#9D7AFF',
             error: '#FF5252',
@@ -80,9 +84,11 @@ export default {
     },
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
+      app.component('DashboardButton', DashboardButton)
   
       app.config.globalProperties.$apikey = apikey
       app.config.globalProperties.$url = url;
+    
     },
     setup() {
       // This ensures the theme is correct on initial load

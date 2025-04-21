@@ -18,6 +18,12 @@
     const troop_id = ref(null);
     const state_responsible_name = ref(null);
 
+    const isActive = ref(false);
+
+    const user = ref({});
+    const users_profile = ref({});
+    const organization = ref({});
+
     function parseJwt (token) {
         var base64Url = token.split('.')[1];
         var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -37,10 +43,45 @@
             state_responsible_name.value = data.name_de;
         });
     }
+    /// NEU
+    const _organizationMembers = ref([]);
+    async function _getOrganizationMembers(orgnaization_id){
+        await supabase.from('users_profile').select().eq('organization_id', orgnaization_id).then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            _organizationMembers.value = data;
+        });
+    }
+
+    async function _getOrganizationById(organizationId){
+        await supabase.from('organizations').select().eq('id', organizationId).single().then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            organization.value = data;
+            _getOrganizationMembers(organizationId);
+        });
+    }
+    async function _getUsersProfile(userId){
+        await supabase.from('users_profile').select().eq('id', userId).single().then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            users_profile.value = data;
+            _getOrganizationById(data.organization_id);
+        });
+    }
 
     onMounted(async () => {
         const { data, error } = await supabase.auth.getSession()
         if (data.session) {
+            user.value = data.session.user;
+            _getUsersProfile(data.session.user.id);
+            /*
             console.log(data.session);
             access_token.value = data.session.access_token;
             jwtPayload.value = parseJwt(data.session.access_token);
@@ -48,9 +89,16 @@
             is_admin.value = jwtPayload.value.is_admin;
             state_responsible.value = jwtPayload.value.state_responsible;
             troop_id.value = jwtPayload.value.troop_id;
-            _getStateResponsibleName(state_responsible.value);
+            _getStateResponsibleName(state_responsible.value);*/
         }
     });
+
+    const _toChangeEmail = () => {
+        window.location.href = './change-email';
+    };
+    const _toChangePassword = () => {
+        window.location.href = './reset-password';
+    };
 
 </script>
 
@@ -58,42 +106,123 @@
 
 # Profile
 
-This page contains the profile data related to your account.
+<v-card class="my-4">
+    <v-list>
+        <v-list-item>
+            <template v-slot:prepend>
+                <v-avatar >
+                    <v-icon>mdi-account</v-icon>
+                </v-avatar>
+            </template>
+            <v-list-item-title>{{user['email']}}</v-list-item-title>
+            <v-list-item-subtitle>{{organization['name'] || ''}}</v-list-item-subtitle>
 
-## Access Token
+<template v-slot:append>
+<v-tooltip text="Organization Admin">
+<template v-slot:activator="{ props }">
+<v-icon
+    v-if="users_profile['is_organization_admin']"
+    icon="mdi-shield-crown"
+    variant="text"
+    v-bind="props"
+></v-icon>
+</template>
+</v-tooltip>
+</template>
 
-Your personal access token is required to access the API. It is a long string of characters that you should keep secret. You can use it to access the API from your own scripts or applications. The token changes every time you log in.
-
-```txt-vue
-{{access_token}}
-```
-
-## Admin
-
-Admins can access, change and delete derived data.
-
-```txt-vue
-{{is_admin}}
-```
-
-## Supervisor
-
-The state you are responsible for:
-
-```txt-vue
-{{state_responsible_name || state_responsible}}
-```
-
-## Troop
-
-Your are part of the troop with the id:
-
-```txt-vue
-{{troop_id}}
-```
+</v-list-item>
+</v-list>
+</v-card>
 
 
+<v-list>
+<v-list-subheader>Account</v-list-subheader>
 
+<v-list-item @click="_toChangeEmail">
+    <v-list-item-title>E-Mailadresse ändern</v-list-item-title>
+    <v-list-item-subtitle></v-list-item-subtitle>
+    <template v-slot:append>
+        <v-btn
+            v-if="users_profile['is_organization_admin']"
+            icon="mdi-chevron-right"
+            variant="text"
+            v-bind="props"
+        ></v-btn>
+    </template>
+</v-list-item>
+<v-list-item  @click="_toChangePassword">
+    <v-list-item-title>Passwort ändern</v-list-item-title>
+    <v-list-item-subtitle></v-list-item-subtitle>
+    <template v-slot:append>
+        <v-btn
+            v-if="users_profile['is_organization_admin']"
+            icon="mdi-chevron-right"
+            variant="text"
+            v-bind="props"
+        ></v-btn>
+    </template>
+</v-list-item>
+</v-list>
 
-   
+<div v-if="users_profile['organization_id']">
+<h2>Organization members</h2>
+<v-card>
+    <v-list>
+    <v-list-item>
+        <v-list-item-title>{{organization['name']}}</v-list-item-title>
+    </v-list-item>
+    <v-list-item  v-for="member in _organizationMembers" :key="member.id">
+        <template v-slot:prepend>
+            <v-avatar >
+                <v-icon>mdi-account</v-icon>
+            </v-avatar>
+        </template>
+        <v-list-item-title>{{member['email']}}</v-list-item-title>
+        <v-list-item-subtitle>{{member['name'] || ''}}</v-list-item-subtitle>
+        <template v-slot:append>
+            <v-tooltip text="Organization Admin">
+                <template v-slot:activator="{ props }">
+                    <v-icon
+                        v-if="member['is_organization_admin']"
+                        icon="mdi-shield-crown"
+                        variant="text"
+                        v-bind="props"
+                    ></v-icon>
+                </template>
+            </v-tooltip>
+            <v-btn
+                v-if="users_profile['is_organization_admin']"
+                icon="mdi-delete"
+                variant="text"
+                v-bind="props"
+                @click="isActive = true"
+            ></v-btn>
+        </template>
+    </v-list-item>
+    </v-list>
+</v-card>
+</div>
+
 </LoginForm>
+
+<v-dialog v-model="isActive"  max-width="500">
+    <v-card title="Remove user from Company">
+        <v-card-text>
+            Do you realy want to delete this item?
+        </v-card-text>
+        <v-card-actions>
+            <v-btn
+            text="cancel"
+            variant="text"
+            @click="isActive = false"
+            ></v-btn>
+            <v-spacer></v-spacer>
+            <v-btn
+            text="REMOVE"
+            variant="raised"
+            color="primary"
+            @click="isActive = false"
+            ></v-btn>
+        </v-card-actions>
+    </v-card>
+</v-dialog>
