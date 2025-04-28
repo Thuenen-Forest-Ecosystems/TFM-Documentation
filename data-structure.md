@@ -1,5 +1,5 @@
 <script setup>
-  import DashboardButton from './components/RestDocumentation.vue'
+  import RestDocumentation from './components/RestDocumentation.vue'
   import { getCurrentInstance } from 'vue'
   const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
 </script>
@@ -23,3 +23,5 @@ The data can be found in the `inventory_archive` schema. The inventory_archive s
 curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "apikey: {{apikey}}"
 ```
 :::
+
+<RestDocumentation contentProfile="inventory_archive" />

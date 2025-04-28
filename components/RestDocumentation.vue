@@ -14,7 +14,10 @@
     
     const schema = ref(null);
 
+   
+
     async function _requestRestSchema(token) {
+       
         let data = null, error = null;
         try{
             const headers = {
@@ -42,20 +45,13 @@
     }
 
     onMounted(async () => {
-        const result = await supabase.auth.getSession();
-        
-        if(result.data.session){
-            const {data, error} = await _requestRestSchema(result.data.session.access_token);
-            if(data){
-                schema.value = data;
-            }else{
-                console.error(error);
-            }
+        const {data, error} = await _requestRestSchema( );
+        if(data){
+            schema.value = data;
+        }else{
+            console.error(error);
         }
     })
-    /*supabase.auth.onAuthStateChange((event, session) => {
-        console.log(event, session);
-    });*/
 
     const filterProperties = (properties) => {
         return Object.entries(properties).filter(([key, value]) => key !== 'intkey');
