@@ -1,8 +1,10 @@
 <script setup>
 
-    const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
     import { ref, onMounted } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+    import { getCurrentInstance } from 'vue'
+    const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
+
 
     let url = 'http://127.0.0.1:54321/';
     url = 'https://ci.thuenen.de/';

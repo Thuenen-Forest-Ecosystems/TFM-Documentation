@@ -1,5 +1,6 @@
 <script setup>
-  const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
+  import { getCurrentInstance } from 'vue'
+  const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
 </script>
 
 # Lookup 

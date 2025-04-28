@@ -1,5 +1,7 @@
 <script setup>
   import DashboardButton from './components/RestDocumentation.vue'
+  import { getCurrentInstance } from 'vue'
+  const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
 </script>
 
 # Data Structure 
@@ -18,8 +20,6 @@ The data can be found in the `inventory_archive` schema. The inventory_archive s
             - tree
 ```
 ```txt-vue [Request Schema]
-curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU"
+curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "apikey: {{apikey}}"
 ```
 :::
-
-<DashboardButton contentProfile="inventory_archive" />

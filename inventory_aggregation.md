@@ -1,6 +1,6 @@
 <script setup>
-  let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
-  //apikey = "[apikey]";
+  import { getCurrentInstance } from 'vue'
+  const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
 </script>
 
 # Aggregate & Group Data
@@ -137,7 +137,7 @@ class RequestHandler():
             print("Failed to retrieve data")
 
 baseUrl = "https://ci.thuenen.de/rest/v1/"
-authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU'
+authToken = '{{apikey}}'
 acctProfile = 'inventory_archive'
 endPoint = "cluster?states_affected=cd.{5}&select=cluster_name,plot!fk_plot_cluster(plot_name,tree(dbh,tree_species))&plot.tree.dbh=not.is.null"
 
