@@ -16,6 +16,7 @@ The data can be found in the `inventory_archive` schema. The inventory_archive s
             - deadwood
             - regeneration
             - structure_lt4m
+            - structure_gt4m
             - subplot_position
             - tree
 ```
