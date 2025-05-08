@@ -50,16 +50,6 @@
             data: null,
             saveAs: ['geojson', 'json', 'csv']
         },
-        /*{
-            name: 'plot_coordinates',
-            key: 'plot_id',
-            count: 0,
-            totalChunks: 0,
-            chunkLoaded: 0,
-            currentRowsCount: 0,
-            loading: false,
-            data: null
-        },*/
         {
             title: 'Trees',
             name: 'tree',
@@ -170,13 +160,10 @@
         if (userProfileError) {
             console.error(userProfileError);
         } else {
-            
 
             troop_id.value = userProfile.troop_id;
             is_admin.value = userProfile.is_admin;
-
             
-
             if(is_admin.value){
                 _getAllStates();
             }else if(userProfile.state_responsible){
@@ -190,7 +177,9 @@
         const { data, error } = await supabase
             .schema('lookup')
             .from('lookup_state')
-            .select();
+            
+            .select()
+            .neq('code', '0');
         if (error) {
             console.error(error);
         } else {
@@ -213,53 +202,59 @@
 
     const downloadTable = async (table, type, country) => {
 
-        if(!country) return;
-        if(!country.code) return;
+        if(country == null) return;
+        if(country.code == null) return;
 
-        if(table.loading === true) return;
-        table.loading = true;
+        if(country.loading == null) country.loading = {};
+        if(country.data == null) country.data = {};
 
-        const fileName = table.name + '_' + new Date().toISOString() + '.' + type;
+        if(country.loading[table.code] === true) return;
+        //table.loading = true;
+        country.loading[table.code] = true;
 
-        if(table.data){
-            saveAsFile(table, fileName);
-            table.loading = false;
+        const fileName = table.name + '_' + new Date().toISOString() + '_' + country.code  + '.' + type;
+
+        if(country.data[table.name]){
+            saveAsFile(table, fileName, country.data[table.name]);
+            //table.loading = false;
+            country.loading[table.code] = false;
             return;
         }
 
-        if(!plainPlotIdsArray.value){
+        if(!country.plainPlotIdsArray){
             let { data, error } = await supabase
                 .schema('inventory_archive')
                 .from('plot')
                 .select('id')
                 .eq('federal_state', country.code);
-            plainPlotIdsArray.value = data.map(plot => plot.id);
+                country.plainPlotIdsArray = data.map(plot => plot.id);
         }
-        if(!plainClusterIdsArray.value){
+        if(!country.plainPlotIdsArray){
             let result = await supabase.schema('inventory_archive').from('cluster').select('id').eq('state_responsible', country.code);
-            plainClusterIdsArray.value = result.data.map(cluster => cluster.id);
+            country.plainPlotIdsArray = result.data.map(cluster => cluster.id);
         }
-        if(plainPlotIdsArray.value.length === 0){
+        if(country.plainPlotIdsArray.length === 0){
             alert('No plots found');
-            table.loading = false;
+            //table.loading = false;
+            country.loading[table.code] = false;
             return;
         }
-        console.log('Downloading table', table.name, 'for', plainPlotIdsArray.value.length, 'plots');
-        table.data = await requestTreeByPlotIds(table, plainPlotIdsArray.value, plainClusterIdsArray.value);
-
+        table.data = await requestTreeByPlotIds(table, country.plainPlotIdsArray, plainClusterIdsArray.value, country);
+        country.data[table.name] = table.data;
 
         
        
-        if (table.data) {
-            saveAsFile(table, fileName);
+        if (table.data, country.data[table.name]) {
+            saveAsFile(table, fileName, country.data[table.name]);
         }else{
             console.error('Error downloading table', table.name);
         }
-        table.loading = false;
+        //table.loading = false;
+        country.loading[table.code] = false;
     }
 
-    const requestTreeByPlotIds = async (table, plotIdArray = [], clusterIdArray = []) => {
-        let totalResponseCsv = '';
+    const requestTreeByPlotIds = async (table, plotIdArray = [], clusterIdArray = [], country = {}) => {
+
         let allFetchedObjects = [];
         // split in chunks of 100
         const chunkSize = 100;
@@ -310,6 +305,7 @@
                     .from(table.name)
                     .select('*')
                     .in(table.key || 'plot_id', chunk);
+
                 if (error) {
                     treesError = error;
                 } else {
@@ -392,31 +388,36 @@
     };
 
 
-    const saveAsFile = (table, filename) => {
+    const saveAsFile = (table, filename, data) => {
         let dataToSave = '';
         let mimeType = 'text/plain;charset=utf-8;';
 
-        if (Array.isArray(table.data) && table.data.length > 0 && typeof table.data[0] === 'object' && filename.endsWith('.csv')) {
+        const typeofdata = typeof data;
+
+        console.log(typeofdata, data);
+       
+        
+        if (Array.isArray(data) && data.length > 0 && typeofdata === 'object' && filename.endsWith('.csv')) {
             // If data is an array of objects and filename suggests CSV, convert to CSV
             dataToSave = convertJsonToCsv(table);
             mimeType = 'text/csv;charset=utf-8;';
-        } else if (typeof table.data === 'string') {
+        } else if (typeofdata === 'string') {
             // If data is already a string
-            dataToSave = table.data;
+            dataToSave =data;
             if (filename.endsWith('.csv')) {
                 mimeType = 'text/csv;charset=utf-8;';
             } else if (filename.endsWith('.json')) {
                 mimeType = 'application/json;charset=utf-8;';
             }
-        } else if (typeof table.data === 'object' && filename.endsWith('.json')) {
+        } else if (typeofdata === 'object' && filename.endsWith('.json')) {
             // If data is an object and filename suggests JSON, stringify
-            dataToSave = JSON.stringify(table.data, null, 2);
+            dataToSave = JSON.stringify(data, null, 2);
             mimeType = 'application/json;charset=utf-8;';
         } else if (filename.endsWith('.geojson')) {
             // If data is an object and filename suggests GeoJSON, convert to GeoJSON
             const geojson = {
                 type: 'FeatureCollection',
-                features: table.data.map((feature) =>{
+                features:data.map((feature) =>{
                     const properties = { ...feature };
                     let coordinates = null;
                     if(table.name === 'plot'){
