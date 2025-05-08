@@ -46,6 +46,9 @@
     /// NEU
     const _organizationMembers = ref([]);
     async function _getOrganizationMembers(orgnaization_id){
+        if (!orgnaization_id) {
+            return;
+        }
         await supabase.from('users_profile').select().eq('organization_id', orgnaization_id).then(({ data, error }) => {
             if (error) {
                 console.error(error);

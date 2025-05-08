@@ -13,10 +13,11 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "vitepress": "^1.6.3",
     "@mdi/font": "^7.4.47",
     "vite-plugin-vuetify": "^2.1.0",
-    "vuetify": "^3.7.18"
+    "vitepress": "^1.6.3",
+    "vuetify": "^3.7.18",
+    "wkt": "^0.1.1"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1"
