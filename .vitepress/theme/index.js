@@ -8,13 +8,15 @@ import DashboardButton from '../../components/DashboardButton.vue'
 import DefaultTheme from 'vitepress/theme'
 import './custom.css'
 
-let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
 let url = 'https://ci.thuenen.de';
+let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
+let redirectTo = 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
 
 // Local development
 if(import.meta.env.DEV) {
   url = 'http://127.0.0.1:54321';
-  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'; 
+  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+  redirectTo = 'http://localhost:5173/TFM-Documentation';
 }
 
 // Vuetify
@@ -88,6 +90,7 @@ export default {
   
       app.config.globalProperties.$apikey = apikey
       app.config.globalProperties.$url = url;
+      app.config.globalProperties.$redirectTo = redirectTo;
     
     },
     setup() {

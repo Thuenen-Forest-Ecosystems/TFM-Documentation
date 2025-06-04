@@ -68,6 +68,9 @@
         });
         if (error) {
             authErrors.value = error.message;
+        }else{
+            // Forward to profile page
+            window.location.replace("/TFM-Documentation/dashboard/profile");
         }
     }
     const signUp = async () => {
@@ -97,6 +100,8 @@
         supabase.auth.signOut().then(() => {
             console.log('signed out');
             authErrors.value = null;
+            // navigate to login page
+            window.location.replace("/TFM-Documentation/authentication/sign-in");
         }).catch((error) => {
             console.log(error);
         }).finally(() => {
@@ -111,7 +116,7 @@
             return;
         }
         const { data, error } = await supabase.auth.resetPasswordForEmail(username.value, {
-            redirectTo: window.location.origin + '/TFM-Documentation/dashboard/reset-password'
+            redirectTo: window.location.origin + '/TFM-Documentation/authentication/reset-password'
         });
         if (error) {
             authErrors.value = error.message;
@@ -199,10 +204,15 @@
                 ></v-text-field>
 
                 <v-btn rounded="xl"  @click="login" color="primary">
-                    ANMELDEN
+                    Sign In
                 </v-btn>
+
             
                 <p style="text-align: center;">
+                    <v-btn rounded="xl"  @click="is_signeUp = true" class="my-4">
+                        Sign Up
+                    </v-btn>
+                    &nbsp;
                     <v-btn rounded="xl"  @click="forgottenPassword = true" class="my-4">
                         Forgot Password
                     </v-btn>
@@ -210,7 +220,7 @@
 
                 <p>
                     <small>
-                        You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:karsten.dunger@thuenen.de">administrator</a>.
+                        You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:waldmonitoring@lfb.brandenburg.de">administrator</a>.
                     </small>
                 </p>
             </div>  
@@ -222,7 +232,9 @@
         </div>
         <hr/>
         <div style="text-align: center;">
-            <button @click="logout">ABMELDEN</button>
+            <v-btn rounded="xl"  @click="logout" class="my-4">
+                ABMELDEN
+            </v-btn>
         </div>
     </div>
 </template>
