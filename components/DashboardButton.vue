@@ -1,6 +1,7 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+    import { withBase } from 'vitepress'
 
     const access_token = ref(null);
     const user_email = ref(null);
@@ -17,10 +18,10 @@
     });
 
     const _toProfile = () => {
-        window.location.href = '/TFM-Documentation/dashboard/profile';
+        window.location.href = withBase('/dashboard/profile');
     };
     const _toSignIn = () => {
-        window.location.href = './TFM-Documentation/authentication/sign-in';
+        window.location.href = withBase('/authentication/sign-in');
     };
 </script>
 
@@ -28,7 +29,7 @@
 <template>
     <a v-if="user_email" class="VPLink">
         <v-btn rounded="xl" variant="tonal"  @click="_toProfile">
-            <span>DASHBOARD</span>
+            <span>{{ user_email }}</span>
         </v-btn>
     </a>
     <a v-else class="VPLink">

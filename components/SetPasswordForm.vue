@@ -1,6 +1,7 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+    import { withBase } from 'vitepress'
     
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
@@ -55,8 +56,10 @@
             if (error) {
                 authErrors.value = error.message;
             } else {
-                signedUp.value = true;
+                window.location.href = withBase('/dashboard/profile');
+                //signedUp.value = true;
             }
+            
         });
     }
     const rules = {

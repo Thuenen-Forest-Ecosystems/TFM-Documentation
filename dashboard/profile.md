@@ -3,6 +3,8 @@
     import Credentials from '../components/Credentials.vue';
     import { ref, onMounted, getCurrentInstance } from 'vue';
     import { createClient } from '@supabase/supabase-js';
+    import OrganizationsAdmins from '../components/organizations/OrganizationsAdmins.vue';
+
 
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
@@ -59,6 +61,7 @@
     }
 
     async function _getOrganizationById(organizationId){
+
         await supabase.from('organizations').select().eq('id', organizationId).single().then(({ data, error }) => {
             if (error) {
                 console.error(error);
@@ -104,8 +107,6 @@
     };
 
 </script>
-
-<LoginForm>
 
 # Profile
 
@@ -167,65 +168,4 @@
 </v-list-item>
 </v-list>
 
-<div v-if="users_profile['organization_id']">
-<h2>Organization members</h2>
-<v-card>
-    <v-list>
-    <v-list-item>
-        <v-list-item-title>{{organization['name']}}</v-list-item-title>
-    </v-list-item>
-    <v-list-item  v-for="member in _organizationMembers" :key="member.id">
-        <template v-slot:prepend>
-            <v-avatar >
-                <v-icon>mdi-account</v-icon>
-            </v-avatar>
-        </template>
-        <v-list-item-title>{{member['email']}}</v-list-item-title>
-        <v-list-item-subtitle>{{member['name'] || ''}}</v-list-item-subtitle>
-        <template v-slot:append>
-            <v-tooltip text="Organization Admin">
-                <template v-slot:activator="{ props }">
-                    <v-icon
-                        v-if="member['is_organization_admin']"
-                        icon="mdi-shield-crown"
-                        variant="text"
-                        v-bind="props"
-                    ></v-icon>
-                </template>
-            </v-tooltip>
-            <v-btn
-                v-if="users_profile['is_organization_admin']"
-                icon="mdi-delete"
-                variant="text"
-                v-bind="props"
-                @click="isActive = true"
-            ></v-btn>
-        </template>
-    </v-list-item>
-    </v-list>
-</v-card>
-</div>
-
-</LoginForm>
-
-<v-dialog v-model="isActive"  max-width="500">
-    <v-card title="Remove user from Company">
-        <v-card-text>
-            Do you realy want to delete this item?
-        </v-card-text>
-        <v-card-actions>
-            <v-btn
-            text="cancel"
-            variant="text"
-            @click="isActive = false"
-            ></v-btn>
-            <v-spacer></v-spacer>
-            <v-btn
-            text="REMOVE"
-            variant="raised"
-            color="primary"
-            @click="isActive = false"
-            ></v-btn>
-        </v-card-actions>
-    </v-card>
-</v-dialog>
+<LoginForm/>

@@ -14,3 +14,11 @@
   left: 50%;
   transform: translate(-50%, -50%);
 }
+
+.v-pagination__list {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
+.no-transition .stepper__content {
+  transition: none !important;
+}
