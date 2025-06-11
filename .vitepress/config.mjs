@@ -35,6 +35,7 @@ export default defineConfig({
         {
           text: 'Inventory',
           items: [
+            { text: 'By Inventory Interval', link: '/inventory_interval' },
             { text: 'By Location', link: '/inventory_archive' },
             { text: 'Aggregation', link: '/inventory_aggregation' },
             { text: 'Loop for bigger datasets', link: '/inventory_loop' },

@@ -1,6 +1,7 @@
 <script setup>
   import { getCurrentInstance } from 'vue'
   const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
+  const url = getCurrentInstance().appContext.config.globalProperties.$url;
 </script>
 
 # Aggregate & Group Data
@@ -32,7 +33,7 @@ headers = c(
 )
 
 # Make the API request
-res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/cluster?states_affected=cd.{5}&select=cluster_name,plot!fk_plot_cluster(plot_name,tree(dbh,tree_species))&plot.tree.dbh=not.is.null", add_headers(headers))
+res <- VERB("GET", url = "{{ url }}/rest/v1/cluster?states_affected=cd.{5}&select=cluster_name,plot!fk_plot_cluster(plot_name,tree(dbh,tree_species))&plot.tree.dbh=not.is.null", add_headers(headers))
 
 
 # Parse JSON response
@@ -136,7 +137,7 @@ class RequestHandler():
         else:
             print("Failed to retrieve data")
 
-baseUrl = "https://ci.thuenen.de/rest/v1/"
+baseUrl = "{{ url }}/rest/v1/"
 authToken = '{{apikey}}'
 acctProfile = 'inventory_archive'
 endPoint = "cluster?states_affected=cd.{5}&select=cluster_name,plot!fk_plot_cluster(plot_name,tree(dbh,tree_species))&plot.tree.dbh=not.is.null"
@@ -178,6 +179,8 @@ print(dfTrees.join(dfLookupTreeSpec.set_index('code'), on=['tree_species'], how=
 ```
 :::
 
+<!--
 [Source Code (R)](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/aggregate_acer_nrw.R)
 
 [Source Code (Python)](https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/blob/main/public/aggregate_nrw.py)
+-->

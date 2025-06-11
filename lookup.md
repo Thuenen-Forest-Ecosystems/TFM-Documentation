@@ -1,6 +1,7 @@
 <script setup>
   import { getCurrentInstance } from 'vue'
   const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
+  const url = getCurrentInstance().appContext.config.globalProperties.$url;
 </script>
 
 # Lookup 
@@ -13,7 +14,7 @@ Don't forget to include the `Accept-Profile: lookup` header in your request.
 
 ## List of lookup endpoints
 
-Endpoint `https://ci.thuenen.de/rest/v1/`
+Endpoint `{{ url }}/rest/v1/`
 
 By default, the lookup schema returns all records in the lookup table. You can filter the results by adding query parameters to the URL.
 
@@ -27,7 +28,7 @@ headers = c(
   'apikey' = '{{ apikey }}'
 )
 
-res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/", add_headers(headers))
+res <- VERB("GET", url = "{{ url }}/rest/v1/", add_headers(headers))
 
 cat(content(res, 'text'))
 
@@ -36,7 +37,7 @@ cat(content(res, 'text'))
 ```Python-vue
 import requests
 
-url = "https://ci.thuenen.de/rest/v1/"
+url = "{{ url }}/rest/v1/"
 
 payload = {}
 headers = {
@@ -89,7 +90,7 @@ req.end();
 
 ## Single lookup endpoint
 
-Endpoint `https://ci.thuenen.de/rest/v1/[TABLENAME]`
+Endpoint `{{ url }}/rest/v1/[TABLENAME]`
 
 To retrieve a complete lookup table, you can add the **tablename** to the URL. You can find the list of available lookup tables in the [List of lookup endpoints
 ](#list-of-lookup-endpoints) section.
@@ -104,7 +105,7 @@ headers = c(
   'Accept-Profile' = 'lookup'
 )
 
-res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/lookup_tree_species", add_headers(headers))
+res <- VERB("GET", url = "{{ url }}/rest/v1/lookup_tree_species", add_headers(headers))
 
 cat(content(res, 'text'))
 
@@ -118,7 +119,7 @@ df <- as.data.frame(jsonlite::fromJSON(content(res, 'text')))
 ```Python-vue
 import requests
 
-url = "https://ci.thuenen.de/rest/v1/lookup_tree_species"
+url = "{{ url }}/rest/v1/lookup_tree_species"
 
 payload = {}
 headers = {
@@ -142,14 +143,14 @@ var requestOptions = {
   redirect: 'follow'
 };
 
-fetch("https://ci.thuenen.de/rest/v1/lookup_tree_species", requestOptions)
+fetch("{{ url }}/rest/v1/lookup_tree_species", requestOptions)
   .then(response => response.text())
   .then(result => console.log(result))
   .catch(error => console.log('error', error));
 ```
 
 ```txt-vue
-curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species' \
+curl --location '{{ url }}/rest/v1/lookup_tree_species' \
 --header 'apikey: {{ apikey }}' \
 --header 'Accept-Profile: lookup'
 ```
@@ -160,7 +161,7 @@ curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species' \
 
 ## Filtering lookup tables
 
-Endpoint `https://ci.thuenen.de/rest/v1/[TABLENAME]?[COLUMN]=[FILTER]`
+Endpoint `{{ url }}/rest/v1/[TABLENAME]?[COLUMN]=[FILTER]`
 
 You can filter the results of a lookup table by adding query parameters to the URL.
 
@@ -176,7 +177,7 @@ headers = c(
   'Accept-Profile' = 'lookup'
 )
 
-res <- VERB("GET", url = "https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100", add_headers(headers))
+res <- VERB("GET", url = "{{ url }}/rest/v1/lookup_tree_species?code=eq.100", add_headers(headers))
 
 cat(content(res, 'text'))
 ```
@@ -184,7 +185,7 @@ cat(content(res, 'text'))
 ```Python-vue
 import requests
 
-url = "https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100"
+url = "{{ url }}/rest/v1/lookup_tree_species?code=eq.100"
 
 payload = {}
 headers = {
@@ -209,14 +210,14 @@ var requestOptions = {
   redirect: 'follow'
 };
 
-fetch("https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100", requestOptions)
+fetch("{{ url }}/rest/v1/lookup_tree_species?code=eq.100", requestOptions)
   .then(response => response.text())
   .then(result => console.log(result))
   .catch(error => console.log('error', error));
 ```
 
 ```txt-vue
-curl --location 'https://ci.thuenen.de/rest/v1/lookup_tree_species?code=eq.100' \
+curl --location '{{ url }}/rest/v1/lookup_tree_species?code=eq.100' \
 --header 'apikey: {{ apikey }}' \
 --header 'Accept-Profile: lookup'
 ```

@@ -1,6 +1,7 @@
 <script setup>
   import { getCurrentInstance } from 'vue'
   const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
+  const url = getCurrentInstance().appContext.config.globalProperties.$url;
 </script>
 
 # Combining API calls to get larger amounts of data
@@ -19,7 +20,7 @@ The following example calls the API to retrieve a list of clusternames (the clus
 ::: code-group
 
 ```txt-vue{2} [REQUEST]
-curl -X GET "https://ci.thuenen.de/rest/v1/cluster?select=cluster_name&cluster_name=lt.10"  
+curl -X GET "{{ url }}/rest/v1/cluster?select=cluster_name&cluster_name=lt.10"  
     -H "Accept-Profile: inventory_archive" 
     -H "apikey: {{ apikey }}"
 ```
@@ -47,7 +48,7 @@ CAVEAT: In bash there might be a need to escape the "!" (changing it to "\\!"), 
 
 ::: code-group
 ```txt-vue{2} [REQUEST]
-curl -X GET "https://ci.thuenen.de/rest/v1/cluster?cluster_name=eq.8&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))" -H "Accept: application/vnd.pgrst.object+json" -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}"
+curl -X GET "{{ url }}/rest/v1/cluster?cluster_name=eq.8&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))" -H "Accept: application/vnd.pgrst.object+json" -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}"
 ```
 ```JSON [RESPONSE]
 [{
@@ -917,7 +918,7 @@ the file with a web browser.
         // Number of clusters to fetch (10 might be enough for the example)
         const samples = 10;
         // API base url
-        const base_url = "https://ci.thuenen.de/rest/v1/";
+        const base_url = "{{ url }}/rest/v1/";
         // API call for the list of clusters
         const list_endpoint = `${base_url}cluster?select=cluster_name&cluster_name=lt.${samples}`;
         // stub for API call for details  
@@ -1027,7 +1028,7 @@ library(listviewer)
 # Number of clusters to fetch (10 might be enough for the example)
 samples <- 10
 # API base url
-base_url <- "https://ci.thuenen.de/rest/v1/"
+base_url <- "{{ url }}/rest/v1/"
 # API call for the list of clusters
 list_endpoint <- paste0("cluster?select=cluster_name&cluster_name=lt.",samples)
 # stub for API call for details
@@ -1119,7 +1120,7 @@ library(listviewer)
 samples <- 1000
 limitpercall <- 100
 startoffset <- 0
-base_url <- "https://ci.thuenen.de/rest/v1/"
+base_url <- "{{ url }}/rest/v1/"
 #list_endpoint <- paste0("cluster?select=cluster_name&order=cluster_name&limit=",limitpercall,"&offset=",actualoffset)
 detail_endpoint <- "cluster?cluster_name=eq." #1&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))"
 headers = c(
@@ -1326,7 +1327,7 @@ class RequestHandler():
 
 start = time.time()
 maxSamples=10
-baseUrl = "https://ci.thuenen.de/rest/v1/"
+baseUrl = "{{ url }}/rest/v1/"
 authToken = '{{apikey}}'
 acctProfile = 'inventory_archive'
 listEndPoint = f'cluster?select=cluster_name&cluster_name=lt.{maxSamples}'
@@ -1424,7 +1425,7 @@ Sub ImportDataIntoExcel()
     ' The number of clusters (100 should be enought for the example here)
     samples = 100
     ' Base URL of the API
-    base_url = "https://ci.thuenen.de/rest/v1/"
+    base_url = "{{ url }}/rest/v1/"
     ' The endpoint to get the list of clusters (samples defines how many)
     list_endpoint = base_url & "cluster?select=cluster_name&cluster_name=lt." & samples
     ' The endpoint's stub to get details
