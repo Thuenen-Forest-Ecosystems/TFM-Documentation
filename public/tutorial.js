@@ -9,11 +9,11 @@ let GridCell = "";
 // Helper function to call the API endpoint and get details for a specific cluster
 async function getDetails(itemId) {
   // Build API request for cluster (including dependend data)
-  const url2 = `https://ci.thuenen.de/rest/v1/cluster?select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))&inspire_grid_cell=eq.${itemId}`;
+  const url2 = `https://ci.thuenen.de/rest/v1/cluster?select=*,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))&inspire_grid_cell=eq.${itemId}`;
   // headers for Auth and database scheme to use
   const headers2 = {
     apikey:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU",
     "Accept-Profile": "inventory_archive",
   };
   // now we try to get the data
