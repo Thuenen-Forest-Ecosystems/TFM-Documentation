@@ -19,6 +19,9 @@ if(import.meta.env.DEV) {
   redirectTo = 'http://localhost:5173/TFM-Documentation';
 }
 
+import { createClient } from '@supabase/supabase-js'
+const supabase = createClient(url, apikey);
+
 // Vuetify
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
@@ -91,6 +94,7 @@ export default {
       app.config.globalProperties.$apikey = apikey
       app.config.globalProperties.$url = url;
       app.config.globalProperties.$redirectTo = redirectTo;
+      app.config.globalProperties.$supabase = supabase
     
     },
     setup() {

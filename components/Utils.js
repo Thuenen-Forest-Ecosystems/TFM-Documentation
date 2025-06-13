@@ -1,3 +1,18 @@
+export function getOrganizationDetails(supabase, organization_id) {
+    return supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', organization_id)
+        .single()
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('Error fetching organization details:', error);
+                return null;
+            }
+            return data;
+        });
+}
+
 export function getClustersAvailable(supabase, organization_id){
     // get parent_organization_id from organization_id
     return supabase
@@ -12,7 +27,6 @@ export function getClustersAvailable(supabase, organization_id){
             }
 
             // If the organization is a root organization, return all clusters
-            console.log('sdfsdf');
             if (data.is_root) {
                 
                 return supabase
@@ -32,7 +46,7 @@ export function getClustersAvailable(supabase, organization_id){
             return supabase
                 .from('cluster_permissions')
                 .select('*')
-                .eq('organization_id', data.parent_organization_id)
+                .eq('organization_id', data.id)
                 .then(({ data: permissionsData, error: permissionsError }) => {
                     if (permissionsError) {
                         console.error('Error fetching permissions:', permissionsError);

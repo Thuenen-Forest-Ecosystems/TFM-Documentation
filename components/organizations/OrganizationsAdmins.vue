@@ -15,6 +15,7 @@
     const administrators = ref([]);
     const userProfiles = ref([]);
     const userRole = ref(null); // Default to 'admin' if not provided in attrs
+    const isOrganizationAdmin = ref(false); // Default to false
 
     // Add this ref to store the ID of the admin to be deleted
     const pendingDeleteAdminId = ref(null);
@@ -46,7 +47,7 @@
                     body: {
                         email: adminEmail,
                         metaData: {
-                            role: attrs.role,
+                            is_organization_admin: attrs.is_organization_admin || false, // Use is_organization_admin from attributes
                             organization_id: attrs.organization_id // Use organization ID from attributes
                         }
                     }
@@ -118,21 +119,20 @@
             console.error('No user ID found in session data.');
             return null;
         }
-        const {data, error} = await supabase.from('users_permissions').select('*').eq('organization_id', organizationId).eq('user_id', userId).single();
+        const {data, error} = await supabase.from('users_permissions').select('is_organization_admin').eq('organization_id', organizationId).eq('user_id', userId).single();
         if (error) {
             console.error('Error fetching permissions:', error);
             return null;
         }
-        userRole.value = data?.role || null; // Default to null if no role found
+        //userRole.value = data?.role || null; // Default to null if no role found
+        isOrganizationAdmin.value = data?.is_organization_admin || false; // Default to false if not an organization admin
     }
     async function _requestData(organizationId) {
         if (!organizationId) return;
         try {
             let data, error;
-            if(attrs.role)
-                ({ data, error } = await supabase.from('users_permissions').select(`*`).eq('role', attrs.role).eq('organization_id', organizationId));
-            else
-                ({ data, error } = await supabase.from('users_permissions').select(`*`).eq('organization_id', organizationId));
+            
+            ({ data, error } = await supabase.from('users_permissions').select(`*`).eq('organization_id', organizationId));
 
             if (error) {
                 console.error('Error fetching organization data:', error);
@@ -171,25 +171,25 @@
 
 <template>
     <div v-if="attrs.organization_id">
-        <v-toolbar>
+        <v-toolbar density="compact">
             <v-toolbar-title>{{ attrs.title }}</v-toolbar-title>
-            <v-btn  rounded="xl" variant="tonal" append-icon="mdi-plus" @click="_openAdminsDialog">add administrator</v-btn>
+            <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" append-icon="mdi-plus" @click="_openAdminsDialog">add administrator</v-btn>
         </v-toolbar>
         <v-list lines="two">
                 <div class="text-center mb-4" v-if="!administrators.length">
                 <p>No organisation members found.</p>
                 </div>
                 <v-list-item v-for="administrator in administrators" :key="administrator.id">
-                    <template v-slot:prepend v-if="administrator.role === 'organization_admin'">
+                    <template v-slot:prepend v-if="administrator.is_organization_admin">
                         <v-icon icon="mdi-shield-crown"></v-icon>
                     </template>
                     <v-list-item-title>{{ userProfiles.find(profile => profile.id === administrator.user_id)?.email || 'Account not confirmed yet' }}</v-list-item-title>
                     <v-list-item-subtitle>
                         {{ format(administrator.created_at, 'de_DE') }}
                     </v-list-item-subtitle>
-                    <template v-slot:append>
+                    <template v-slot:append  v-if="attrs.is_admin">
                         <v-btn icon="mdi-email" variant="flat" @click="_openEmailLink(userProfiles.find(profile => profile.id === administrator.user_id)?.email)"/>
-                        <v-btn v-if="userRole === 'organization_admin' && administrator.role !== 'organization_admin'" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
+                        <v-btn icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
                     </template>
                     
                 </v-list-item>

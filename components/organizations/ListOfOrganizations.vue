@@ -18,6 +18,7 @@
     const organizations = ref([]);
     const user = ref(null);
     const userRole = ref(null); // Default to null if no role found
+    const is_organization_admin = ref(false); // Default to false
 
     const isActive = ref(false);
     const losName = ref('');
@@ -124,7 +125,8 @@
             console.error('Error fetching permissions:', error);
             return null;
         }
-        userRole.value = data?.role || null; // Default to null if no role found
+        //userRole.value = data?.role || null; // Default to null if no role found
+        is_organization_admin.value = data?.is_organization_admin || false; // Default to false if not an organization admin
     }
 
     onMounted(async () => {
@@ -136,14 +138,14 @@
 </script>
 
 <template>
-  <v-alert color="warning" v-if="!parent_organization_id" class="mt-11">
+  <v-alert color="warning" v-if="!parent_organization_id">
     <p class="text-center">Please select a parent organization to view its Lose.</p>
   </v-alert>
-  <div v-else class="mt-11">
+  <div v-else >
     <v-toolbar>
       <v-toolbar-title>{{  attrs.title }}</v-toolbar-title>
       <!-- Only if Admin -->
-      <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="userRole === 'organization_admin'">
+      <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="is_organization_admin">
         <v-icon>mdi-plus</v-icon>
         Add Los
       </v-btn>
@@ -173,13 +175,13 @@
                         label="Name des Lose"
                         required
                     ></v-text-field>
-                    <!--<v-text-field
+                    <v-text-field
                         v-model="companyName"
                         :counter="150"
                         :rules="nameRules"
                         label="Name der betreuenden Organisation"
                         required
-                    ></v-text-field>-->
+                    ></v-text-field>
                 </v-form>
             </v-card-text>
             <v-card-actions>

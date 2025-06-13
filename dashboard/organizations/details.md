@@ -6,6 +6,9 @@
     import { withBase } from 'vitepress'
     import OrganizationsAdmins from '../../components/organizations/OrganizationsAdmins.vue';
     import OrganizationsPlots from '../../components/organizations/OrganizationsPlots.vue';
+    import ListOfTroops from '../../components/organizations/ListOfTroops.vue';
+    import TroopSelection from '../../components/organizations/TroopSelection.vue';
+    import OrganizationResponsible from '../../components/organizations/OrganizationResponsible.vue';
 
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
@@ -17,7 +20,6 @@
 
     const queryParams = ref({});
     const tab = ref('history'); // Default tab
-
 
     const organizationsDetail = ref({});
 
@@ -55,6 +57,7 @@
         }
     }
 
+
     onMounted(async () => {
         const urlParams = new URLSearchParams(window.location.search);
         for (const [key, value] of urlParams.entries()) {
@@ -75,8 +78,6 @@
         }
     });
 </script>
-
-
 
 <v-toolbar color="transparent" flat>
     <v-btn icon="mdi-arrow-left" @click="router.go(withBase('/dashboard/organizations'))"></v-btn>
@@ -106,13 +107,13 @@
             coming soon
         </v-tabs-window-item>
         <v-tabs-window-item value="cluster">
-            <OrganizationsPlots :organization_id="organizationsDetail.id"/>
+            <OrganizationsPlots :organizationsDetail="organizationsDetail"/>
         </v-tabs-window-item>
         <v-tabs-window-item value="admins">
-            <OrganizationsAdmins :organization_id="organizationsDetail.id" :isEditable="false" title="Verantwortliche Nutzer" role="organization_admin"/>
+            <OrganizationsAdmins :organization_id="organizationsDetail.id" :isEditable="false" title="Verantwortliche Organisation" role="organization_admin" is_organization_admin="true"/>
         </v-tabs-window-item>
         <v-tabs-window-item value="troop">
-            <OrganizationsAdmins :organization_id="organizationsDetail.id" :isEditable="false" title="Truppen" role="troop"/>
+            <TroopSelection :organization_id="organizationsDetail.parent_organization_id"/>
         </v-tabs-window-item>
     </v-tabs-window>
 </v-card-text>
