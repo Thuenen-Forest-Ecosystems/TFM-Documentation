@@ -3,12 +3,8 @@
     import { ref, onMounted } from 'vue'
     import { createClient } from '@supabase/supabase-js'
     import { getCurrentInstance } from 'vue'
-    const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
 
-
-    let url = 'http://127.0.0.1:54321/';
-    url = 'https://ci.thuenen.de/';
-    const supabase = createClient(url, apikey)
+    const supabase = getCurrentInstance().appContext.config.globalProperties.$supabase;
 
     const currentSession = ref({});
 

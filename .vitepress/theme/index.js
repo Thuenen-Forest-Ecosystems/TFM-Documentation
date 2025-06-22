@@ -3,6 +3,7 @@ import { useData } from 'vitepress'
 import { isDark } from './composables/useGlobalTheme'
 
 import DashboardButton from '../../components/DashboardButton.vue'
+import OrganizationButton from '../../components/organizations/OrganizationButton.vue'
 
 
 import DefaultTheme from 'vitepress/theme'
@@ -90,6 +91,7 @@ export default {
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
       app.component('DashboardButton', DashboardButton)
+      app.component('OrganizationButton', OrganizationButton)
   
       app.config.globalProperties.$apikey = apikey
       app.config.globalProperties.$url = url;

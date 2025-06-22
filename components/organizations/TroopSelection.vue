@@ -20,7 +20,7 @@
         supabase
             .from('troop')
             .select('*')
-            .eq('organization_id', organizationId)
+            .eq('organization_id', attrs.parent_organization_id)
             .then(({ data, error }) => {
                 if (error) {
                     console.error('Error fetching troops:', error);
@@ -46,7 +46,7 @@
     }
 
     async function _removeTroopFromTroops(troop_id) {
-        if (!troop_id || !attrs.organization_id) {
+        if (!troop_id || !attrs.parent_organization_id) {
             console.error('Error: troop_id and organization_id are required.');
             return;
         }
@@ -56,7 +56,7 @@
             const { data, error } = await supabase
                 .from('organizations')
                 .upsert({
-                    id: attrs.organization_id,
+                    id: attrs.parent_organization_id,
                     troops: newTroops
                 })
                 .select()
@@ -74,7 +74,7 @@
     }
 
     async function _addTroopToTroops(troop_id) {
-        if (!troop_id || !attrs.organization_id) {
+        if (!troop_id || !attrs.parent_organization_id) {
             console.error('Error: troop_id and organization_id are required.');
             return;
         }
@@ -85,7 +85,7 @@
             const { data, error } = await supabase
                 .from('organizations')
                 .upsert({
-                    id: attrs.organization_id,
+                    id: attrs.parent_organization_id,
                     troops: uniqueTroops
                 })
                 .select()
@@ -121,6 +121,7 @@
 </script>
 
 <template>
+    f{{ attrs.organization_id }}f
     <v-toolbar density="compact">
         <template v-slot:prepend>
             <v-icon>mdi-account-group</v-icon>      <!-- Troops Icon -->

@@ -5,10 +5,7 @@
 
 
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey);
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const attrs = useAttrs();
 
@@ -30,7 +27,6 @@
                 console.error('Error fetching user profiles:', error, ids);
                 return [];
             }
-            console.error('Error fetching user profiles:', data, ids);
             return data || [];
         } catch (e) {
             console.error('An unexpected error occurred while fetching user profiles:', e);
@@ -47,7 +43,7 @@
                     body: {
                         email: adminEmail,
                         metaData: {
-                            is_organization_admin: attrs.is_organization_admin || false, // Use is_organization_admin from attributes
+                            is_organization_admin: attrs.showAdmins || false, // Use is_organization_admin from attributes
                             organization_id: attrs.organization_id // Use organization ID from attributes
                         }
                     }
@@ -132,7 +128,11 @@
         try {
             let data, error;
             
-            ({ data, error } = await supabase.from('users_permissions').select(`*`).eq('organization_id', organizationId));
+            ({ data, error } = await supabase
+                .from('users_permissions')
+                .select(`*`)
+                .eq('organization_id', organizationId)
+                .eq('is_organization_admin', attrs.showAdmins ? true : false));
 
             if (error) {
                 console.error('Error fetching organization data:', error);
@@ -172,24 +172,24 @@
 <template>
     <div v-if="attrs.organization_id">
         <v-toolbar density="compact">
+            <v-btn v-if="attrs.showAdmins" icon="mdi-shield-account" variant="text"></v-btn>
+            <v-btn v-if="!attrs.showAdmins" icon="mdi-account" variant="text"></v-btn>
+            
             <v-toolbar-title>{{ attrs.title }}</v-toolbar-title>
-            <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" append-icon="mdi-plus" @click="_openAdminsDialog">add administrator</v-btn>
+            <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" append-icon="mdi-plus" @click="_openAdminsDialog">hinzufügen</v-btn>
         </v-toolbar>
         <v-list lines="two">
                 <div class="text-center mb-4" v-if="!administrators.length">
-                <p>No organisation members found.</p>
+                    <p>No member found.</p>
                 </div>
                 <v-list-item v-for="administrator in administrators" :key="administrator.id">
-                    <template v-slot:prepend v-if="administrator.is_organization_admin">
-                        <v-icon icon="mdi-shield-crown"></v-icon>
-                    </template>
-                    <v-list-item-title>{{ userProfiles.find(profile => profile.id === administrator.user_id)?.email || 'Account not confirmed yet' }}</v-list-item-title>
+                    <v-list-item-title>{{ userProfiles.find(profile => profile.id === administrator.user_id)?.email || 'Account wurde noch nicht bestätigt' }}</v-list-item-title>
                     <v-list-item-subtitle>
                         {{ format(administrator.created_at, 'de_DE') }}
                     </v-list-item-subtitle>
-                    <template v-slot:append  v-if="attrs.is_admin">
-                        <v-btn icon="mdi-email" variant="flat" @click="_openEmailLink(userProfiles.find(profile => profile.id === administrator.user_id)?.email)"/>
-                        <v-btn icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
+                    <template v-slot:append>
+                        <v-btn v-if="userProfiles.find(profile => profile.id === administrator.user_id)?.email" icon="mdi-email" variant="flat" @click="_openEmailLink(userProfiles.find(profile => profile.id === administrator.user_id)?.email)"/>
+                        <v-btn v-if="attrs.is_admin" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
                     </template>
                     
                 </v-list-item>
@@ -200,9 +200,9 @@
     </div>
 
     <v-dialog v-model="isActive" max-width="500">
-        <v-card title="Remove Administrator">
+        <v-card title="Remove Member">
             <v-card-text>
-                Do you really want to remove this administrator from the organization?
+                Do you really want to remove this organization member from the organization?
             </v-card-text>
             <v-card-actions>
                 <v-btn

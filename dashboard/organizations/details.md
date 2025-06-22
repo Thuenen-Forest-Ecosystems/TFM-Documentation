@@ -11,10 +11,7 @@
     import OrganizationResponsible from '../../components/organizations/OrganizationResponsible.vue';
 
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey);
+    const supabase = instance.appContext.config.globalProperties.$supabase
 
     const router = useRouter();
 
@@ -22,6 +19,16 @@
     const tab = ref('history'); // Default tab
 
     const organizationsDetail = ref({});
+
+    // Add a function to handle navigation back
+    function goBack() {
+        try {
+            window.history.back();
+        } catch (e) {
+            // Fallback if history isn't available
+            router.go(-1);
+        }
+    }
 
     async function _editOrganizationName(orgId, newName) {
         const organizationName = prompt('Enter new organization name:', newName);
@@ -49,7 +56,7 @@
             if (data) {
                 // get vitepress config base
                 const base = instance.appContext.config.globalProperties.$base;
-                router.go(withBase('/dashboard/organizations')); // Go back to the previous page
+                goBack();
             }
         } catch (e) {
             console.error('An unexpected error occurred:', e);
@@ -80,7 +87,7 @@
 </script>
 
 <v-toolbar color="transparent" flat>
-    <v-btn icon="mdi-arrow-left" @click="router.go(withBase('/dashboard/organizations'))"></v-btn>
+    <v-btn icon="mdi-arrow-left" @click="goBack()"></v-btn>
     <v-toolbar-title>
         <div class="d-flex flex-column">
             <span class="text-h6">{{organizationsDetail.entityName}}</span>
@@ -113,7 +120,7 @@
             <OrganizationsAdmins :organization_id="organizationsDetail.id" :isEditable="false" title="Verantwortliche Organisation" role="organization_admin" is_organization_admin="true"/>
         </v-tabs-window-item>
         <v-tabs-window-item value="troop">
-            <TroopSelection :organization_id="organizationsDetail.parent_organization_id"/>
+            <TroopSelection :organization_id="organizationsDetail.id" :parent_organization_id="organizationsDetail.parent_organization_id"/>
         </v-tabs-window-item>
     </v-tabs-window>
 </v-card-text>

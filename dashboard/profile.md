@@ -4,7 +4,7 @@
     import { ref, onMounted, getCurrentInstance } from 'vue';
     import { createClient } from '@supabase/supabase-js';
     import OrganizationsAdmins from '../components/organizations/OrganizationsAdmins.vue';
-
+    import { withBase } from 'vitepress'
 
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
@@ -25,6 +25,8 @@
     const user = ref({});
     const users_profile = ref({});
     const organization = ref({});
+
+    const organizationsAccess = ref([]);
 
     function parseJwt (token) {
         var base64Url = token.split('.')[1];
@@ -81,21 +83,25 @@
             _getOrganizationById(data.organization_id);
         });
     }
+    async function _getOrganizations(userId){
+
+        await supabase.from('users_permissions').select("*, organizations(*)").eq('user_id', userId).then(({ data, error }) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+            organizationsAccess.value = data;
+            console.log('Organizations Access:', organizationsAccess.value);
+        });
+
+    }
 
     onMounted(async () => {
         const { data, error } = await supabase.auth.getSession()
         if (data.session) {
             user.value = data.session.user;
             _getUsersProfile(data.session.user.id);
-            /*
-            console.log(data.session);
-            access_token.value = data.session.access_token;
-            jwtPayload.value = parseJwt(data.session.access_token);
-            console.log(jwtPayload.value.is_admin);
-            is_admin.value = jwtPayload.value.is_admin;
-            state_responsible.value = jwtPayload.value.state_responsible;
-            troop_id.value = jwtPayload.value.troop_id;
-            _getStateResponsibleName(state_responsible.value);*/
+            _getOrganizations(data.session.user.id);
         }
     });
 
@@ -104,6 +110,9 @@
     };
     const _toChangePassword = () => {
         window.location.href = './reset-password';
+    };
+    const _toOrganization = (organization_id) => {
+        window.location.href = withBase('/dashboard/organizations?organization=' + organization_id);
     };
 
 </script>
@@ -119,18 +128,17 @@
                 </v-avatar>
             </template>
             <v-list-item-title>{{user['email']}}</v-list-item-title>
-            <v-list-item-subtitle>{{organization['name'] || ''}}</v-list-item-subtitle>
 
 <template v-slot:append>
 <v-tooltip text="Organization Admin">
-<template v-slot:activator="{ props }">
-<v-icon
-    v-if="users_profile['is_organization_admin']"
-    icon="mdi-shield-crown"
-    variant="text"
-    v-bind="props"
-></v-icon>
-</template>
+    <template v-slot:activator="{ props }">
+        <v-icon
+            v-if="users_profile['is_organization_admin']"
+            icon="mdi-shield-crown"
+            variant="text"
+            v-bind="props"
+        ></v-icon>
+    </template>
 </v-tooltip>
 </template>
 
@@ -140,32 +148,48 @@
 
 
 <v-list>
-<v-list-subheader>Account</v-list-subheader>
-
-<v-list-item @click="_toChangeEmail">
-    <v-list-item-title>E-Mailadresse ändern</v-list-item-title>
-    <v-list-item-subtitle></v-list-item-subtitle>
-    <template v-slot:append>
-        <v-btn
-            v-if="users_profile['is_organization_admin']"
-            icon="mdi-chevron-right"
-            variant="text"
-            v-bind="props"
-        ></v-btn>
-    </template>
-</v-list-item>
-<v-list-item  @click="_toChangePassword">
-    <v-list-item-title>Passwort ändern</v-list-item-title>
-    <v-list-item-subtitle></v-list-item-subtitle>
-    <template v-slot:append>
-        <v-btn
-            v-if="users_profile['is_organization_admin']"
-            icon="mdi-chevron-right"
-            variant="text"
-            v-bind="props"
-        ></v-btn>
-    </template>
-</v-list-item>
+    <v-list-subheader>Account</v-list-subheader>
+    <v-list-item @click="_toChangeEmail">
+        <v-list-item-title>E-Mailadresse ändern</v-list-item-title>
+        <v-list-item-subtitle></v-list-item-subtitle>
+        <template v-slot:append>
+            <v-btn
+                v-if="users_profile['is_organization_admin']"
+                icon="mdi-chevron-right"
+                variant="text"
+                v-bind="props"
+            ></v-btn>
+        </template>
+    </v-list-item>
+    <v-list-item  @click="_toChangePassword">
+        <v-list-item-title>Passwort ändern</v-list-item-title>
+        <v-list-item-subtitle></v-list-item-subtitle>
+        <template v-slot:append>
+            <v-btn
+                v-if="users_profile['is_organization_admin']"
+                icon="mdi-chevron-right"
+                variant="text"
+                v-bind="props"
+            ></v-btn>
+        </template>
+    </v-list-item>
 </v-list>
+
+<v-card class="my-4">
+<v-list>
+    <v-list-subheader>Organisationen</v-list-subheader>
+    <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
+        <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
+        <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
+        <template v-slot:append>
+            <v-btn
+                color="grey-lighten-1"
+                icon="mdi-information"
+                variant="text"
+            ></v-btn>
+        </template>
+    </v-list-item>
+</v-list>
+</v-card>
 
 <LoginForm/>

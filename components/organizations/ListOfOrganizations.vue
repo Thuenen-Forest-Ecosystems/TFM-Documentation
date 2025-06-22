@@ -1,22 +1,40 @@
 <script setup>
 
-    import { onMounted, ref, getCurrentInstance, useAttrs } from 'vue';
-    import { createClient } from '@supabase/supabase-js'
+    import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
     import { useRouter } from 'vitepress'
 
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey);
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const router = useRouter()
 
     const attrs = useAttrs();
 
+    // Define the props that the component expects
+        const props = defineProps({
+            organization_id: {
+                type: String,
+                required: true
+            },
+            type: {
+                type: String,
+                default: 'organization'
+            },
+            title: {
+                type: String,
+                default: ''
+            },
+            is_admin: {
+                type: Boolean,
+                default: false
+            }
+        });
+
     const parent_organization_id = ref(null);
     const organizations = ref([]);
     const user = ref(null);
+    const userProfiles = ref([]); // Store user profiles
+    const userPermissions = ref([]); // Store user permissions
     const userRole = ref(null); // Default to null if no role found
     const is_organization_admin = ref(false); // Default to false
 
@@ -40,7 +58,7 @@
             name: organizationName,
             parent_organization_id: parentOrganizationId || parent_organization_id.value,
             entityName: entityName,
-            type: attrs.type || 'organization' // Default to 'organization' if not provided
+            type: props.type || 'country' // Default to 'country' if not provided
         }).select().single();
 
         if (error) {
@@ -59,7 +77,7 @@
     }
   }
   async function _confirmAddLos() {
-      if (!losName.value) {
+      if (!companyName.value) {
           alert('Please fill in all fields.'); // User feedback
           return;
       }
@@ -74,7 +92,7 @@
         ({ data, error } = await supabase.from('organizations')
             .select()
             .eq('parent_organization_id', organizationId)
-            .eq('type', attrs.type) // Ensure only active organizations are fetched
+            //.eq('type', attrs.type) // Ensure only active organizations are fetched
             .order('created_at', { ascending: false }));
 
 
@@ -91,7 +109,7 @@
           organizations.value = []; // Reset if no data found
       }
   }
-  async function _getUsersProfile(userId){
+  /*async function _getUsersProfile(userId){
         const { data, error } = await supabase.from('users_profile').select('organization_id').eq('id', userId).single(); // Select only needed field
         if (error) {
             return;
@@ -103,7 +121,7 @@
         } else {
             parent_organization_id.value = null; // Reset if not found
         }
-  }
+  }*/
   function _navigateToOrganizationDetails(organizationId) {
       router.go(`/TFM-Documentation/dashboard/organizations/details?orgId=${organizationId}`)
   }
@@ -129,11 +147,97 @@
         is_organization_admin.value = data?.is_organization_admin || false; // Default to false if not an organization admin
     }
 
-    onMounted(async () => {
-        parent_organization_id.value = attrs.organization_id || null; // Get parent organization ID from props
-        await _getOrganizationsByParentId(parent_organization_id.value);
-        await _getPermissions(parent_organization_id.value); // Fetch permissions for the user
-    });
+    watch(() => props.organization_id, async (newVal) => {
+        if (newVal) {
+            parent_organization_id.value = newVal; // Update parent organization ID from prop
+            await _getOrganizationsByParentId(newVal);
+            await _getUsersProfileByOrganizationId(newVal);
+            //await _getPermissions(newVal); // Fetch permissions for the user
+        }
+    }, { immediate: true });
+
+    async function _getUsersProfileByOrganizationId(parentOrganizationId) {
+        if (!parentOrganizationId) return;
+        try {
+            const { data, error } = await supabase.from('organizations').select('id').eq('parent_organization_id', parentOrganizationId);
+            if (error) {
+                console.error('Error fetching organizations:', error);
+                return;
+            }
+            console.log('Organizations fetched:', data.map(org => org.id));
+
+            const { data: permissionsData, error: permissionsError } = await supabase.from('users_permissions').select('*').in('organization_id', data.map(org => org.id));
+            if (permissionsError) {
+                console.error('Error fetching user profiles:', permissionsError);
+                return; // data.map(org => org.id)
+            }
+            userPermissions.value = permissionsData || [];
+            console.log('Permissions fetched:', userPermissions.value.map(permission => permission.user_id));
+            const { data: userProfilesData, error: userProfilesError } = await supabase.from('users_profile').select('*').in('id', userPermissions.value.map(permission => permission.user_id));
+            if (userProfilesError) {
+                console.error('Error fetching user profiles:', userProfilesError);
+                return;
+            }
+            userProfiles.value = userProfilesData || [];
+            console.log('User profiles fetched:', userProfiles.value);
+            
+        } catch (e) {
+            console.error('An unexpected error occurred:', e);
+        }
+    }
+    
+    async function _inviteOrganizationAdmin(organizationId) {
+        const adminEmail = prompt('Enter administrator email:');
+        if (adminEmail && adminEmail.trim() !== '' && organizationId) {
+            try {
+                const { data, error: supabaseError } = await supabase.functions.invoke('invite-user', {
+                    method: 'POST',
+                    body: {
+                        email: adminEmail,
+                        metaData: {
+                            organization_type: '',
+                            is_organization_admin: true, // Use is_organization_admin from attributes
+                            organization_id: organizationId // Use organization ID from attributes
+                        }
+                    }
+                });
+                if (supabaseError) {
+                    console.error('Error inviting administrator:', supabaseError);
+                } else {
+                    _getUsersProfileByOrganizationId(parent_organization_id.value); // Refresh the list of administrators
+                    //await _requestData(organizationId); // Refresh the list of administrators
+                }
+            } catch (error) {
+                console.error('Unexpected error:', error);
+            }
+        }
+    }
+    async function _removeUserPermission(event, userId, organizationId) {
+        event.stopPropagation(); // Prevent the list item from expanding/collapsing
+        
+        if (!confirm('Are you sure you want to remove this user?')) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+            .from('users_permissions')
+            .delete()
+            .eq('user_id', userId)
+            .eq('organization_id', organizationId);
+            
+            if (error) {
+            console.error('Error removing user permission:', error);
+            alert(`Error: ${error.message}`);
+            } else {
+            // Refresh the data
+            await _getUsersProfileByOrganizationId(parent_organization_id.value);
+            }
+        } catch (e) {
+            console.error('Unexpected error:', e);
+            alert(`Unexpected error: ${e.message}`);
+        }
+    }
 
 </script>
 
@@ -142,43 +246,97 @@
     <p class="text-center">Please select a parent organization to view its Lose.</p>
   </v-alert>
   <div v-else >
-    <v-toolbar>
-      <v-toolbar-title>{{  attrs.title }}</v-toolbar-title>
-      <!-- Only if Admin -->
-      <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="is_organization_admin">
-        <v-icon>mdi-plus</v-icon>
-        Add Los
-      </v-btn>
+    <v-toolbar class="mb-4">
+        <v-btn icon="mdi-domain" variant="text"></v-btn>
+        <v-toolbar-title>{{  props.title }}</v-toolbar-title>
+        <!-- Only if Admin -->
+        <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="props.is_admin">
+            <v-icon>mdi-plus</v-icon>
+            hinzufügen
+        </v-btn>
     </v-toolbar>
-    <v-list lines="two">
-        <div class="text-center mb-4" v-if="!organizations.length">
-          <p>No Lose found.</p>
-        </div>
-        <v-list-item v-for="organization in organizations" :key="organization.id" @click="_navigateToOrganizationDetails(organization.id)">
-          <v-list-item-title>{{ organization.entityName }}</v-list-item-title>
-        <v-list-item-subtitle>{{ organization.name }}</v-list-item-subtitle>
-          <template v-slot:append>
-        </template>
-        </v-list-item>
-    </v-list>
-  </div>
+    <v-card v-for="organization in organizations" :key="organization.id" class="mb-4">
+        <v-card-item>
+            <v-card-item-title>
+                {{ organization.name || organization.entityName }} 
+            </v-card-item-title>
+            <template v-slot:append  v-if="props.is_admin">
+                <v-btn 
+                    v-bind="props"
+                    icon="mdi-account-plus"
+                    variant="text"
+                    @click="_inviteOrganizationAdmin(organization.id)"
+                ></v-btn>
+            </template>
+            <template v-if="is_organization_admin">
+                <v-btn icon="mdi-pencil" variant="text" @click="_createOrganization(organization.name, organization.entityName, organization.parent_organization_id)"></v-btn>
+            </template>
+        </v-card-item>
+        <v-card-text>
+            <div class="text-center mb-4" v-if="!userPermissions.length">
+                <p>Laden Sie mindestens einen Administrator des dienstleisters ein.</p>
+            </div>
+            <v-list>
+                <template v-for="permission in userPermissions" :key="permission.id">
+                    <v-list-item prepend-icon="mdi-account" v-if="permission && permission.organization_id && organization && permission.organization_id === organization.id">
+                        <v-list-item-title>{{ userProfiles.find(user => user && user.id === permission.user_id)?.email || 'Noch nicht angemeldet' }}</v-list-item-title>
+                        <template v-slot:append>
+                            <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserPermission(e, permission.user_id, permission.organization_id)"></v-btn>
+                        </template>
+                    </v-list-item>
+                </template>
+            </v-list>
+        </v-card-text>
+    </v-card>
 
+    <!--<v-list lines="two">
+        <v-list-item v-if="!organizations.length">
+            <v-list-item-title class="text-center">Noch keine Organisationen eingetragen.</v-list-item-title>
+        </v-list-item>
+        <v-list-group v-for="organization in organizations" :key="organization.id">
+            <template v-slot:activator="{ props: slotProps }">
+                <v-list-item v-bind="slotProps" >
+                    <template v-slot:append>
+                        <v-tooltip location="top" text="Verantwortlichen hinzufügen">
+                            <template v-slot:activator="{ props }">
+                                <v-btn 
+                                    v-bind="props"
+                                    icon="mdi-account-plus"
+                                    variant="text"
+                                    @click="_inviteOrganizationAdmin(organization.id)"
+                                ></v-btn>
+                            </template>
+                        </v-tooltip>
+                    </template>
+                    <v-list-item-title>{{ organization.entityName }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ organization.name }}</v-list-item-subtitle>
+                </v-list-item>
+            </template>
+            <template v-for="permission in userPermissions" :key="permission.id">
+                <v-list-item prepend-icon="mdi-account" v-if="permission && permission.organization_id && organization && permission.organization_id === organization.id">
+                    <v-list-item-title>{{ userProfiles.find(user => user && user.id === permission.user_id)?.email || 'Noch nicht angemeldet' }}</v-list-item-title>
+                    <template v-slot:append>
+                        <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserPermission(e, permission.user_id, permission.organization_id)"></v-btn>
+                    </template>
+                </v-list-item>
+            </template>
+        </v-list-group>
+    </v-list>-->
+  </div>
   <!-- Add Los/Company dialog -->
   <v-dialog v-model="isActive" max-width="500">
         <v-card title="Add Los and Company">
             <v-card-text>
                 <v-form v-model="valid">
-                    <v-text-field
+                    <!--<v-text-field
                         v-model="losName"
                         :counter="150"
-                        :rules="nameRules"
                         label="Name des Lose"
                         required
-                    ></v-text-field>
+                    ></v-text-field>-->
                     <v-text-field
                         v-model="companyName"
                         :counter="150"
-                        :rules="nameRules"
                         label="Name der betreuenden Organisation"
                         required
                     ></v-text-field>

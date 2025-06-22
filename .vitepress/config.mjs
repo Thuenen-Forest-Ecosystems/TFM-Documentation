@@ -55,8 +55,7 @@ export default defineConfig({
           text: 'Dashboard',
           items: [
             { text: 'Profile', link: '/dashboard/profile' },
-            { text: 'Organisation', link: '/dashboard/organizations' },
-            { text: 'Download', link: '/dashboard/download' }
+            //{ text: 'Download', link: '/dashboard/download' }
           ]
         }/*,
         {

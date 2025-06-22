@@ -8,6 +8,21 @@
     const troops = ref([]);
     const users = ref([]);
 
+    const props = defineProps({
+        organization_id: {
+            type: String,
+            required: true
+        },
+        title: {
+            type: String,
+            default: ''
+        },
+        is_admin: {
+            type: Boolean,
+            default: false
+        }
+    });
+
     function _requestData(organizationId) {
         if (!organizationId) {
             console.error('Error: organization_id is required.');
@@ -33,15 +48,15 @@
     function _addTroop() {
         const troopName = prompt('Enter troop name:');
 
-        if (troopName && attrs.organization_id) {
+        if (troopName && props.organization_id) {
             supabase
                 .from('troop')
-                .insert({ name: troopName, organization_id: attrs.organization_id })
+                .insert({ name: troopName, organization_id: props.organization_id })
                 .then(({ data, error }) => {
                     if (error) {
                         console.error('Error adding troop:', error);
                     } else {
-                        _requestData(attrs.organization_id); // Refresh the list
+                        _requestData(props.organization_id); // Refresh the list
                     }
                 })
                 .catch((e) => {
@@ -81,7 +96,7 @@
                 if (error) {
                     console.error('Error removing troop:', error);
                 } else {
-                    _requestData(attrs.organization_id); // Refresh the list
+                    _requestData(props.organization_id); // Refresh the list
                 }
             })
             .catch((e) => {
@@ -160,7 +175,7 @@
             });
     }
 
-    watch(() => attrs.organization_id, (newVal) => {
+    watch(() => props.organization_id, (newVal) => {
         if (newVal) {
             _requestData(newVal);
             _getListOfUserInOrganization(newVal);
@@ -168,75 +183,65 @@
     });
 
     onMounted(() => {
-        if (!attrs.organization_id) {
+        if (!props.organization_id) {
             console.error('Error: organization_id is required in attributes.');
             return;
         }
-        _requestData(attrs.organization_id);
-        _getListOfUserInOrganization(attrs.organization_id);
+        _requestData(props.organization_id);
+        _getListOfUserInOrganization(props.organization_id);
     });
 </script>
 
 <template>
-    <v-toolbar>
+    <v-toolbar class="mb-4">
         <!-- Add icon for adding users to troops -->
         <v-btn icon="mdi-account-group" variant="text"></v-btn>
-        <v-toolbar-title>{{  attrs.title }}</v-toolbar-title>
+        <v-toolbar-title>{{ props.title }}</v-toolbar-title>
         <!-- Only if Admin -->
-        <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" @click="_addTroop">
-            <v-icon>mdi-plus</v-icon>Add
+        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="_addTroop">
+            <v-icon>mdi-plus</v-icon>hinzufügen
         </v-btn>
     </v-toolbar>
-    <v-list>
-        <v-list-group v-for="troop in troops" :key="troop.id">
-            
-
-            <template v-slot:activator="{ props }">
-                <v-list-item
-                    v-bind="props"
-                >
-                    <v-list-item-title>{{ troop.name }}</v-list-item-title>
-                    <v-list-item-subtitle v-if="troop.is_control_troop">Kontroll-Trupp</v-list-item-subtitle>
-                    
-                    <template v-slot:append>
-                        <v-menu>
-                            <template v-slot:activator="{ props }">
-                                <!-- Disable button if no troops available -->
-                            <v-btn v-if="attrs.is_admin" icon="mdi-plus" variant="text" v-bind="props" :disabled="users.length === 0"></v-btn>
-                            </template>
-                            
-                            <v-list>
-                                <v-list-item
-                                    v-for="(item, i) in users"
-                                    :key="i"
-                                    :value="i"
-                                    @click="(e) => _addUserToTroop(e, item.id, troop.id)"
-                                >
-                                    <v-list-item-title>{{ item.email }}</v-list-item-title>
-
-                                </v-list-item>
-                            </v-list>
-                        </v-menu>
-                        <v-btn
-                            v-if="attrs.is_admin"
-                            color="grey-lighten-1"
-                            icon="mdi-delete"
-                            variant="text"
-                            @click="(e) => _removeTroop(e, troop.id)"
-                        ></v-btn>
+    <v-card  v-for="troop in troops" :key="troop.id" class="mb-4">
+        <v-card-item>
+            <v-card-title>{{ troop.name }}</v-card-title>
+            <v-card-subtitle v-if="troop.is_control_troop">Kontroll-Trupp</v-card-subtitle>
+            <template v-slot:append  v-if="props.is_admin">
+                <v-menu>
+                    <template v-slot:activator="{ props: menuProps }">
+                        <!-- Disable button if no troops available -->
+                        <v-btn v-if="props.is_admin" icon="mdi-plus" variant="text" v-bind="menuProps" :disabled="users.length === 0"></v-btn>
                     </template>
-                </v-list-item>
-            </template>
+                    
+                    <v-list>
+                        <v-list-item
+                            v-for="(item, i) in users"
+                            :key="i"
+                            :value="i"
+                            @click="(e) => _addUserToTroop(e, item.id, troop.id)"
+                        >
+                            <v-list-item-title>{{ item.email }}</v-list-item-title>
 
-            <v-list-item prepend-icon="mdi-account" v-if="troop.user_ids && troop.user_ids.length > 0" v-for="userId in troop.user_ids" :key="userId">
+                        </v-list-item>
+                    </v-list>
+                </v-menu>
+                <v-btn
+                    v-if="props.is_admin"
+                    color="grey-lighten-1"
+                    icon="mdi-delete"
+                    variant="text"
+                    @click="(e) => _removeTroop(e, troop.id)"
+                ></v-btn>
+            </template>
+        </v-card-item>
+        <v-card-text>
+            <v-list-item v-for="userId in troop.user_ids" :key="userId">
                 <v-list-item-title>{{ users.find(user => user.id === userId)?.email || 'Unknown User' }}</v-list-item-title>
                 <template v-slot:append>
-                    <v-btn v-if="attrs.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserFromTroop(e, userId, troop.id)"></v-btn>
+                    <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserFromTroop(e, userId, troop.id)"></v-btn>
                 </template>
+                
             </v-list-item>
-            <v-list-item v-else>
-                <v-list-item-title>No users in this troop</v-list-item-title>
-            </v-list-item>
-        </v-list-group>
-    </v-list>
+        </v-card-text>
+    </v-card>
 </template>
