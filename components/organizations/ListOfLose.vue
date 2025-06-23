@@ -73,8 +73,25 @@
         }
     }
 
-    function _updateAssignedClusters(clusterData){
-        // Get cluster_ids array from clusterData and push them to clustersAssigned
+    async function _updateAssignedClusters(clusterData){
+        // 
+        const assignedClusterIds = [];
+        for (const los of clusterData) {
+            if (los.cluster_ids && los.cluster_ids.length > 0) {
+                assignedClusterIds.push(...los.cluster_ids);
+            }
+        }
+
+        // get data from records table
+        const {data, error} = await supabase.from('records').select('id:cluster_id, cluster_name').in('cluster_id', assignedClusterIds);
+        console.log(data);
+        if (error) {
+            console.error('Error fetching clusters:', error);
+            return;
+        }
+        clustersAssigned.value = data;
+        return;
+
         const clusterIds = clusterData.map(item => item.cluster_id);
         clustersAssigned.value.push(...clusterIds);
     }
@@ -150,6 +167,45 @@
                 console.error('An unexpected error occurred while removing lose:', e);
             });
     }
+    async function _removeCluster(e, losId, clusterId) {
+        e.stopPropagation(); // Prevent the click from propagating to the list item
+        if (!losId || !clusterId) {
+            console.error('Error: losId and clusterId are required.');
+            return;
+        }
+
+        // Fetch the current los details
+        const { data: losDetails, error: fetchError } = await supabase
+            .from('organizations_lose')
+            .select('*')
+            .eq('id', losId)
+            .single();
+
+        if (fetchError) {
+            console.error('Error fetching los details:', fetchError);
+            return;
+        }
+
+        // Remove the clusterId from the losDetails.cluster_ids array
+        const updatedClusterIds = losDetails.cluster_ids.filter(id => id !== clusterId);
+
+        // Update the los with the new cluster_ids
+        const { data, error } = await supabase
+            .from('organizations_lose')
+            .update({ cluster_ids: updatedClusterIds })
+            .eq('id', losId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error removing cluster from los:', error);
+        } else {
+            _requestData(props.organization_id); // Refresh the list
+            snackbarText.value = 'Cluster removed successfully.';
+            snackbar.value = true;
+            snackbarColor.value = 'success';
+        }
+    }
     function _openResponsibleDialog(los) {
         selectedLos.value = { ...los }; // Create a shallow copy of los to avoid mutating the original object
         responsibleDialog.value = true;
@@ -177,7 +233,7 @@
         }
 
         // all names must be unique
-        const uniqueClusterNames = [...new Set(trimmedClusterNames)];
+        //const uniqueClusterNames = [...new Set(trimmedClusterNames)];
 
         // convert all uniqueClusterNames to integer or remove if not a number
         /*const uniqueClusterNamesInteger = uniqueClusterNames.map(name => {
@@ -189,42 +245,73 @@
 
 
         // filter cluster names that are not in availableClusters
-        const clusterNames = uniqueClusterNames.filter(name => {
-            return availableClusters.value.some(c => c.cluster_name === name);
-        });
+        //const clusterNames = uniqueClusterNames.filter(name => {
+        //    return availableClusters.value.some(c => c.cluster_name === name);
+        //});
+//
+        //
+        //const clusterIds = availableClusters.value
+        //    .filter(c => clusterNames.includes(c.cluster_name))
+        //    .map(c => c.id);
+//
+        //if (clusterIds.length === 0) {
+        //    snackbarText.value = 'No valid cluster names provided.';
+        //    snackbar.value = true;
+        //    snackbarColor.value = 'error';
+        //    return;
+        //}
 
-        
-        const clusterIds = availableClusters.value
-            .filter(c => clusterNames.includes(c.cluster_name))
-            .map(c => c.id);
+        await _addClusterToLose(losDetails, trimmedClusterNames);
+    }
+    async function _filterClustersAvailableFromDb(cluster_ids){
+        if (!cluster_ids || cluster_ids.length === 0) return [];
 
-        if (clusterIds.length === 0) {
-            snackbarText.value = 'No valid cluster names provided.';
-            snackbar.value = true;
-            snackbarColor.value = 'error';
-            return;
+        try {
+            const { data, error } = await supabase
+                .from('records')
+                .select('id:cluster_id, cluster_name')
+                .in('cluster_name', cluster_ids);
+
+            if (error) {
+                console.error('Error fetching available clusters:', error);
+                return [];
+            }
+            
+            // Filter out any cluster IDs that are not in availableClusters
+            const validClusters = data.filter(cluster => cluster_ids.includes(cluster.cluster_name));
+            return validClusters.map(cluster => cluster.id);
+        } catch (e) {
+            console.error('An unexpected error occurred while fetching available clusters:', e);
+            return [];
         }
-
-        console.log('Adding clusters to los:', losDetails, clusterIds);
-
-        await _addClusterToLose(losDetails, clusterIds);
     }
     async function _addClusterToLose(losDetails, clusterIds) {
         if (!losDetails || !clusterIds) return;
 
         //await _requestData(props.organization_id);
         
+        // Remove duplicates
+        const uniqueClusterIds = [...new Set(clusterIds)];
+
+        // Filter out any cluster IDs that are not in availableClusters
+        const validClusterIds = await _filterClustersAvailableFromDb(uniqueClusterIds);
+
+        // Remove duplicates again after filtering
+        const finalClusterIds = [...new Set(validClusterIds)];
+
+        if (finalClusterIds.length === 0) {
+            snackbarText.value = 'No valid cluster names provided.';
+            snackbar.value = true;
+            snackbarColor.value = 'error';
+            return;
+        }
 
         const currentClusterIds = losDetails.cluster_ids || [];
-        currentClusterIds.push(...clusterIds);
-
-        // Remove duplicates
-        const uniqueClusterIds = [...new Set(currentClusterIds)];
-
+        currentClusterIds.push(...finalClusterIds);
 
         const { data, error } = await supabase
             .from('organizations_lose')
-            .update({ cluster_ids: uniqueClusterIds })
+            .update({ cluster_ids: currentClusterIds })
             .eq('id', losDetails.id)
             .select()
             .single();
@@ -233,6 +320,7 @@
             console.error('Error adding cluster to lose:', error);
         } else {
             losDetails.value = data;
+            _updateAssignedClusters([losDetails.value]);
         }
     }
 
@@ -264,7 +352,7 @@
     watch(() => props.organization_id, (newVal) => {
         if (newVal) {
             _requestData(newVal);
-            getClustersAvailable();
+            //getClustersAvailable();
             _getCompanies();
             _getTroops();
         }
@@ -276,7 +364,7 @@
             return;
         }
         _requestData(props.organization_id);
-        getClustersAvailable();
+        //getClustersAvailable();
         _getCompanies();
         _getTroops();
     });
@@ -351,7 +439,17 @@
         <v-card-text>
             <v-list>
                 <v-list-item v-for="clusterId in los.cluster_ids" :key="clusterId">
-                    ClusterName: {{ availableClusters.find(c => c.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
+                    ClusterName: {{ clustersAssigned.find(cluster => cluster.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
+                    <template v-slot:append>
+                
+                    <v-btn
+                        v-if="props.is_admin"
+                        color="grey-lighten-1"
+                        icon="mdi-delete"
+                        variant="text"
+                        @click="(e) => _removeCluster(e, los.id, clusterId)"
+                    ></v-btn>
+            </template>
                 </v-list-item>
                 <v-list-item v-if="los.cluster_ids && los.cluster_ids.length === 0">
                     <div class="text-center">

@@ -47,7 +47,7 @@
             state_responsible_name.value = data.name_de;
         });
     }
-    /// NEU
+    /*
     const _organizationMembers = ref([]);
     async function _getOrganizationMembers(orgnaization_id){
         if (!orgnaization_id) {
@@ -60,19 +60,19 @@
             }
             _organizationMembers.value = data;
         });
-    }
+    }*/
 
-    async function _getOrganizationById(organizationId){
-
-        await supabase.from('organizations').select().eq('id', organizationId).single().then(({ data, error }) => {
-            if (error) {
-                console.error(error);
-                return;
-            }
-            organization.value = data;
-            _getOrganizationMembers(organizationId);
-        });
-    }
+    //async function _getOrganizationById(organizationId){
+//
+    //    await supabase.from('organizations').select().eq('id', organizationId).single().then(({ data, error }) => {
+    //        if (error) {
+    //            console.error(error);
+    //            return;
+    //        }
+    //        organization.value = data;
+    //        _getOrganizationMembers(organizationId);
+    //    });
+    //}
     async function _getUsersProfile(userId){
         await supabase.from('users_profile').select().eq('id', userId).single().then(({ data, error }) => {
             if (error) {
@@ -176,20 +176,19 @@
 </v-list>
 
 <v-card class="my-4">
-<v-list>
-    <v-list-subheader>Organisationen</v-list-subheader>
-    <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
-        <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
-        <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
-        <template v-slot:append>
-            <v-btn
-                color="grey-lighten-1"
-                icon="mdi-information"
-                variant="text"
-            ></v-btn>
-        </template>
-    </v-list-item>
-</v-list>
+    <v-list>
+        <v-list-subheader>Organisationen</v-list-subheader>
+        <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
+            <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
+            <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
+            <template v-slot:append>
+                <v-btn
+                    color="grey-lighten-1"
+                    icon="mdi-information"
+                    variant="text"
+                ></v-btn>
+            </template>
+        </v-list-item>
+    </v-list>
 </v-card>
-
 <LoginForm/>
