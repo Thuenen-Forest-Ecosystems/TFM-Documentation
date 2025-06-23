@@ -102,17 +102,14 @@ export default {
     setup() {
       // This ensures the theme is correct on initial load
       const { isDark } = useData()
-      watch(
-        () => isDark.value,
-        (newIsDark) => {
-          vuetify.theme.global.name.value = newIsDark ? 'dark' : 'light'
-        },
-        { immediate: true }
-      )
       if (isDark.value) {
         vuetify.theme.global.name.value = 'dark'
       }
       globalIsDark.value = isDark.value
+      setTimeout(() => {
+        // Ensure the global isDark ref is in sync with the theme
+        globalIsDark.value = isDark.value
+      }, 100) // Use a timeout to ensure this runs after the initial render
     }
   }
   
