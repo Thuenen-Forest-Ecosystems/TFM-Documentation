@@ -5,9 +5,15 @@ import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
     // Register all Community features
     ModuleRegistry.registerModules([AllCommunityModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
+    
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
+
+    const page = ref(1);
+    const rowsPerPage = ref(100); // Number of rows per page
+    const pages = ref(0); // Total number of pages, can be calculated based on total records
+    const totalRecords = ref(0); // Total number of records, can be fetched from
 
     const records = ref([]);
     const rowData = ref([]);
@@ -64,15 +70,26 @@ import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
             responsible_troop: record.responsible_troop
         }));
     }
+    function onPageChange(newPage) {
+        page.value = newPage;
+        _requestCluster(); // Adjust for zero-based index
+        // Fetch new data for the selected page if needed
+        // Example: _requestCluster(newPage);
+        // If you implement server-side pagination, pass newPage to your fetch function
+    }
     function _requestCluster() { // Thünen only
-
+        rowData.value = [];
+        console.log('Requesting clusters for page:', page.value * rowsPerPage.value, rowsPerPage.value);
         supabase
             .from('records')
             .select('plot_id, plot_name, cluster_name, cluster_id, responsible_troop')
+            .order('cluster_name', { ascending: true })
+            .range(page.value * rowsPerPage.value, (page.value + 1) * rowsPerPage.value - 1)
             .then(({ data, error }) => {
                 if (error) {
                     console.error('Error fetching clusters:', error);
                 } else {
+                    console.log('Fetched clusters:', data);
                     //records.value = data;
                     const plotGroups = _groupByClusterId(data);
                     rowData.value = _toRowData(plotGroups);
@@ -80,18 +97,44 @@ import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
             });
     }
 
-    onMounted(() => {
+    async function _countRecords() {
+        const { data, count, error } = await supabase
+            .from('records')
+            .select('*', { count: 'exact', head: true })
+        if (error) {
+            console.error('Error counting records:', error);
+            return 0;
+        }
+        console.log(data, count);
+        return count;
+    }
+
+    onMounted(async () => {
         _requestCluster();
+        totalRecords.value = await _countRecords();
+        pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);
+            
+
     });
 </script>
 
 <template>
     <!-- The AG Grid component -->
     <ag-grid-vue
-        :pagination="true"
+        :pagination="false"
         :rowData="rowData"
         :columnDefs="colDefs"
         style="height: 500px"
     >
     </ag-grid-vue>
+
+    <div class="text-center">
+        <v-pagination
+            v-model="page"
+            :length="pages"
+            :total-visible="5"
+            rounded="circle"
+            @update:modelValue="onPageChange"
+        ></v-pagination>
+    </div>
 </template>

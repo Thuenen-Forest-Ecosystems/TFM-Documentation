@@ -1,4 +1,4 @@
-import { h, watch, ref, onBeforeMount } from 'vue'
+import { h, watch, ref } from 'vue'
 import { useData } from 'vitepress'
 import { isDark } from './composables/useGlobalTheme'
 
@@ -14,11 +14,11 @@ let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6I
 let redirectTo = 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
 
 // Local development
-//if(import.meta.env.DEV) {
-//  url = 'http://127.0.0.1:54321';
-//  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-//  redirectTo = 'http://localhost:5173/TFM-Documentation';
-//}
+if(import.meta.env.DEV) {
+  url = 'http://127.0.0.1:54321';
+  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+  redirectTo = 'http://localhost:5173/TFM-Documentation';
+}
 
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(url, apikey);
@@ -106,13 +106,6 @@ export default {
         vuetify.theme.global.name.value = 'dark'
       }
       globalIsDark.value = isDark.value
-      onBeforeMount(() => {
-        vuetify.theme.global.name.value = isDark.value ? 'dark' : 'light'
-      })
-      setTimeout(() => {
-        // Ensure the global isDark ref is in sync with the theme
-        globalIsDark.value = isDark.value
-      }, 100) // Use a timeout to ensure this runs after the initial render
     }
   }
   
