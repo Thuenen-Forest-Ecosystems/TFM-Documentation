@@ -1,4 +1,4 @@
-import { h, watch, ref } from 'vue'
+import { h, watch, ref, onBeforeMount } from 'vue'
 import { useData } from 'vitepress'
 import { isDark } from './composables/useGlobalTheme'
 
@@ -106,6 +106,9 @@ export default {
         vuetify.theme.global.name.value = 'dark'
       }
       globalIsDark.value = isDark.value
+      onBeforeMount(() => {
+        vuetify.theme.global.name.value = isDark.value ? 'dark' : 'light'
+      })
       setTimeout(() => {
         // Ensure the global isDark ref is in sync with the theme
         globalIsDark.value = isDark.value
