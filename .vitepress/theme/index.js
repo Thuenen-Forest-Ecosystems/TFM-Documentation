@@ -102,6 +102,13 @@ export default {
     setup() {
       // This ensures the theme is correct on initial load
       const { isDark } = useData()
+      watch(
+        () => isDark.value,
+        (newIsDark) => {
+          vuetify.theme.global.name.value = newIsDark ? 'dark' : 'light'
+        },
+        { immediate: true }
+      )
       if (isDark.value) {
         vuetify.theme.global.name.value = 'dark'
       }
