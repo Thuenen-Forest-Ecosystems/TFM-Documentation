@@ -2,6 +2,7 @@
     import { getCurrentInstance, onMounted, useAttrs, ref, watch } from 'vue';
     import { useRouter } from 'vitepress'
     import DialogResponsible from './DialogResponsible.vue';
+    import DialogTextfield from './DialogTextfield.vue';
 
 
     const instance = getCurrentInstance();
@@ -19,6 +20,9 @@
     const selectedLos = ref(null);
 
     const responsibleDialog = ref(false);
+    const nameDialog = ref(false);
+    const existingLose = ref([]);
+    const addLosLoading = ref(false);
 
     const troops = ref([]);
     const companies = ref([]);
@@ -105,12 +109,14 @@
             .from('organizations_lose')
             .select('*')
             .eq('organization_id', organizationId)
+            .order('created_at', { ascending: false })
             .then(({ data, error }) => {
                 if (error) {
                     console.error('Error fetching lose:', error);
                 } else {
                     lose.value = data || [];
                     _updateAssignedClusters(lose.value);
+                    existingLose.value = lose.value.map(l => l.name.toLowerCase());
                 }
             })
             .catch((e) => {
@@ -118,10 +124,10 @@
             });
     }
 
-    function _addLose() {
-        const loseName = prompt('Enter lose name:');
+    function _addLose(loseName) {
 
         if (loseName && props.organization_id) {
+            addLosLoading.value = true;
             supabase
                 .from('organizations_lose')
                 .insert({ 
@@ -134,9 +140,12 @@
                     } else {
                         _requestData(props.organization_id); // Refresh the list
                     }
+                    addLosLoading.value = false;
+                    nameDialog.value = false; // Close the dialog
                 })
                 .catch((e) => {
                     console.error('An unexpected error occurred while adding lose:', e);
+                    addLosLoading.value = false;
                 });
         } else {
             console.error('Error: Lose name is required and organization_id must be set.');
@@ -371,8 +380,6 @@
 
     async function _handleConfirm (value) {
         // Handle the confirm action
-        console.log('Confirmed:', value);
-        console.log('Updated Los:', selectedLos.value);
         const { data, error } = await supabase
             .from('organizations_lose')
             .update({ responsible_organization_id: value.responsible_organization_id, troop_id: value.troop_id })
@@ -400,78 +407,100 @@
 </script>
 
 <template>
-    <v-toolbar class="mb-4">
+    <v-toolbar  class="mb-4" color="transparent" style="border-bottom: 1px solid rgba(120, 120, 120, 0.12);">
         <!-- Add icon for adding users to troops -->
         <v-btn icon="mdi-view-grid" variant="text"></v-btn>
         <v-toolbar-title>{{ props.title }}</v-toolbar-title>
         <!-- Only if Admin -->
-        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="_addLose">
-            <v-icon>mdi-plus</v-icon>hinzufügen
+        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="nameDialog = true">
+            NEu <v-icon>mdi-view-grid-plus</v-icon>
         </v-btn>
     </v-toolbar>
-    <v-card v-for="los in lose" :key="los.id" class="mb-4">
+    
+    <div class="text-center mb-4" v-if="!lose.length">
+        <v-alert type="warning" variant="tonal">
+            Es wurden noch keine Lose hinzugefügt.<br/>Klicke auf "Neu", um ein neues Los hinzuzufügen.
+        </v-alert>
+    </div>
+
+    <v-card v-for="los in lose" :key="los.id" class="mb-4" variant="tonal">
         
-        <v-card-item>
+        <v-card-item style="background-color: rgba(0, 0, 0, 0.1);">
+            <template v-slot:prepend>
+                <v-icon>mdi-rectangle</v-icon>
+            </template>
             <template v-slot:append>
                 <v-btn
                     v-if="props.is_admin"
-                    color="grey-lighten-1"
-                    icon="mdi-account"
+                    icon="mdi-pencil"
                     variant="text"
                     @click="(e) => _openResponsibleDialog(los)"
                 ></v-btn>
                 <v-btn
                     v-if="props.is_admin"
-                    color="grey-lighten-1"
                     icon="mdi-delete"
-                    variant="text"
+                    variant="plain"
                     @click="(e) => _removeLose(e, los.id)"
                 ></v-btn>
             </template>
 
-            <v-card-title>{{ los.name }}</v-card-title>
-
-            <v-card-subtitle v-if="los.responsible_organization_id">Verantwortliche Dienstleister: {{ companies.find(company => company.id === los.responsible_organization_id)?.name || 'Unknown Company' }}</v-card-subtitle>
-            <v-card-subtitle v-else-if="los.troop_id">Verantwortliche Trupp: {{ troops.find(troop => troop.id === los.troop_id)?.name || 'Unknown Troop' }}</v-card-subtitle>
-            <v-card-subtitle v-else>Keine Verantwortlichen zugewiesen</v-card-subtitle>
+            <v-card-title class="py-2">
+                {{ los.name }}
+                <v-chip variant="elevated" v-if="los.responsible_organization_id">{{ companies.find(company => company.id === los.responsible_organization_id)?.name || 'Unknown Company' }}</v-chip>
+                <v-chip variant="elevated" v-else-if="los.troop_id">{{ troops.find(troop => troop.id === los.troop_id)?.name || 'Unknown Troop' }}</v-chip>
+                <v-chip variant="elevated" color="yellow" v-else>noch nicht zugewiesen</v-chip>
+            </v-card-title>
+            
 
         </v-card-item>
         <v-card-text>
-            <v-list>
+            <v-list v-if="los.cluster_ids && los.cluster_ids.length > 0" class="pa-0">
                 <v-list-item v-for="clusterId in los.cluster_ids" :key="clusterId">
                     ClusterName: {{ clustersAssigned.find(cluster => cluster.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
                     <template v-slot:append>
-                
-                    <v-btn
-                        v-if="props.is_admin"
-                        color="grey-lighten-1"
-                        icon="mdi-delete"
-                        variant="text"
-                        @click="(e) => _removeCluster(e, los.id, clusterId)"
-                    ></v-btn>
-            </template>
-                </v-list-item>
-                <v-list-item v-if="los.cluster_ids && los.cluster_ids.length === 0">
-                    <div class="text-center">
-                        <v-icon class="mb-2">mdi-information</v-icon>
-                        <p>No clusters assigned to this Los</p>
-                    </div>
+                            <v-btn
+                                v-if="props.is_admin"
+                                color="grey-lighten-1"
+                                icon="mdi-delete"
+                                variant="text"
+                                @click="(e) => _removeCluster(e, los.id, clusterId)"
+                            ></v-btn>
+                    </template>
                 </v-list-item>
             </v-list>
+            <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="los.cluster_ids && los.cluster_ids.length === 0">
+                Es wurde noch kein Trakt hinzugefügt.
+            </div>
         </v-card-text>
         <template v-slot:actions>
+            <v-spacer></v-spacer>
             <v-btn
                 v-if="props.is_admin"
-                variant="outlined"
+                variant="tonal"
                 class="mx-auto"
                 @click="_addClusterToLosDialog(los)"
+                rounded="xl"
             >
+                Trakt Hinzufügen
                 <v-icon>mdi-plus</v-icon>
-                Cluster Hinzufügen
-               
+                
             </v-btn>
         </template>
     </v-card>
+
+    <DialogTextfield
+        v-model="nameDialog"
+        :value="''"
+        :title="'Los hinzufügen'"
+        :text="'Bitte gib den Namen des Los ein, das du hinzufügen möchtest.'"
+        :btnText="'Los Hinzufügen'"
+        :icon="'mdi-view-grid-plus'"
+        :loading="addLosLoading"
+        :disabled="existingLose"
+        :placeholder="'z.b. Los Sachsen, Rhein-Sieg-Kreis, Los Angeles'"
+        @close="() => { nameDialog = false; }"
+        @confirm="_addLose"
+    />
 
     <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
         {{ snackbarText }}
@@ -479,5 +508,11 @@
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
-    <DialogResponsible v-model="responsibleDialog" :selected="selectedLos" @close="_handleClose" @confirm="(value) => _handleConfirm(value)"/>
+    
+    <DialogResponsible
+        v-model="responsibleDialog"
+        :selected="selectedLos"
+        @close="_handleClose"
+        @confirm="(value) => _handleConfirm(value)"
+    />
 </template>

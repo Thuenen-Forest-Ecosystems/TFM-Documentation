@@ -1,5 +1,7 @@
 <script setup>
     import { getCurrentInstance, onMounted, useAttrs, ref, watch } from 'vue';
+    import DialogTextfield from './DialogTextfield.vue';
+
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -7,6 +9,10 @@
     const attrs = useAttrs();
     const troops = ref([]);
     const users = ref([]);
+
+    const nameDialog = ref(false);
+    const existingTroops = ref([]);
+    const addTroopLoading = ref(false);
 
     const props = defineProps({
         organization_id: {
@@ -33,11 +39,13 @@
             .from('troop')
             .select('*')
             .eq('organization_id', organizationId)
+            .order('created_at', { ascending: false })
             .then(({ data, error }) => {
                 if (error) {
                     console.error('Error fetching troops:', error);
                 } else {
                     troops.value = data || [];
+                    existingTroops.value = troops.value.map(t => t.name.toLowerCase());
                 }
             })
             .catch((e) => {
@@ -45,8 +53,7 @@
             });
     }
 
-    function _addTroop() {
-        const troopName = prompt('Enter troop name:');
+    function _addTroop(troopName) {
 
         if (troopName && props.organization_id) {
             supabase
@@ -57,6 +64,8 @@
                         console.error('Error adding troop:', error);
                     } else {
                         _requestData(props.organization_id); // Refresh the list
+                        nameDialog.value = false; // Close the dialog
+                        addTroopLoading.value = false; // Reset loading state
                     }
                 })
                 .catch((e) => {
@@ -193,16 +202,23 @@
 </script>
 
 <template>
-    <v-toolbar class="mb-4">
+    <v-toolbar class="mb-4" color="transparent" style="border-bottom: 1px solid rgba(120, 120, 120, 0.12);">
         <!-- Add icon for adding users to troops -->
         <v-btn icon="mdi-account-group" variant="text"></v-btn>
         <v-toolbar-title>{{ props.title }}</v-toolbar-title>
         <!-- Only if Admin -->
-        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="_addTroop">
-            <v-icon>mdi-plus</v-icon>hinzufügen
+        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="() => { nameDialog = true; }">
+            neu<v-icon>mdi-account-multiple-plus</v-icon>
         </v-btn>
     </v-toolbar>
-    <v-card  v-for="troop in troops" :key="troop.id" class="mb-4">
+
+    <div class="text-center mb-4" v-if="!troops.length">
+        <v-alert type="warning" variant="tonal">
+            Es wurden noch keine Trupps hinzugefügt.<br/>Klicke auf "Neu", um einen neuen Trupp hinzuzufügen.
+        </v-alert>
+    </div>
+    
+    <v-card  v-for="troop in troops" :key="troop.id" class="mb-4" variant="tonal">
         <v-card-item>
             <v-card-title>{{ troop.name }}</v-card-title>
             <v-card-subtitle v-if="troop.is_control_troop">Kontroll-Trupp</v-card-subtitle>
@@ -210,9 +226,8 @@
                 <v-menu>
                     <template v-slot:activator="{ props: menuProps }">
                         <!-- Disable button if no troops available -->
-                        <v-btn v-if="props.is_admin" icon="mdi-plus" variant="text" v-bind="menuProps" :disabled="users.length === 0"></v-btn>
+                        <v-btn v-if="props.is_admin" icon="mdi-account-plus" variant="text" v-bind="menuProps" :disabled="users.length === 0"></v-btn>
                     </template>
-                    
                     <v-list>
                         <v-list-item
                             v-for="(item, i) in users"
@@ -221,7 +236,11 @@
                             @click="(e) => _addUserToTroop(e, item.id, troop.id)"
                         >
                             <v-list-item-title>{{ item.email }}</v-list-item-title>
-
+                        </v-list-item>
+                        <v-list-item v-if="users.length === 0" class="text-center">
+                            <p class="ma-2 text-body-2 text-medium-emphasis">
+                                Keine Benutzer verfügbar.
+                            </p>
                         </v-list-item>
                     </v-list>
                 </v-menu>
@@ -240,8 +259,26 @@
                 <template v-slot:append>
                     <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserFromTroop(e, userId, troop.id)"></v-btn>
                 </template>
-                
+            </v-list-item>
+            <v-list-item v-if="troop.user_ids.length === 0" class="text-center">
+                <p class="ma-2 text-body-2 text-medium-emphasis">
+                    Keine Benutzer in diesem Trupp.
+                </p>
             </v-list-item>
         </v-card-text>
     </v-card>
+
+    <DialogTextfield
+        v-model="nameDialog"
+        :value="''"
+        :title="'Trupp hinzufügen'"
+        :text="'Bitte gib den Namen des Trupps ein, den du hinzufügen möchtest.'"
+        :btnText="'Trupp Hinzufügen'"
+        :icon="'mdi-account-multiple-plus'"
+        :loading="addTroopLoading"
+        :disabled="existingTroops"
+        :placeholder="'z.B. Trupp Eberswalde, Trupp Versuchsfläche'"
+        @close="() => { nameDialog = false; }"
+        @confirm="_addTroop"
+    />
 </template>

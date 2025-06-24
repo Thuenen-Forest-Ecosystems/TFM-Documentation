@@ -1,8 +1,7 @@
 <script setup>
     import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
-    import { createClient } from '@supabase/supabase-js'
     import { format, render, cancel, register } from 'timeago.js';
-
+    import DialogEmail from './DialogEmail.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -13,6 +12,12 @@
     const userProfiles = ref([]);
     const userRole = ref(null); // Default to 'admin' if not provided in attrs
     const isOrganizationAdmin = ref(false); // Default to false
+
+    const emailDialog = ref(false); // Control the visibility of the email dialog
+
+    const currentUserSession = ref(null); // Store the current user session
+    const currentUserId = ref(null); // Store the current user ID
+    
 
     // Add this ref to store the ID of the admin to be deleted
     const pendingDeleteAdminId = ref(null);
@@ -35,7 +40,11 @@
     }
 
     async function _openAdminsDialog() {
-        const adminEmail = prompt('Enter administrator email:');
+        emailDialog.value = true;
+    }
+
+    async function _addAdminEmail(adminEmail) {
+        //const adminEmail = prompt('Enter administrator email:');
         if (adminEmail && adminEmail.trim() !== '' && attrs.organization_id) {
             try {
                 const { data, error: supabaseError } = await supabase.functions.invoke('invite-user', {
@@ -157,6 +166,12 @@
             await _requestData(attrs.organization_id);
             _getPermissions(attrs.organization_id);
         }
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            return;
+        }
+        currentUserSession.value = sessionData?.session || null;
+        currentUserId.value = sessionData?.session?.user?.id || null;
     });
 
     function _openEmailLink(email) {
@@ -176,20 +191,18 @@
             <v-btn v-if="!attrs.showAdmins" icon="mdi-account" variant="text"></v-btn>
             
             <v-toolbar-title>{{ attrs.title }}</v-toolbar-title>
-            <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" append-icon="mdi-plus" @click="_openAdminsDialog">hinzufügen</v-btn>
+            <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" append-icon="mdi-email-plus" @click="_openAdminsDialog">einladen</v-btn>
         </v-toolbar>
         <v-list lines="two">
-                <div class="text-center mb-4" v-if="!administrators.length">
-                    <p>No member found.</p>
+                <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="!administrators.length">
+                    <p>Kein Mitarbeiter hinzugefügt.</p>
                 </div>
                 <v-list-item v-for="administrator in administrators" :key="administrator.id">
                     <v-list-item-title>{{ userProfiles.find(profile => profile.id === administrator.user_id)?.email || 'Account wurde noch nicht bestätigt' }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                        {{ format(administrator.created_at, 'de_DE') }}
-                    </v-list-item-subtitle>
+                    
                     <template v-slot:append>
                         <v-btn v-if="userProfiles.find(profile => profile.id === administrator.user_id)?.email" icon="mdi-email" variant="flat" @click="_openEmailLink(userProfiles.find(profile => profile.id === administrator.user_id)?.email)"/>
-                        <v-btn v-if="attrs.is_admin" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
+                        <v-btn v-if="attrs.is_admin && currentUserId !== administrator.user_id" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
                     </template>
                     
                 </v-list-item>
@@ -198,6 +211,15 @@
     <div v-else>
         <p>No organization selected.</p>
     </div>
+
+    <DialogEmail 
+        v-model="emailDialog"
+        :organization_id="attrs.organization_id"
+        :showAdmins="attrs.showAdmins"
+        :title="attrs.title + ' einladen' || 'Mitarbeiter einladen'"
+        @close="() => { emailDialog = false; }"
+    />
+    
 
     <v-dialog v-model="isActive" max-width="500">
         <v-card title="Remove Member">

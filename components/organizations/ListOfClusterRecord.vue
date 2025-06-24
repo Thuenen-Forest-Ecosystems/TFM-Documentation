@@ -83,8 +83,8 @@ import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
         supabase
             .from('records')
             .select('plot_id, plot_name, cluster_name, cluster_id, responsible_troop')
-            .order('cluster_name', { ascending: true })
-            .range(page.value * rowsPerPage.value, (page.value + 1) * rowsPerPage.value - 1)
+            //.order('cluster_name', { ascending: true })
+            //.range(page.value * rowsPerPage.value, (page.value + 1) * rowsPerPage.value - 1)
             .then(({ data, error }) => {
                 if (error) {
                     console.error('Error fetching clusters:', error);
@@ -105,7 +105,7 @@ import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
             console.error('Error counting records:', error);
             return 0;
         }
-        console.log(data, count);
+        console.log('Total records:', count);
         return count;
     }
 

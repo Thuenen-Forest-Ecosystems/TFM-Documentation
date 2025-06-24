@@ -37,7 +37,6 @@
     }
 
     function _selectCompany(company) {
-        console.log('Selected company:', company);
         selectedCompany.value = company.id;
         selectedTroop.value = null; // Reset selected troop when a company is selected
         updateLos();
@@ -98,10 +97,23 @@
 </script>
 
 <template>
-    <v-dialog v-model="props.modelValue" max-width="500">
-        <v-card :title="props.selected.name">
+    <v-dialog v-model="props.modelValue" max-width="500" @click:outside="cancelAction">
+        <v-card rounded="lg">
+            <v-toolbar>
+                <v-btn v-if="props.icon" :icon="props.icon"></v-btn>
+
+                <v-toolbar-title>{{ props.selected.name }}</v-toolbar-title>
+
+                <v-toolbar-items>
+                    <v-btn
+                        icon="mdi-close"
+                        variant="text"
+                        @click="cancelAction"
+                ></v-btn>
+                </v-toolbar-items>
+            </v-toolbar>
             <v-card-text>
-                <p>
+                <p class="mb-6 text-body-2 text-medium-emphasis">
                     Wähle einen Dienstleister oder einen Trupp, welcher für das Los zuständig ist.
                 </p>
                 <v-row class="mt-4">
@@ -145,12 +157,7 @@
                 </v-row>
             </v-card-text>
             <v-card-actions>
-                <v-btn
-                    text="Cancel"
-                    variant="text"
-                    rounded="xl"
-                    @click="cancelAction"
-                ></v-btn>
+                
                 <v-spacer></v-spacer>
                 <v-btn
                     text="Anwenden"

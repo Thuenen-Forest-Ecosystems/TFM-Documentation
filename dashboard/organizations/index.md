@@ -88,8 +88,13 @@ description: Manage your organizations and their administrators.
     }
 </script>
 
-# {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
-Hier können Sie Mitarbeitende, Cluster, Lose und Dienstleister verwalten.
+<div class="text-center mt-4">
+    <h1>
+        {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
+    </h1>
+    Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
+</div>
+<hr/>
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">
     <v-tab value="1">Mitarbeitende</v-tab>
@@ -100,17 +105,17 @@ Hier können Sie Mitarbeitende, Cluster, Lose und Dienstleister verwalten.
 </v-tabs>
 <v-tabs-window v-model="tab" class="mt-4">
     <v-tabs-window-item value="1">
-        <p>
-            Administratoren können Lose, Trupps und Dienstleister verwalten.
-        </p>
-        <v-card class="mb-11">
-            <OrganizationsAdmins title="Administratoren" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="true" />
+        <v-card variant="tonal" class="mb-4">
+            <OrganizationsAdmins title="Administratoren" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="true" key="admin" />
+            <p class="text-body-2 text-medium-emphasis px-2 my-0" style="background-color:rgba(0, 0, 0, 0.04)">
+                Administratoren können Lose, Trupps und Dienstleister verwalten.
+            </p>
         </v-card>
-        <p>
-            Trupp Mitarbeitende können Losen zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
-        </p>
-        <v-card>
-            <OrganizationsAdmins title="Trupp Mitarbeitende" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" />
+        <v-card variant="tonal">
+            <OrganizationsAdmins title="Trupp Mitarbeitende" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
+            <p class="text-body-2 text-medium-emphasis px-2 my-0 " style="background-color:rgba(0, 0, 0, 0.04)">
+                Trupp Mitarbeitende können Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
+            </p>
         </v-card>
     </v-tabs-window-item>
     <v-tabs-window-item value="2">
@@ -127,7 +132,6 @@ Hier können Sie Mitarbeitende, Cluster, Lose und Dienstleister verwalten.
             :organization_id="organizationId" 
             :title="'Lose'" 
             :is_admin="permission.is_organization_admin || false"
-            :organization_type="currentOrganization.type"
         />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
@@ -136,7 +140,6 @@ Hier können Sie Mitarbeitende, Cluster, Lose und Dienstleister verwalten.
             :organization_id="organizationId"
             :type="_getChildOrganizationType()"
             :title="currentOrganization.type == 'root' ? 'Landesinventurleitung' : 'Dienstleister'"
-            :icon="'mdi-domain'"
             :is_admin="permission.is_organization_admin || false"
         />
     </v-tabs-window-item>
@@ -149,7 +152,7 @@ Hier können Sie Mitarbeitende, Cluster, Lose und Dienstleister verwalten.
         />
     </v-tabs-window-item>
 </v-tabs-window>
-
+<hr/>
 <div class="text-center mt-11 " >
     Organisation ID:<br/>
     <span class="text-caption text-grey">{{ currentOrganization.id }}</span>
