@@ -39,6 +39,10 @@
         is_admin: {
             type: Boolean,
             default: false
+        },
+        is_root: {
+            type: Boolean,
+            default: false
         }
     });
 
@@ -86,18 +90,27 @@
             }
         }
 
+        clustersAssigned.value = [];
+        if (assignedClusterIds.length === 0) {
+            console.log('No clusters assigned to any los.');
+            return;
+        }
+        // Fetch clusters from available based on assignedClusterIds
+        clustersAssigned.value = availableClusters.value.filter(cluster => assignedClusterIds.includes(cluster.id));
+
         // get data from records table
-        const {data, error} = await supabase.from('records').select('id:cluster_id, cluster_name').in('cluster_id', assignedClusterIds);
-        console.log(data);
+        /*const {data, error} = await supabase.from('records').select('id:cluster_id, cluster_name').in('cluster_id', assignedClusterIds);
+        
         if (error) {
             console.error('Error fetching clusters:', error);
             return;
         }
+        console.log('clustersAssigned', data);
         clustersAssigned.value = data;
-        return;
+        return;*/
 
-        const clusterIds = clusterData.map(item => item.cluster_id);
-        clustersAssigned.value.push(...clusterIds);
+        //const clusterIds = clusterData.map(item => item.cluster_id);
+        //clustersAssigned.value.push(...clusterIds);
     }
     function _requestData(organizationId) {
         if (!organizationId) {
@@ -234,6 +247,7 @@
 
         // Trim whitespace from each cluster name
         const trimmedClusterNames = clusterNameArray.map(name => name.trim()).filter(name => name !== '');
+
         if (trimmedClusterNames.length === 0) {
             snackbarText.value = 'No valid cluster names provided.';
             snackbar.value = true;
@@ -241,36 +255,19 @@
             return;
         }
 
-        // all names must be unique
-        //const uniqueClusterNames = [...new Set(trimmedClusterNames)];
+        /// filter already clustersAssigned
+        const filteredClusterNames = trimmedClusterNames.filter(name => {
+            return !clustersAssigned.value.some(cluster => cluster.cluster_name === name);
+        });
+        if (filteredClusterNames.length === 0) {
+            snackbarText.value = 'All provided cluster names are already assigned.';
+            snackbar.value = true;
+            snackbarColor.value = 'warning';
+            return;
+        }
+        
 
-        // convert all uniqueClusterNames to integer or remove if not a number
-        /*const uniqueClusterNamesInteger = uniqueClusterNames.map(name => {
-            const num = parseInt(name, 10);
-            return isNaN(num) ? null : num;
-        }).filter(name => name !== null);*/
-
-        // name to integer
-
-
-        // filter cluster names that are not in availableClusters
-        //const clusterNames = uniqueClusterNames.filter(name => {
-        //    return availableClusters.value.some(c => c.cluster_name === name);
-        //});
-//
-        //
-        //const clusterIds = availableClusters.value
-        //    .filter(c => clusterNames.includes(c.cluster_name))
-        //    .map(c => c.id);
-//
-        //if (clusterIds.length === 0) {
-        //    snackbarText.value = 'No valid cluster names provided.';
-        //    snackbar.value = true;
-        //    snackbarColor.value = 'error';
-        //    return;
-        //}
-
-        await _addClusterToLose(losDetails, trimmedClusterNames);
+        await _addClusterToLose(losDetails, filteredClusterNames);
     }
     async function _filterClustersAvailableFromDb(cluster_ids){
         if (!cluster_ids || cluster_ids.length === 0) return [];
@@ -294,21 +291,34 @@
             return [];
         }
     }
-    async function _addClusterToLose(losDetails, clusterIds) {
-        if (!losDetails || !clusterIds) return;
+    async function _addClusterToLose(losDetails, clusterNames) {
+        if (!losDetails || !clusterNames) return;
 
         //await _requestData(props.organization_id);
+
+       
         
         // Remove duplicates
-        const uniqueClusterIds = [...new Set(clusterIds)];
+        let uniqueClusterNames = [...new Set(clusterNames)];
 
         // Filter out any cluster IDs that are not in availableClusters
-        const validClusterIds = await _filterClustersAvailableFromDb(uniqueClusterIds);
+        //const finalClusterIds = await _filterClustersAvailableFromDb(uniqueClusterIds);
 
-        // Remove duplicates again after filtering
-        const finalClusterIds = [...new Set(validClusterIds)];
+        // Filter out any cluster IDs that are not in availableClusters
+        const finalClusterNames = uniqueClusterNames.filter(name => {
+            return availableClusters.value.some(cluster => cluster.cluster_name === name);
+        });
 
-        if (finalClusterIds.length === 0) {
+        console.log(finalClusterNames);
+        return;
+
+        // array of ids from cluster_name
+        const clusterIds = finalClusterNames.map(name => {
+            const cluster = availableClusters.value.find(cluster => cluster.cluster_name === name);
+            return cluster ? cluster.id : null;
+        }).filter(id => id !== null);
+
+        if (clusterIds.length === 0) {
             snackbarText.value = 'No valid cluster names provided.';
             snackbar.value = true;
             snackbarColor.value = 'error';
@@ -316,11 +326,15 @@
         }
 
         const currentClusterIds = losDetails.cluster_ids || [];
-        currentClusterIds.push(...finalClusterIds);
+        currentClusterIds.push(...clusterIds);
+
+        // Remove duplicates
+        const uniqueClusterIds = [...new Set(currentClusterIds)];
+        console.log('Adding clusters to lose:', uniqueClusterIds);
 
         const { data, error } = await supabase
             .from('organizations_lose')
-            .update({ cluster_ids: currentClusterIds })
+            .update({ cluster_ids: uniqueClusterIds })
             .eq('id', losDetails.id)
             .select()
             .single();
@@ -328,6 +342,7 @@
         if (error) {
             console.error('Error adding cluster to lose:', error);
         } else {
+            console.log('Data',data);
             losDetails.value = data;
             _updateAssignedClusters([losDetails.value]);
         }
@@ -342,16 +357,20 @@
         }
 
         try {
-
-            const {data, error} = await supabase
-                    .from('records')
-                    .select('id:cluster_id, cluster_name');
+            let data, error;
+            if(props.is_root) {
+                // Fetch all clusters if the user is a root organization
+                ({data, error} = await supabase.from('records').select('id:cluster_id, cluster_name').order('cluster_name', { ascending: false }).limit(4000));
+            } else {
+                // Fetch only clusters that are not assigned to any lose
+                ({data, error} = await supabase.from('records').select('id:cluster_id, cluster_name').order('cluster_name', { ascending: false }));
+            }
 
             if (error) {
                 console.error('Error fetching available clusters:', error);
             } else {
-                availableClusters.value = data;
-                console.log(availableClusters.value);
+                availableClusters.value = data || [];
+                _updateAssignedClusters(lose.value);
             }
         } catch (e) {
             console.error('An unexpected error occurred while fetching available clusters:', e);
@@ -361,7 +380,7 @@
     watch(() => props.organization_id, (newVal) => {
         if (newVal) {
             _requestData(newVal);
-            //getClustersAvailable();
+            getClustersAvailable();
             _getCompanies();
             _getTroops();
         }
@@ -373,7 +392,7 @@
             return;
         }
         _requestData(props.organization_id);
-        //getClustersAvailable();
+        getClustersAvailable();
         _getCompanies();
         _getTroops();
     });
@@ -456,7 +475,7 @@
         <v-card-text>
             <v-list v-if="los.cluster_ids && los.cluster_ids.length > 0" class="pa-0">
                 <v-list-item v-for="clusterId in los.cluster_ids" :key="clusterId">
-                    ClusterName: {{ clustersAssigned.find(cluster => cluster.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
+                    ClusterName: {{ availableClusters?.find(cluster => cluster.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
                     <template v-slot:append>
                             <v-btn
                                 v-if="props.is_admin"

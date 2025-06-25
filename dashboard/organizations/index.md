@@ -132,6 +132,7 @@ description: Manage your organizations and their administrators.
             :organization_id="organizationId" 
             :title="'Lose'" 
             :is_admin="permission.is_organization_admin || false"
+            :is_root="currentOrganization.is_root || false"
         />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
