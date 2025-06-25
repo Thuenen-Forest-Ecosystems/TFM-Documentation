@@ -309,9 +309,6 @@
             return availableClusters.value.some(cluster => cluster.cluster_name === name);
         });
 
-        console.log(finalClusterNames);
-        return;
-
         // array of ids from cluster_name
         const clusterIds = finalClusterNames.map(name => {
             const cluster = availableClusters.value.find(cluster => cluster.cluster_name === name);
