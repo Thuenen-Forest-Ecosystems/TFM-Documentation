@@ -120,7 +120,7 @@ description: Manage your organizations and their administrators.
     </v-tabs-window-item>
     <v-tabs-window-item value="2">
         <p>
-            Eine Liste aller Cluster, die in ihrer Organisation zugewiesen wurden.
+            Eine Liste aller Cluster, die ihrer Organisation zugewiesen wurden.
         </p>
         <v-card>
             <ListOfClusterRecord :organization_id="permission.organization_id" />

@@ -12,16 +12,44 @@ import './custom.css'
 let url = 'https://ci.thuenen.de';
 let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
 let redirectTo = 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
+let powersyncUrl = 'https://ci.thuenen.de/sync/';
 
 // Local development
 if(import.meta.env.DEV) {
   url = 'http://127.0.0.1:54321';
   apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
   redirectTo = 'http://localhost:5173/TFM-Documentation';
+  powersyncUrl = 'http://127.0.0.1:8181';
 }
 
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(url, apikey);
+
+// Powersync
+import { PowerSyncDatabase } from '@powersync/web';
+import { createPowerSyncPlugin } from '@powersync/vue'
+import { AppSchema } from './powersync-schema';
+import { SupabaseConnector } from './supabase-connector';
+
+const db = new PowerSyncDatabase({
+  database: { 
+    dbFilename: 'bwi.db',
+    debugMode: true
+  },
+  schema: AppSchema
+});
+
+const supabaseConnector = new SupabaseConnector(
+    url,
+    apikey,
+    powersyncUrl
+);
+
+db.connect(supabaseConnector);
+
+const powerSyncPlugin = createPowerSyncPlugin({database: db});
+
+db.init();
 
 // Vuetify
 import 'vuetify/styles'
@@ -90,6 +118,10 @@ export default {
     },
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
+      app.use(powerSyncPlugin);
+      app.use(db);
+      app.provide('globalIsDark', globalIsDark);
+
       app.component('DashboardButton', DashboardButton)
       app.component('OrganizationButton', OrganizationButton)
   

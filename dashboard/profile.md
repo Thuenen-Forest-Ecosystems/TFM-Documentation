@@ -80,7 +80,7 @@
                 return;
             }
             users_profile.value = data;
-            _getOrganizationById(data.organization_id);
+            //_getOrganizationById(data.organization_id);
         });
     }
     async function _getOrganizations(userId){

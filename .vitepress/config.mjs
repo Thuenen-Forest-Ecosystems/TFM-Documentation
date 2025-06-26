@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 import vuetify from 'vite-plugin-vuetify'
-
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -80,7 +81,13 @@ export default defineConfig({
   vite: {
     plugins: [
       vuetify(),
+      wasm(),
+      topLevelAwait()
     ],
+    worker: {
+      format: 'es',
+      plugins: () => [wasm(), topLevelAwait()]
+    },
     // Prevent Vuetify from optimizing imports by default
     ssr: {
       noExternal: ['vuetify']
@@ -91,7 +98,7 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      //exclude: ['@deck.gl/core', '@deck.gl/layers', '@deck.gl/geo-layers']
+      exclude: ['@journeyapps/wa-sqlite', '@powersync/web']
     },
     assetsInclude: ['**/*.wgsl'],
   }
