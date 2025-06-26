@@ -197,27 +197,11 @@
     }
 
     onMounted(async () => {
-        // Wait for PowerSync to be available on client-side
-        if (typeof window !== 'undefined') {
-          // Try to get PowerSync composable
-          try {
-            const { usePowerSync } = await import('@powersync/vue');
-            powersync = usePowerSync();
-          } catch (error) {
-            console.warn('PowerSync composable not available:', error);
-          }
-          
-          // Wait a bit for PowerSync to initialize
-          await nextTick();
-          setTimeout(() => {
-            _requestCluster();
-            _requestOrganizations();
-            _requestTroops();
-          }, 500);
-        } else {
-          // SSR mode - just set loading to false
-          loading.value = false;
-        }
+        _requestCluster();
+        //totalRecords.value = await _countRecords();
+        //pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);
+            
+
     });
 </script>
 

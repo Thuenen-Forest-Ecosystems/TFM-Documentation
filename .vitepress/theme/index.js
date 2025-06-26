@@ -62,9 +62,8 @@ if (typeof window !== 'undefined') {
     // Initialize db here, inside the browser check
     db.init();
     
-    console.log('PowerSync initialized successfully in browser');
   }).catch(error => {
-    console.error('Failed to initialize PowerSync:', error);
+    console.error('Failed to initialize:', error);
   });
 }
 
@@ -143,7 +142,6 @@ export default {
           if (powerSyncPlugin && db) {
             app.use(powerSyncPlugin);
             app.provide('powerSyncDB', db);
-            console.log('PowerSync plugin registered with Vue app');
           } else {
             // Retry after a short delay if PowerSync isn't ready yet
             setTimeout(initPowerSync, 100);
