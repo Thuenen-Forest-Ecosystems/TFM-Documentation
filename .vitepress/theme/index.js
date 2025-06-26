@@ -25,31 +25,48 @@ if(import.meta.env.DEV) {
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(url, apikey);
 
-// Powersync
-import { PowerSyncDatabase } from '@powersync/web';
-import { createPowerSyncPlugin } from '@powersync/vue'
-import { AppSchema } from './powersync-schema';
-import { SupabaseConnector } from './supabase-connector';
+// Powersync - Initialize only in browser
+let db = null;
+let powerSyncPlugin = null;
 
-const db = new PowerSyncDatabase({
-  database: { 
-    dbFilename: 'bwi.db',
-    debugMode: true
-  },
-  schema: AppSchema
-});
+if (typeof window !== 'undefined') {
+  // Dynamic imports to avoid SSR issues
+  Promise.all([
+    import('@powersync/web'),
+    import('@powersync/vue'),
+    import('./powersync-schema'),
+    import('./supabase-connector')
+  ]).then(([
+    { PowerSyncDatabase },
+    { createPowerSyncPlugin },
+    { AppSchema },
+    { SupabaseConnector }
+  ]) => {
+    db = new PowerSyncDatabase({
+      database: { 
+        dbFilename: 'bwi.db',
+        debugMode: true
+      },
+      schema: AppSchema
+    });
 
-const supabaseConnector = new SupabaseConnector(
-    url,
-    apikey,
-    powersyncUrl
-);
+    const supabaseConnector = new SupabaseConnector(
+        url,
+        apikey,
+        powersyncUrl
+    );
 
-db.connect(supabaseConnector);
-
-const powerSyncPlugin = createPowerSyncPlugin({database: db});
-
-db.init();
+    db.connect(supabaseConnector);
+    powerSyncPlugin = createPowerSyncPlugin({database: db});
+    
+    // Initialize db here, inside the browser check
+    db.init();
+    
+    console.log('PowerSync initialized successfully in browser');
+  }).catch(error => {
+    console.error('Failed to initialize PowerSync:', error);
+  });
+}
 
 // Vuetify
 import 'vuetify/styles'
@@ -118,8 +135,23 @@ export default {
     },
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
-      app.use(powerSyncPlugin);
-      app.use(db);
+      
+      // Only use PowerSync on client-side
+      if (typeof window !== 'undefined') {
+        // Wait for PowerSync to be initialized before using it
+        const initPowerSync = () => {
+          if (powerSyncPlugin && db) {
+            app.use(powerSyncPlugin);
+            app.provide('powerSyncDB', db);
+            console.log('PowerSync plugin registered with Vue app');
+          } else {
+            // Retry after a short delay if PowerSync isn't ready yet
+            setTimeout(initPowerSync, 100);
+          }
+        };
+        initPowerSync();
+      }
+      
       app.provide('globalIsDark', globalIsDark);
 
       app.component('DashboardButton', DashboardButton)

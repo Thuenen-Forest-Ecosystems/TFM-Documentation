@@ -1,6 +1,5 @@
 <script setup>
     import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
-    import { format, render, cancel, register } from 'timeago.js';
     import DialogEmail from './DialogEmail.vue';
 
     const instance = getCurrentInstance();

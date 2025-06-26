@@ -1,5 +1,5 @@
 <script setup>
-    import { onMounted, ref, getCurrentInstance, inject} from 'vue';
+    import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
     ModuleRegistry.registerModules([AllCommunityModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
@@ -8,10 +8,13 @@
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
     const globalIsDark = inject('globalIsDark');
-    const currentTheme = globalIsDark.value ? darkTheme : lightTheme;
+    const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
-    import { usePowerSync } from '@powersync/vue';
-    const powersync = usePowerSync();
+    // Handle PowerSync - only available in browser
+    let powersync = null;
+    
+    // Try to get PowerSync from injection instead of composable during SSR
+    const powerSyncDB = inject('powerSyncDB', null);
     
 
     const instance = getCurrentInstance();
@@ -97,7 +100,14 @@
     }
     function _requestOrganizations() {
         organizations.value = [];
-        powersync.value.getAll('SELECT * from organizations')
+        
+        // Check if PowerSync is available
+        if (!powerSyncDB) {
+          console.warn('PowerSync not available - using fallback data');
+          return;
+        }
+        
+        powerSyncDB.getAll('SELECT * from organizations')
             .then((l) => {
                 organizations.value = l;
                 if (organizations.value.length > 0) {
@@ -110,7 +120,14 @@
     }
     function _requestTroops() {
         troops.value = [];
-        powersync.value.getAll('SELECT * from troop')
+        
+        // Check if PowerSync is available
+        if (!powerSyncDB) {
+          console.warn('PowerSync not available - using fallback data');
+          return;
+        }
+        
+        powerSyncDB.getAll('SELECT * from troop')
             .then((l) => {
                 troops.value = l;
                 if (troops.value.length > 0) {
@@ -126,7 +143,14 @@
         loading.value = true;
         rowData.value = [];
 
-        powersync.value.getAll('SELECT * from records')
+        // Check if PowerSync is available
+        if (!powerSyncDB) {
+          console.warn('PowerSync not available - loading will remain true');
+          loading.value = false;
+          return;
+        }
+
+        powerSyncDB.getAll('SELECT * from records')
             .then((l) => {
                 records.value = l;
                 rowData.value = _groupByClusterId(records.value);
@@ -173,11 +197,27 @@
     }
 
     onMounted(async () => {
-        _requestCluster();
-        //totalRecords.value = await _countRecords();
-        //pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);
-            
-
+        // Wait for PowerSync to be available on client-side
+        if (typeof window !== 'undefined') {
+          // Try to get PowerSync composable
+          try {
+            const { usePowerSync } = await import('@powersync/vue');
+            powersync = usePowerSync();
+          } catch (error) {
+            console.warn('PowerSync composable not available:', error);
+          }
+          
+          // Wait a bit for PowerSync to initialize
+          await nextTick();
+          setTimeout(() => {
+            _requestCluster();
+            _requestOrganizations();
+            _requestTroops();
+          }, 500);
+        } else {
+          // SSR mode - just set loading to false
+          loading.value = false;
+        }
     });
 </script>
 

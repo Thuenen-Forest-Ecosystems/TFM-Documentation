@@ -90,7 +90,7 @@ export default defineConfig({
     },
     // Prevent Vuetify from optimizing imports by default
     ssr: {
-      noExternal: ['vuetify', '@powersync/web', '@powersync/vue', '@powersync/common']
+      noExternal: ['vuetify']
     },
     resolve: {
       alias: {
@@ -98,8 +98,7 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite'],
-      include: ['@powersync/web', '@powersync/vue', '@powersync/common']
+      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite', '@powersync/web', '@powersync/vue', '@powersync/common']
     },
     assetsInclude: ['**/*.wgsl'],
   }
