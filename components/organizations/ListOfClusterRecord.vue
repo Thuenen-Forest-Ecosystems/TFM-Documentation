@@ -4,6 +4,7 @@
     ModuleRegistry.registerModules([AllCommunityModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
+    import SyncStatus from '../SyncStatus.vue';
 
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
@@ -207,6 +208,7 @@
 
 <template>
     <!-- The AG Grid component -->
+     <SyncStatus :loading="loading" />
     <ag-grid-vue
         v-if="!loading"
         :theme="currentTheme"

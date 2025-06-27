@@ -1,19 +1,22 @@
 // ConnectionStatus.vue
 <script setup>
     import { usePowerSync } from '@powersync/vue';
-    import { ref } from 'vue';
+    import { onMounted, ref } from 'vue';
 
     const powersync = usePowerSync();
 
     const syncState = ref({});
-    console.log('SyncStatus', syncState);
 
-    powersync.value.registerListener({
-        statusChanged: (status) => {
-            syncState.value = status;
-            console.log('SyncStatus statusChanged', status);
-        }
+    onMounted(() => {
+        powersync.value.registerListener({
+            statusChanged: (status) => {
+                console.log('SyncStatus statusChanged', status);
+                syncState.value = status;
+            }
+        });
+        console.log('SyncStatus registered listener', powersync.value);
     });
+    
 
 </script>
 

@@ -16,10 +16,10 @@ let powersyncUrl = 'https://ci.thuenen.de/sync/';
 
 // Local development
 if(import.meta.env.DEV) {
-  url = 'http://127.0.0.1:54321';
-  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-  redirectTo = 'http://localhost:5173/TFM-Documentation';
-  powersyncUrl = 'http://127.0.0.1:8181';
+  //  url = 'http://127.0.0.1:54321';
+  //  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+  //  redirectTo = 'http://localhost:5173/TFM-Documentation';
+  //  powersyncUrl = 'http://127.0.0.1:8181';
 }
 
 import { createClient } from '@supabase/supabase-js'
@@ -61,7 +61,7 @@ if (typeof window !== 'undefined') {
     
     // Initialize db here, inside the browser check
     db.init();
-    
+    console.log('Powersync initialized with Supabase connector', db);
   }).catch(error => {
     console.error('Failed to initialize:', error);
   });
