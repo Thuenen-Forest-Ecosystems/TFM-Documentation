@@ -1,7 +1,6 @@
 <script setup>
 console.log('OrganizationButton component loaded');
-    import { ref, onMounted, getCurrentInstance } from 'vue'
-    import { createClient } from '@supabase/supabase-js'
+    import { ref, onMounted, getCurrentInstance, inject } from 'vue'
     import { withBase } from 'vitepress'
 
     const access_token = ref(null);
@@ -9,7 +8,8 @@ console.log('OrganizationButton component loaded');
     const user_organizations = ref([]);
     
     const instance = getCurrentInstance();
-    const supabase = instance.appContext.config.globalProperties.$supabase;
+    // Use the injected Supabase client instead of global properties
+    const supabase = inject('supabase');
 
     supabase.auth.onAuthStateChange((event, session) => {
         access_token.value = session?.access_token;

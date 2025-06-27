@@ -12,31 +12,80 @@ import './custom.css'
 let url = 'https://ci.thuenen.de';
 let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
 let redirectTo = 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
-let powersyncUrl = 'https://ci.thuenen.de/sync/';
+let powersyncUrl = 'https://ci.thuenen.de/sync';
 
 // Local development
 if(import.meta.env.DEV) {
-  //  url = 'http://127.0.0.1:54321';
-  //  apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-  //  redirectTo = 'http://localhost:5173/TFM-Documentation';
-  //  powersyncUrl = 'http://127.0.0.1:8181';
+ //   url = 'http://127.0.0.1:54321';
+ //   apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+ //   redirectTo = 'http://localhost:5173/TFM-Documentation';
+ //   powersyncUrl = 'http://127.0.0.1:8181';
 }
 
+// Create Supabase client - single instance to avoid multiple client warnings
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(url, apikey);
+
+// powersync - Initialize only in browser
+let db = null;
+let supabaseConnector = null;
+// powersync - Initialize only in browser
+if (typeof window !== 'undefined') {
+  const { PowerSyncDatabase } = await import('@powersync/web');
+  const { AppSchema } = await import('./powersync-schema');
+  const { SupabaseConnector } = await import('./supabase-connector');
+
+  db = new PowerSyncDatabase({
+    database: { 
+      dbFilename: 'bwi.db',
+      debugMode: true
+    },
+    schema: AppSchema,
+    websocketOptions: {
+      reconnect: true, // Enable automatic reconnection
+      debug: true      // Enable debug logs
+    }
+  });
+
+  supabaseConnector = new SupabaseConnector(
+      url,
+      apikey,
+      powersyncUrl
+  );
+
+  db.connect(supabaseConnector).catch(error => {
+    console.error('Failed to connect to WebSocket:', error);
+  });
+
+  db.init().then(() => {
+    db.registerListener({
+          statusChanged: (status) => {
+              console.log('SyncStatus statusChanged', status);
+          }
+      });
+    }).catch(error => {
+      console.error('Failed to initialize PowerSync:', error);
+    });
+}
+
+/*
 
 // Powersync - Initialize only in browser
 let db = null;
 let powerSyncPlugin = null;
+let powerSyncInitialized = false;
+
+// Create a promise that resolves when PowerSync is initialized
+let powerSyncInitPromise = null;
 
 if (typeof window !== 'undefined') {
   // Dynamic imports to avoid SSR issues
-  Promise.all([
+  powerSyncInitPromise = Promise.all([
     import('@powersync/web'),
-    import('@powersync/vue'),
+    //import('@powersync/vue'),
     import('./powersync-schema'),
     import('./supabase-connector')
-  ]).then(([
+  ]).then(async ([
     { PowerSyncDatabase },
     { createPowerSyncPlugin },
     { AppSchema },
@@ -49,23 +98,33 @@ if (typeof window !== 'undefined') {
       },
       schema: AppSchema
     });
-
+    console.log('Connecting PowerSync to Supabase', SupabaseConnector);
     const supabaseConnector = new SupabaseConnector(
         url,
         apikey,
         powersyncUrl
     );
-
+    
     db.connect(supabaseConnector);
     powerSyncPlugin = createPowerSyncPlugin({database: db});
     
     // Initialize db here, inside the browser check
-    db.init();
+    await db.init();
+    powerSyncInitialized = true;
     console.log('Powersync initialized with Supabase connector', db);
+
+    db.registerListener({
+        statusChanged: (status) => {
+            console.log('SyncStatus statusChanged', status);
+        }
+    });
+    
+    return { db, powerSyncPlugin };
   }).catch(error => {
-    console.error('Failed to initialize:', error);
+    console.error('Failed to initialize PowerSync:', error);
+    throw error;
   });
-}
+}*/
 
 // Vuetify
 import 'vuetify/styles'
@@ -135,20 +194,23 @@ export default {
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
       
+      // Provide the single Supabase instance globally to prevent multiple client warnings
+      app.provide('supabase', supabase);
+      app.config.globalProperties.$supabase = supabase;
+      
       // Only use PowerSync on client-side
-      if (typeof window !== 'undefined') {
-        // Wait for PowerSync to be initialized before using it
-        const initPowerSync = () => {
-          if (powerSyncPlugin && db) {
-            app.use(powerSyncPlugin);
-            app.provide('powerSyncDB', db);
-          } else {
-            // Retry after a short delay if PowerSync isn't ready yet
-            setTimeout(initPowerSync, 100);
+      /*if (typeof window !== 'undefined' && powerSyncInitPromise) {
+        // Wait for PowerSync to be properly initialized before using it
+        powerSyncInitPromise.then(({ db: initializedDb, powerSyncPlugin: initializedPlugin }) => {
+          if (initializedPlugin && initializedDb) {
+            app.use(initializedPlugin);
+            app.provide('powerSyncDB', initializedDb);
+            console.log('PowerSync plugin successfully added to Vue app');
           }
-        };
-        initPowerSync();
-      }
+        }).catch(error => {
+          console.error('Failed to initialize PowerSync in Vue app:', error);
+        });
+      }*/
       
       app.provide('globalIsDark', globalIsDark);
 
@@ -158,7 +220,6 @@ export default {
       app.config.globalProperties.$apikey = apikey
       app.config.globalProperties.$url = url;
       app.config.globalProperties.$redirectTo = redirectTo;
-      app.config.globalProperties.$supabase = supabase
     
     },
     setup() {
