@@ -31,6 +31,7 @@ let db = null;
 let supabaseConnector = null;
 // powersync - Initialize only in browser
 if (typeof window !== 'undefined') {
+  console.log('Initializing PowerSync in browser environment');
   const { PowerSyncDatabase } = await import('@powersync/web');
   const { AppSchema } = await import('./powersync-schema');
   const { SupabaseConnector } = await import('./supabase-connector');
