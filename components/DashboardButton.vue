@@ -1,16 +1,12 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
-    import { createClient } from '@supabase/supabase-js'
     import { withBase } from 'vitepress'
 
     const access_token = ref(null);
     const user_email = ref(null);
     
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey)
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     supabase.auth.onAuthStateChange((event, session) => {
         access_token.value = session?.access_token;
@@ -28,12 +24,12 @@
 
 <template>
     <a v-if="user_email" class="VPLink">
-        <v-btn rounded="xl" variant="tonal"  @click="_toProfile">
+        <v-btn rounded="xl" variant="tonal" @click="_toProfile">
             <span>{{ user_email }}</span>
         </v-btn>
     </a>
     <a v-else class="VPLink">
-        <v-btn rounded="xl" variant="tonal"  @click="_toSignIn">
+        <v-btn rounded="xl" variant="tonal" @click="_toSignIn">
             <span>sign in</span>
         </v-btn>
     </a>
