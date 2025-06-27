@@ -90,7 +90,8 @@ export default defineConfig({
     },
     // Prevent Vuetify from optimizing imports by default
     ssr: {
-      noExternal: ['vuetify']
+      noExternal: ['vuetify'],
+      external: ['@powersync/vue', '@powersync/web', '@powersync/common']
     },
     resolve: {
       alias: {
