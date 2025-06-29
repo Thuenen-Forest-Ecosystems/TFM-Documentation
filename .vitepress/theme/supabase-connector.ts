@@ -127,7 +127,7 @@ import {
   
     async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
       const transaction = await database.getNextCrudTransaction();
-  
+      console.log('Transaction to upload:', transaction);
       if (!transaction) {
         console.debug('No transaction to upload');
         return;
@@ -145,6 +145,10 @@ import {
             case UpdateType.PUT:
               const record = { ...op.opData, id: op.id };
               const recordPut = this.prepareDataForUpload(record, op.table);
+
+              const newArray = JSON.parse(record['cluster_ids'] ?? '[]');
+              console.log('newArray:', newArray);
+
               result = await table.upsert(recordPut);
               console.log('PUT result:', result);
               break;

@@ -4,7 +4,6 @@
     ModuleRegistry.registerModules([AllCommunityModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
-    import SyncStatus from '../SyncStatus.vue';
 
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
@@ -15,11 +14,13 @@
     let powersync = null;
     
     // Try to get PowerSync from injection instead of composable during SSR
-    const powerSyncDB = inject('powerSyncDB', null);
+    //const powerSyncDB = inject('powerSyncDB', null);
     
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
+
+    const powerSyncDB = instance.appContext.config.globalProperties.$db;
 
     const page = ref(1);
     const rowsPerPage = ref(100); // Number of rows per page
@@ -39,7 +40,7 @@
             headerName: "Cluster Name",
             filter: true,
             sortable: true,
-            type: "number",
+            //type: "number",
             pinned: 'left'
         },
         {
@@ -47,29 +48,40 @@
             headerName: "Administration",
             filter: true,
             sortable: true,
-            type: "string",
+            //type: "string",
         },
         {
             field: "responsible_state",
             headerName: "Landesinventurleitung",
             filter: true,
             sortable: true,
-            type: "string",
+            //type: "string",
         },
         {
             field: "responsible_provider",
             headerName: "Dienstleister",
             filter: true,
             sortable: true,
-            type: "string",
+            //type: "string",
         },
         {
             field: "responsible_troop",
             headerName: "Aufnahmetrupp",
             filter: true,
             sortable: true,
-            type: "string",
+            //type: "string",
         },
+        {
+            field: "is_valid",
+            headerName: "Gültigkeit",
+            filter: true,
+            sortable: true,
+            //type: "boolean",
+            cellRenderer: (params) => {
+                return params.value ? 'Valid' : 'Invalid';
+            }
+            //type: "string",
+        }
         //{ field: "more", headerName: "Details", pinned: 'right', width: 50 },
     ]);
     function _groupByClusterId(records) {
@@ -155,6 +167,7 @@
             .then((l) => {
                 records.value = l;
                 rowData.value = _groupByClusterId(records.value);
+                console.log(rowData.value.length);
                 _requestOrganizations();
                 _requestTroops();
             })
@@ -208,7 +221,6 @@
 
 <template>
     <!-- The AG Grid component -->
-     <SyncStatus :loading="loading" />
     <ag-grid-vue
         v-if="!loading"
         :theme="currentTheme"

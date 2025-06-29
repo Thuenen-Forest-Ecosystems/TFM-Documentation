@@ -15,6 +15,9 @@ description: Manage your organizations and their administrators.
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
     import ListOfLose from '../../components/organizations/ListOfLose.vue';
 
+    import SyncStatus from '../../components/SyncStatus.vue';
+
+
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -93,6 +96,9 @@ description: Manage your organizations and their administrators.
         {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
     </h1>
     Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
+    <div>
+        <SyncStatus />
+    </div>
 </div>
 <hr/>
 

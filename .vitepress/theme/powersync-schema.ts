@@ -26,12 +26,22 @@ const organizations = new Table({
 const troop = new Table({
     name: column.text
 });
+const users_profile = new Table({
+    organization_id: column.text
+});
+const organizations_lose = new Table({
+    cluster_ids: column.text,
+    name: column.text
+});
+
 export const AppSchema = new Schema({
     schemas,
     records,
     clusters,
     organizations,
-    troop
+    troop,
+    users_profile,
+    organizations_lose
 });
 
 export type Database = (typeof AppSchema)['types'];

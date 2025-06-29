@@ -3,6 +3,7 @@
     import { useRouter } from 'vitepress'
     import DialogResponsible from './DialogResponsible.vue';
     import DialogTextfield from './DialogTextfield.vue';
+import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
 
 
     const instance = getCurrentInstance();
@@ -20,6 +21,7 @@
     const selectedLos = ref(null);
 
     const responsibleDialog = ref(false);
+    const addPlotDialog = ref(false);
     const nameDialog = ref(false);
     const existingLose = ref([]);
     const addLosLoading = ref(false);
@@ -234,8 +236,26 @@
     }
 
     
-
+    
     async function _addClusterToLosDialog(losDetails){
+        if (!losDetails || !losDetails.id) {
+            console.error('Error: losDetails and losDetails.id are required.');
+            return;
+        }
+
+        console.log('Adding clusters to los:', losDetails);
+        // Open the dialog to add clusters
+        selectedLos.value = losDetails;
+        addPlotDialog.value = true;
+        
+
+        // Reset the input field in the dialog
+        const clusterNameInput = document.querySelector('#clusterNameInput');
+        if (clusterNameInput) {
+            clusterNameInput.value = '';
+        }
+    }
+    async function _addClusterToLosDialog_deprecated(losDetails){
         const clusterName = prompt('Enter cluster name:');
 
         const clusterNameArray = clusterName ? clusterName.split(',') : [];
@@ -289,6 +309,23 @@
         } catch (e) {
             console.error('An unexpected error occurred while fetching available clusters:', e);
             return [];
+        }
+    }
+    async function _addClusterToLoseFromDialog(losDetails, uniqueClusterIds){
+
+        const { data, error } = await supabase
+            .from('organizations_lose')
+            .update({ cluster_ids: uniqueClusterIds })
+            .eq('id', losDetails.id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error adding cluster to lose:', error);
+        } else {
+            _requestData(props.organization_id);
+            losDetails.value = data;
+            _updateAssignedClusters([losDetails.value]);
         }
     }
     async function _addClusterToLose(losDetails, clusterNames) {
@@ -504,6 +541,7 @@
         </template>
     </v-card>
 
+    
     <DialogTextfield
         v-model="nameDialog"
         :value="''"
@@ -524,7 +562,12 @@
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
-    
+
+    <DialogAddPlotsToLos
+        v-model="addPlotDialog"
+        :selectedLos="selectedLos"
+        @confirm="_addClusterToLoseFromDialog"
+    />
     <DialogResponsible
         v-model="responsibleDialog"
         :selected="selectedLos"
