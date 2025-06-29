@@ -27,51 +27,60 @@ import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(url, apikey);
 
 
-// powersync - Initialize only in browser
-import { PowerSyncDatabase } from '@powersync/web';
-import { AppSchema } from './powersync-schema';
-import { SupabaseConnector } from './supabase-connector';
-
+// powersync - Initialize only in browser with dynamic imports
+const dbState = ref(null);
 let db = null;
+
+// Create a promise that resolves when PowerSync is initialized
+let powerSyncInitPromise = null;
 
 if (typeof window !== 'undefined') {
   console.log('Initializing PowerSync in browser environment');
-  // powersync - Initialize only in browser
   
-  let supabaseConnector = null;
-  
-  db = new PowerSyncDatabase({
-    database: { 
-      dbFilename: 'bwi.db',
-      debugMode: true
-    },
-    schema: AppSchema,
-    websocketOptions: {
-      reconnect: true, // Enable automatic reconnection
-      debug: true      // Enable debug logs
-    }
-  });
-
-  supabaseConnector = new SupabaseConnector(
-      url,
-      apikey,
-      powersyncUrl
-  );
-
-  // Initialize PowerSync asynchronously
-  (async () => {
+  // Use dynamic imports to avoid SSR issues and ESM resolution problems
+  powerSyncInitPromise = (async () => {
     try {
-     
+      const [
+        { PowerSyncDatabase },
+        { AppSchema },
+        { SupabaseConnector }
+      ] = await Promise.all([
+        import('@powersync/web'),
+        import('./powersync-schema'),
+        import('./supabase-connector')
+      ]);
+
+      db = new PowerSyncDatabase({
+        database: { 
+          dbFilename: 'bwi.db',
+          debugMode: true
+        },
+        schema: AppSchema,
+        websocketOptions: {
+          reconnect: true, // Enable automatic reconnection
+          debug: true      // Enable debug logs
+        }
+      });
+
+      const supabaseConnector = new SupabaseConnector(
+          url,
+          apikey,
+          powersyncUrl
+      );
+
       await supabaseConnector.init();
-
       db.connect(supabaseConnector);
-      
-
       await db.init();
       
+      // Update the reactive state
+      dbState.value = db;
+      
+      console.log('PowerSync initialized successfully');
+      return db;
       
     } catch (error) {
       console.error('=== sync initialization failed ===', error);
+      throw error;
     }
   })();
 }
@@ -206,22 +215,11 @@ export default {
       app.provide('supabase', supabase);
       app.config.globalProperties.$supabase = supabase;
 
-      app.provide('db', db);
-      app.config.globalProperties.$db = db;
-      
-      // Only use PowerSync on client-side
-      /*if (typeof window !== 'undefined' && powerSyncInitPromise) {
-        // Wait for PowerSync to be properly initialized before using it
-        powerSyncInitPromise.then(({ db: initializedDb, powerSyncPlugin: initializedPlugin }) => {
-          if (initializedPlugin && initializedDb) {
-            app.use(initializedPlugin);
-            app.provide('powerSyncDB', initializedDb);
-            console.log('PowerSync plugin successfully added to Vue app');
-          }
-        }).catch(error => {
-          console.error('Failed to initialize PowerSync in Vue app:', error);
-        });
-      }*/
+      // Provide reactive database state and initialization promise
+      app.provide('db', dbState);
+      app.provide('dbPromise', powerSyncInitPromise);
+      app.config.globalProperties.$db = dbState;
+      app.config.globalProperties.$dbPromise = powerSyncInitPromise;
       
       app.provide('globalIsDark', globalIsDark);
       app.component('DashboardButton', DashboardButton)

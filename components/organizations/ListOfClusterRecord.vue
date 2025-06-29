@@ -10,6 +10,9 @@
     const globalIsDark = inject('globalIsDark');
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
+    import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
+    const { waitForDb } = useDatabase()
+
     // Handle PowerSync - only available in browser
     let powersync = null;
     
@@ -20,7 +23,7 @@
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
-    const powerSyncDB = instance.appContext.config.globalProperties.$db;
+    let powerSyncDB = ref(null);
 
     const page = ref(1);
     const rowsPerPage = ref(100); // Number of rows per page
@@ -211,6 +214,7 @@
     }
 
     onMounted(async () => {
+        powerSyncDB = await waitForDb();
         _requestCluster();
         //totalRecords.value = await _countRecords();
         //pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);

@@ -1,7 +1,10 @@
 <script setup>
     import { getCurrentInstance, ref, onMounted, watch } from 'vue';
 
-    const db = getCurrentInstance().appContext.config.globalProperties.$db;
+    import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
+    const { waitForDb } = useDatabase()
+
+    let db = ref(null);
 
     const clusterListInput = ref('');
     const loading = ref(false);
@@ -17,8 +20,9 @@
         selectedLos: Object
     });
 
-    onMounted(() => {
+    onMounted(async () => {
         loading.value = true;
+        db  = await waitForDb(); 
         getAvailableCluster();
     });
     function addSelectedClusterIds(){

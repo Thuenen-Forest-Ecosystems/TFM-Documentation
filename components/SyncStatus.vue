@@ -2,6 +2,9 @@
 <script setup>
     import { onMounted, ref, getCurrentInstance } from 'vue';
 
+    import { useDatabase } from '../.vitepress/theme/composables/useDatabase'
+    const { waitForDb } = useDatabase()
+
     // Get PowerSync from injection instead of using composable
     const syncState = ref({});
 
@@ -9,7 +12,8 @@
     const db = instance.appContext.config.globalProperties.$db;
 
     onMounted(async () => {
-       
+        const db = await waitForDb()
+       console.log(db);
         db.registerListener({
             statusChanged: (status) => {
                 console.log('SyncStatus statusChanged', status);
