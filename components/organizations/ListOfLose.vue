@@ -499,23 +499,6 @@ import ClustersPerLos from './ClustersPerLos.vue';
             <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="los.cluster_ids && los.cluster_ids.length === 0">
                 Es wurde noch kein Trakt hinzugefügt.
             </div>
-            <!--<v-list v-if="los.cluster_ids && los.cluster_ids.length > 0" class="pa-0">
-                <v-list-item v-for="clusterId in los.cluster_ids" :key="clusterId">
-                    ClusterName: {{ availableClusters?.find(cluster => cluster.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
-                    <template v-slot:append>
-                            <v-btn
-                                v-if="props.is_admin"
-                                color="grey-lighten-1"
-                                icon="mdi-delete"
-                                variant="text"
-                                @click="(e) => _removeCluster(e, los.id, clusterId)"
-                            ></v-btn>
-                    </template>
-                </v-list-item>
-            </v-list>
-            <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="los.cluster_ids && los.cluster_ids.length === 0">
-                Es wurde noch kein Trakt hinzugefügt.
-            </div>-->
         </v-card-text>
         <template v-slot:actions>
             <v-spacer></v-spacer>

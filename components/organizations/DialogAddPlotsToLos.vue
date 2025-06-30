@@ -132,16 +132,10 @@
     }
 
     async function addCluster() {
-        if (validClusterList.value.length === 0) {
-            error.value = 'Keine gültigen Cluster ausgewählt.';
-            return;
-        }
 
         loading.value = true;
         error.value = '';
-        success.value = '';
-
-        
+        success.value = '';       
 
         try {
 
