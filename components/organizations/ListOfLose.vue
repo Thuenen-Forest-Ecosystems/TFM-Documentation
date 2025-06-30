@@ -3,7 +3,8 @@
     import { useRouter } from 'vitepress'
     import DialogResponsible from './DialogResponsible.vue';
     import DialogTextfield from './DialogTextfield.vue';
-import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
+    import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
+import ClustersPerLos from './ClustersPerLos.vue';
 
 
     const instance = getCurrentInstance();
@@ -97,22 +98,7 @@ import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
             console.log('No clusters assigned to any los.');
             return;
         }
-        // Fetch clusters from available based on assignedClusterIds
         clustersAssigned.value = availableClusters.value.filter(cluster => assignedClusterIds.includes(cluster.id));
-
-        // get data from records table
-        /*const {data, error} = await supabase.from('records').select('id:cluster_id, cluster_name').in('cluster_id', assignedClusterIds);
-        
-        if (error) {
-            console.error('Error fetching clusters:', error);
-            return;
-        }
-        console.log('clustersAssigned', data);
-        clustersAssigned.value = data;
-        return;*/
-
-        //const clusterIds = clusterData.map(item => item.cluster_id);
-        //clustersAssigned.value.push(...clusterIds);
     }
     function _requestData(organizationId) {
         if (!organizationId) {
@@ -129,7 +115,11 @@ import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
                 if (error) {
                     console.error('Error fetching lose:', error);
                 } else {
-                    lose.value = data || [];
+                    lose.value = [ ...data ] || [];
+                    if (lose.value.length === 0) {
+                        console.warn('No lose found for the organization.');
+                        return;
+                    }
                     _updateAssignedClusters(lose.value);
                     existingLose.value = lose.value.map(l => l.name.toLowerCase());
                 }
@@ -414,7 +404,7 @@ import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
     watch(() => props.organization_id, (newVal) => {
         if (newVal) {
             _requestData(newVal);
-            getClustersAvailable();
+            //getClustersAvailable();
             _getCompanies();
             _getTroops();
         }
@@ -426,7 +416,7 @@ import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
             return;
         }
         _requestData(props.organization_id);
-        getClustersAvailable();
+        //getClustersAvailable();
         _getCompanies();
         _getTroops();
     });
@@ -503,11 +493,13 @@ import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
                 <v-chip variant="elevated" v-else-if="los.troop_id">{{ troops.find(troop => troop.id === los.troop_id)?.name || 'Unknown Troop' }}</v-chip>
                 <v-chip variant="elevated" color="yellow" v-else>noch nicht zugewiesen</v-chip>
             </v-card-title>
-            
-
         </v-card-item>
         <v-card-text>
-            <v-list v-if="los.cluster_ids && los.cluster_ids.length > 0" class="pa-0">
+            <ClustersPerLos v-if="los.cluster_ids && los.cluster_ids.length > 0" :records_Ids="los.cluster_ids"/>
+            <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="los.cluster_ids && los.cluster_ids.length === 0">
+                Es wurde noch kein Trakt hinzugefügt.
+            </div>
+            <!--<v-list v-if="los.cluster_ids && los.cluster_ids.length > 0" class="pa-0">
                 <v-list-item v-for="clusterId in los.cluster_ids" :key="clusterId">
                     ClusterName: {{ availableClusters?.find(cluster => cluster.id === clusterId)?.cluster_name || 'Unknown Cluster' }}
                     <template v-slot:append>
@@ -523,7 +515,7 @@ import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
             </v-list>
             <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="los.cluster_ids && los.cluster_ids.length === 0">
                 Es wurde noch kein Trakt hinzugefügt.
-            </div>
+            </div>-->
         </v-card-text>
         <template v-slot:actions>
             <v-spacer></v-spacer>
