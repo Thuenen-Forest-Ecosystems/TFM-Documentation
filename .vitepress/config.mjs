@@ -66,7 +66,8 @@ export default defineConfig({
             { text: 'Query Example', link: '/dashboard/authenticated' },
           ]
         }*/
-      ]
+      ],
+      '/authentication/': []
     },
 
     socialLinks: [

@@ -180,9 +180,9 @@
                     </v-btn>
                 </p>
             </div>
-            <div v-else>
+            <v-form v-else @submit.prevent="login">
                 
-                <h1>Login</h1>
+                <h1>Anmelden</h1>
                 
                 <v-text-field
                     label="E-Mail"
@@ -203,16 +203,12 @@
                     variant="solo"
                 ></v-text-field>
 
-                <v-btn rounded="xl"  @click="login" color="primary">
-                    Sign In
+                <v-btn rounded="xl" type="submit" color="primary">
+                    anmelden
                 </v-btn>
 
             
                 <p style="text-align: center;">
-                    <v-btn rounded="xl"  @click="is_signeUp = true" class="my-4">
-                        Sign Up
-                    </v-btn>
-                    &nbsp;
                     <v-btn rounded="xl"  @click="forgottenPassword = true" class="my-4">
                         Forgot Password
                     </v-btn>
@@ -223,7 +219,7 @@
                         You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:waldmonitoring@lfb.brandenburg.de">administrator</a>.
                     </small>
                 </p>
-            </div>  
+            </v-form>  
         </div>
     </div>
     <div v-else>
