@@ -16,7 +16,6 @@
        console.log(db);
         db.registerListener({
             statusChanged: (status) => {
-                console.log('SyncStatus statusChanged', status);
                 syncState.value = status;
             }
         });

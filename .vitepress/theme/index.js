@@ -85,64 +85,6 @@ if (typeof window !== 'undefined') {
   })();
 }
 
-/*
-
-// Powersync - Initialize only in browser
-let db = null;
-let powerSyncPlugin = null;
-let powerSyncInitialized = false;
-
-// Create a promise that resolves when PowerSync is initialized
-let powerSyncInitPromise = null;
-
-if (typeof window !== 'undefined') {
-  // Dynamic imports to avoid SSR issues
-  powerSyncInitPromise = Promise.all([
-    import('@powersync/web'),
-    //import('@powersync/vue'),
-    import('./powersync-schema'),
-    import('./supabase-connector')
-  ]).then(async ([
-    { PowerSyncDatabase },
-    { createPowerSyncPlugin },
-    { AppSchema },
-    { SupabaseConnector }
-  ]) => {
-    db = new PowerSyncDatabase({
-      database: { 
-        dbFilename: 'bwi.db',
-        debugMode: true
-      },
-      schema: AppSchema
-    });
-    console.log('Connecting PowerSync to Supabase', SupabaseConnector);
-    const supabaseConnector = new SupabaseConnector(
-        url,
-        apikey,
-        powersyncUrl
-    );
-    
-    db.connect(supabaseConnector);
-    powerSyncPlugin = createPowerSyncPlugin({database: db});
-    
-    // Initialize db here, inside the browser check
-    await db.init();
-    powerSyncInitialized = true;
-    console.log('Powersync initialized with Supabase connector', db);
-
-    db.registerListener({
-        statusChanged: (status) => {
-            console.log('SyncStatus statusChanged', status);
-        }
-    });
-    
-    return { db, powerSyncPlugin };
-  }).catch(error => {
-    console.error('Failed to initialize PowerSync:', error);
-    throw error;
-  });
-}*/
-
 // Vuetify
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'

@@ -13,6 +13,13 @@
     import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
     const { waitForDb } = useDatabase()
 
+    const props = defineProps({
+        organization_id: {
+            type: String,
+            required: true
+        }
+    });
+
     // Handle PowerSync - only available in browser
     let powersync = null;
     
@@ -165,11 +172,16 @@
           loading.value = false;
           return;
         }
-
-        powerSyncDB.getAll('SELECT * from records')
+        console.log('props.organization_id', props.organization_id)
+        powerSyncDB.getAll('SELECT * from records WHERE responsible_state = ? OR responsible_provider = ? OR responsible_administration = ? GROUP BY cluster_id', [
+            props.organization_id,
+            props.organization_id,
+            props.organization_id
+        ])
             .then((l) => {
+                console.log('Fetched records:', l);
                 records.value = l;
-                rowData.value = _groupByClusterId(records.value);
+                rowData.value = records.value; //_groupByClusterId(records.value);
                 console.log(rowData.value.length);
                 _requestOrganizations();
                 _requestTroops();
