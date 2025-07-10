@@ -1,6 +1,5 @@
 <script setup>
 import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
-import { createClient } from '@supabase/supabase-js'
 import { getClustersAvailable } from '../Utils';
 
 const instance = getCurrentInstance();

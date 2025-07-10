@@ -5,6 +5,8 @@
     import Firewall from '../components/Firewall.vue';
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+
+    console.log('fdsgdfgdf');
     
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;

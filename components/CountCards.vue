@@ -1,13 +1,9 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance } from 'vue'
-    import { createClient } from '@supabase/supabase-js'
     import { parse } from 'wkt';
 
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey);
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const plainPlotIdsArray = ref(null);
     const plainClusterIdsArray = ref(null);
@@ -18,6 +14,13 @@
     const states_responsible = ref([]);
     const troop_id = ref(null);
     const state_responsible_name = ref(null);
+
+    const selections = [
+        'ci2012',
+        'ci2017',
+        'bwi2022'
+    ];
+    const selectedInterval = ref('bwi2022');
 
 
     /**
@@ -202,6 +205,8 @@
 
     const downloadTable = async (table, type, country) => {
 
+       
+
         if(country == null) return;
         if(country.code == null) return;
 
@@ -214,6 +219,8 @@
 
         const fileName = table.name + '_' + new Date().toISOString() + '_' + country.code  + '.' + type;
 
+       
+
         if(country.data[table.name]){
             saveAsFile(table, fileName, country.data[table.name]);
             //table.loading = false;
@@ -221,19 +228,22 @@
             return;
         }
 
-        if(!country.plainPlotIdsArray){
+        if(!country.plainPlotIdsArray && table.name !== 'cluster'){
             let { data, error } = await supabase
                 .schema('inventory_archive')
                 .from('plot')
                 .select('id')
+                .eq('interval_name', selectedInterval.value)
                 .eq('federal_state', country.code);
-                country.plainPlotIdsArray = data.map(plot => plot.id);
+            country.plainPlotIdsArray = data.map(plot => plot.id);
         }
-        if(!country.plainPlotIdsArray){
+        if(!plainClusterIdsArray.value){
+            console.log(country.code);
             let result = await supabase.schema('inventory_archive').from('cluster').select('id').eq('state_responsible', country.code);
-            country.plainPlotIdsArray = result.data.map(cluster => cluster.id);
+            //country.plainPlotIdsArray = result.data.map(cluster => cluster.id);
+            plainClusterIdsArray.value = result.data.map(cluster => cluster.id);
         }
-        if(country.plainPlotIdsArray.length === 0){
+        if(country.plainPlotIdsArray?.length === 0 && table.name !== 'cluster'){
             alert('No plots found');
             //table.loading = false;
             country.loading[table.code] = false;
@@ -393,8 +403,6 @@
         let mimeType = 'text/plain;charset=utf-8;';
 
         const typeofdata = typeof data;
-
-        console.log(typeofdata, data);
        
         
         if (Array.isArray(data) && data.length > 0 && typeofdata === 'object' && filename.endsWith('.csv')) {
@@ -462,6 +470,20 @@
 </script>
 
 <template>
+    <v-btn-toggle
+        v-model="selectedInterval"
+        color="primary"
+        rounded="0"
+        group
+    >
+        <v-btn 
+            v-for="selection in selections"
+            :key="selection"
+            :value="selection"
+            @click="selectedInterval = selection">
+            {{ selection }}
+        </v-btn>
+    </v-btn-toggle>
     <div v-for="country in states_responsible" :key="country.code">
         <h3>{{ country.name_de }}</h3>
         <div style="margin-top:20px;">

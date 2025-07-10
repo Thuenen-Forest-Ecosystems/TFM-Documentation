@@ -5,7 +5,6 @@ import { isDark } from './composables/useGlobalTheme'
 import DashboardButton from '../../components/DashboardButton.vue'
 import OrganizationButton from '../../components/organizations/OrganizationButton.vue'
 
-
 import DefaultTheme from 'vitepress/theme'
 import './custom.css'
 
@@ -24,7 +23,7 @@ if(import.meta.env.DEV) {
 
 // Create Supabase client - single instance to avoid multiple client warnings
 import { createClient } from '@supabase/supabase-js'
-const supabase = createClient(url, apikey);
+//const supabase = createClient(url, apikey);
 
 
 // powersync - Initialize only in browser with dynamic imports
@@ -33,6 +32,23 @@ let db = null;
 
 // Create a promise that resolves when PowerSync is initialized
 let powerSyncInitPromise = null;
+
+
+// Test WebSocket connectivity
+const testSocket = new WebSocket(powersyncUrl+ '/sync/stream');
+testSocket.onopen = () => {
+  console.log("WebSocket connection successful");
+  testSocket.close();
+};
+testSocket.onerror = (error) => {
+  console.error("WebSocket connection failed:", error);
+};
+
+const supabaseConnector = new SupabaseConnector(
+    url,
+    apikey,
+    powersyncUrl
+);
 
 if (typeof window !== 'undefined') {
   console.log('Initializing PowerSync in browser environment');
@@ -50,10 +66,12 @@ if (typeof window !== 'undefined') {
         import('./supabase-connector')
       ]);
 
+
       db = new PowerSyncDatabase({
         database: { 
           dbFilename: 'bwi.db',
-          debugMode: true
+          debugMode: true,
+          verbose: true
         },
         schema: AppSchema,
         websocketOptions: {
@@ -61,17 +79,28 @@ if (typeof window !== 'undefined') {
           debug: true      // Enable debug logs
         }
       });
-
-      const supabaseConnector = new SupabaseConnector(
-          url,
-          apikey,
-          powersyncUrl
-      );
-
-      await supabaseConnector.init();
-      db.connect(supabaseConnector);
-      await db.init();
       
+      
+     
+
+      await supabaseConnector.init().then(() => {
+          console.log('SupabaseConnector initialized successfully');
+      }).catch((error) => {
+          console.error('SupabaseConnector initialization failed:', error);
+          throw error;
+      });
+      db.connect(supabaseConnector);
+
+      console.log("Database path:", db.database?.dbFilename);
+      
+      await db.init().then(() => {
+        console.log('PowerSync database initialized successfully');
+      }).catch((error) => {
+        console.error('PowerSync database initialization failed:', error);
+        throw error;
+      });
+      console.log('PowerSync database initialization completed.');
+
       // Update the reactive state
       dbState.value = db;
       
@@ -91,6 +120,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
+import { SupabaseConnector } from './supabase-connector'
 
 const vuetify = createVuetify({
     components,
@@ -152,10 +182,11 @@ export default {
     },
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
+
       
       // Provide the single Supabase instance globally to prevent multiple client warnings
-      app.provide('supabase', supabase);
-      app.config.globalProperties.$supabase = supabase;
+      app.provide('supabase', supabaseConnector.client);
+      app.config.globalProperties.$supabase = supabaseConnector.client;
 
       // Provide reactive database state and initialization promise
       app.provide('db', dbState);
@@ -181,4 +212,3 @@ export default {
       globalIsDark.value = isDark.value
     }
   }
-  

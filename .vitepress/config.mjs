@@ -56,7 +56,7 @@ export default defineConfig({
           text: 'Dashboard',
           items: [
             { text: 'Profile', link: '/dashboard/profile' },
-            //{ text: 'Download', link: '/dashboard/download' }
+            { text: 'Download', link: '/dashboard/download' }
           ]
         }/*,
         {
@@ -100,7 +100,8 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite', '@powersync/web', '@powersync/vue', '@powersync/common']
+      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite', '@powersync/web', '@powersync/vue', '@powersync/common', 'vue-maplibre-gl'],
+      include: ['geojson']
     },
     assetsInclude: ['**/*.wgsl'],
   }

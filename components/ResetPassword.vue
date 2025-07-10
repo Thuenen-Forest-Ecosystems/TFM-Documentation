@@ -1,11 +1,9 @@
 <script setup>
 
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
-    import { createClient } from '@supabase/supabase-js'
     
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
+    const supabase = instance.appContext.config.globalProperties.$supabase;
   
     const _resetPassword = () => {
         // Logic to reset the password

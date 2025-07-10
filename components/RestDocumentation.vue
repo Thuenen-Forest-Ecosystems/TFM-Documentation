@@ -1,13 +1,6 @@
 <script setup>    
     import { ref, onMounted, getCurrentInstance } from 'vue'
     import { useAttrs } from 'vue';
-    import { createClient } from '@supabase/supabase-js'
-
-    const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-   
-    const supabase = createClient(url, apikey)
 
 
     const contentProfile = useAttrs('content-profile');

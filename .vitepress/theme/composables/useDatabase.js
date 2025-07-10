@@ -23,6 +23,8 @@ export function useDatabase() {
         console.error('Failed to initialize database:', error)
         throw error
       }
+    }else{
+      console.log('powerSyncDB not ready');
     }
     
     throw new Error('Database not available')

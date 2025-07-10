@@ -1,15 +1,11 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
-    import { createClient } from '@supabase/supabase-js'
 
     const access_token = ref(null);
     const user_email = ref(null);
     
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey)
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     supabase.auth.onAuthStateChange((event, session) => {
         access_token.value = session?.access_token;

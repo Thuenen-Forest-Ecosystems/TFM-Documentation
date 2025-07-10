@@ -13,5 +13,5 @@
   Download inventory data related to your account.
 
 
-  <CountCards />
+<CountCards />
 </LoginForm>

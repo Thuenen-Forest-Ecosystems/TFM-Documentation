@@ -1,11 +1,13 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+    console.log('createClient');
     import { withBase } from 'vitepress'
     
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
     const url = instance.appContext.config.globalProperties.$url;
+    //const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const form = ref(false)
     const authErrors = ref(null);

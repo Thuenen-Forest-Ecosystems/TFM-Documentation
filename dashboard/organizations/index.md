@@ -1,12 +1,11 @@
 ---
 title: Organizations
 description: Manage your organizations and their administrators.
+layout: page
 ---
 
 <script setup>
-    
     import { onMounted, ref, getCurrentInstance } from 'vue';
-    import { createClient } from '@supabase/supabase-js'
 
     import ListOfOrganizations from '../../components/organizations/ListOfOrganizations.vue';
     import OrganizationsAdmins from '../../components/organizations/OrganizationsAdmins.vue';
@@ -14,10 +13,7 @@ description: Manage your organizations and their administrators.
     import ListOfCluster from '../../components/organizations/ListOfCluster.vue';
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
     import ListOfLose from '../../components/organizations/ListOfLose.vue';
-
     import SyncStatus from '../../components/SyncStatus.vue';
-
-
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -32,7 +28,9 @@ description: Manage your organizations and their administrators.
 
     const currentOrganization = ref({});
 
-    const tab = ref('3'); // Default tab
+    const currentSyncStatus = ref({});
+
+    const tab = ref('1'); // Default tab
 
     const _getOrganizationById = async (organizationId) => {
         const { data, error } = await supabase.from('organizations').select('*').eq('id', organizationId).single();
@@ -89,7 +87,12 @@ description: Manage your organizations and their administrators.
             return null;
         }
     }
+
+    function handleStatusChange(status) {
+        currentSyncStatus.value = status;
+    }
 </script>
+<div class="ma-11">
 
 <div class="text-center mt-4">
     <h1>
@@ -97,10 +100,9 @@ description: Manage your organizations and their administrators.
     </h1>
     Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
     <div>
-        <SyncStatus />
+        <SyncStatus @status-change="handleStatusChange" />
     </div>
 </div>
-<hr/>
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">
     <v-tab value="1">Mitarbeitende</v-tab>
@@ -128,9 +130,14 @@ description: Manage your organizations and their administrators.
         <p>
             Eine Liste aller Cluster, die ihrer Organisation zugewiesen wurden.
         </p>
-        <v-card>
-            <ListOfClusterRecord :organization_id="permission.organization_id" />
-        </v-card>
+        <ListOfClusterRecord v-if="currentSyncStatus.options?.hasSynced" :organization_id="permission.organization_id" />
+        <v-alert
+            v-else
+            density="compact"
+            text="Warten Sie, bis die Synchronisation abgeschlossen ist."
+            title="Synchronisation läuft"
+            type="warning"
+        ></v-alert>
     </v-tabs-window-item>
     <v-tabs-window-item value="3">
         <ListOfLose
@@ -159,8 +166,10 @@ description: Manage your organizations and their administrators.
         />
     </v-tabs-window-item>
 </v-tabs-window>
-<hr/>
+
 <div class="text-center mt-11 " >
     Organisation ID:<br/>
     <span class="text-caption text-grey">{{ currentOrganization.id }}</span>
+</div>
+
 </div>

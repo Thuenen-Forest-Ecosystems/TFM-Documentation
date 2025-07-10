@@ -16,6 +16,8 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     const rowData = ref([]);
     let powerSyncDB = ref(null); 
     let loading = ref(true);
+    let currentGrid = ref(null);
+    let selectedRows = ref([]);
 
     // props 
     const props = defineProps({
@@ -24,6 +26,16 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             default: () => []
         }
     });
+
+    // Grid Options
+    const gridOptions = {
+        rowSelection: {
+            mode: 'multiRow',
+            selectAll: 'filtered',
+            enableClickSelection: true,
+            
+        }
+    }
 
     const colDefs = ref([
         { 
@@ -94,32 +106,77 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             loading.value = false;
         }
     }
+    function onCellClicked(event) {
+        console.log('Cell clicked:', event);
+        // You can handle cell click events here if needed
+    }
+    function onSelectionChanged(event) {
+        selectedRows.value = event.api.getSelectedRows();
+        // Perform actions based on the selected rows
+    }
 
     onMounted(async () => {
         loading.value = true;
         powerSyncDB = await waitForDb();
         await fetchRecords(props.records_Ids);
         loading.value = false;
+
     });
 </script>
 
 
 <template>
-    <ag-grid-vue
-        v-if="!loading"
-        :theme="currentTheme"
-        :pagination="true"
-        :rowData="rowData"
-        :columnDefs="colDefs"
-        style="height: 500px"
-    >
-    </ag-grid-vue>
+    <div v-if="!loading">
+        <ag-grid-vue
+            ref="currentGrid"
+
+            @selection-changed="onSelectionChanged"
+
+            :gridOptions="gridOptions"
+            :theme="currentTheme"
+            :pagination="true"
+            :rowData="rowData"
+            :columnDefs="colDefs"
+            style="height: 500px"
+        ></ag-grid-vue>
+        
+        <div v-if="selectedRows.length > 0" class="d-flex">
+            <v-chip
+                class="ma-2"
+                color="primary"
+                text-color="white"
+                variant="tonal"
+                rounded="xl"
+            >
+                {{ selectedRows.length }} selected rows
+            </v-chip>
+            <v-spacer></v-spacer>
+            <v-btn
+                class="ma-2"
+                variant="tonal"
+                prepend-icon="mdi-file-download"
+                @click="currentGrid.api.exportDataAsCsv()"
+                rounded="xl"
+            >
+            .csv
+            </v-btn>
+            <v-btn
+            class="ma-2"
+                variant="tonal"
+                rounded="xl"
+                @click="currentGrid.api.deselectAll()"
+                append-icon="mdi-delete"
+            >
+                remove
+            </v-btn>
+        </div>
+    </div>
     <div v-else class="text-center ma-11">
         <v-progress-circular
             indeterminate
             color="primary"
-            size="30"
-            width="4"
+            size="40"
+            width="3"
         ></v-progress-circular>
         <p>Loading records...</p>
     </div>

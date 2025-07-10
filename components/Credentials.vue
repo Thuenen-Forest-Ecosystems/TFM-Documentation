@@ -1,7 +1,6 @@
 <script setup>
 
     import { ref, onMounted } from 'vue'
-    import { createClient } from '@supabase/supabase-js'
     import { getCurrentInstance } from 'vue'
 
     const supabase = getCurrentInstance().appContext.config.globalProperties.$supabase;
