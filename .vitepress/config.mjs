@@ -102,14 +102,29 @@ export default defineConfig({
     },
     optimizeDeps: {
       // Only exclude PowerSync during SSR build, but include in client build
-      exclude: []
+      exclude: ['@powersync/web', '@powersync/vue'],
+      include: []
     },
-    assetsInclude: ['**/*.wgsl'],
+    assetsInclude: ['**/*.wgsl', '**/*.wasm'],
     build: {
       // Don't mark PowerSync as external for client build - we need it bundled for GitHub Pages
       rollupOptions: {
         external: [],
       }
+    },
+    // Special handling for PowerSync workers and WASM files
+    server: {
+      fs: {
+        allow: ['..']
+      },
+      headers: {
+        'Cross-Origin-Embedder-Policy': 'credentialless',
+        'Cross-Origin-Opener-Policy': 'same-origin'
+      }
+    },
+    define: {
+      // Ensure proper environment for PowerSync
+      global: 'globalThis',
     }
   }
 })
