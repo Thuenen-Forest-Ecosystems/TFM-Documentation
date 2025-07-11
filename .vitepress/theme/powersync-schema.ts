@@ -1,4 +1,4 @@
-import { column, Schema, Table } from '@powersync/web';
+// Avoid static imports - only import PowerSync modules dynamically when needed
 
 export const listOfLookupTables = [
   'lookup_browsing',
@@ -54,69 +54,78 @@ export const listOfLookupTables = [
   'lookup_harvest_restriction',
   'lookup_accessibility'
 ];
-//const lookupTemplate = [column.text('name_de'), column.text('name_en'), column.text('interval'), column.integer('sort'), column.text('code')];
-const lookupTemplate = {
-    name_de: column.text,
-    name_en: column.text,
-    interval: column.text,
-    sort: column.integer,
-    code: column.text
-};
 
-const lookupTable = listOfLookupTables.reduce((acc, tableName) => {
-    acc[tableName] = new Table(lookupTemplate);
-    return acc;
-}, {});
+// Create the schema dynamically to avoid static imports
+export async function createAppSchema() {
+  // Dynamic import to avoid SSR issues
+  const { column, Schema, Table } = await import('@powersync/web');
 
-const records = new Table({
-    plot_id: column.text,
-    plot_name: column.integer,
-    created_at: column.text,
-    cluster_id: column.text,
-    cluster_name: column.integer,
-    responsible_administration: column.text,
-    responsible_state: column.text,
-    responsible_provider: column.text,
-    responsible_troop: column.text,
-    is_valid: column.integer,
-    schema_id: column.text,
-    previous_properties: column.text
-});
-/*const cluster = new Table({
-    cluster_name: column.text,
-    state_responsible: column.text,
-    states_affected: column.text,
-    cluster_status: column.text,
-    cluster_situation: column.text
-});*/
-const schemas = new Table({
-    interval_name: column.text
-});
-const organizations = new Table({
-    name: column.text,
-    type: column.text
-});
-const troop = new Table({
-    name: column.text
-});
-const users_profile = new Table({
-    organization_id: column.text
-});
-const organizations_lose = new Table({
-    cluster_ids: column.text,
-    record_ids: column.text,
-    name: column.text
-});
+  const lookupTemplate = {
+      name_de: column.text,
+      name_en: column.text,
+      interval: column.text,
+      sort: column.integer,
+      code: column.text
+  };
 
-export const AppSchema = new Schema({
-    schemas,
-    records,
-    organizations,
-    troop,
-    users_profile,
-    organizations_lose,
-    //cluster,
-    ...lookupTable
-});
+  const lookupTable = listOfLookupTables.reduce((acc, tableName) => {
+      acc[tableName] = new Table(lookupTemplate);
+      return acc;
+  }, {});
 
-export type Database = (typeof AppSchema)['types'];
+  const records = new Table({
+      plot_id: column.text,
+      plot_name: column.integer,
+      created_at: column.text,
+      cluster_id: column.text,
+      cluster_name: column.integer,
+      responsible_administration: column.text,
+      responsible_state: column.text,
+      responsible_provider: column.text,
+      responsible_troop: column.text,
+      is_valid: column.integer,
+      schema_id: column.text,
+      previous_properties: column.text
+  });
+  /*const cluster = new Table({
+      cluster_name: column.text,
+      state_responsible: column.text,
+      states_affected: column.text,
+      cluster_status: column.text,
+      cluster_situation: column.text
+  });*/
+  const schemas = new Table({
+      interval_name: column.text
+  });
+  const organizations = new Table({
+      name: column.text,
+      type: column.text
+  });
+  const troop = new Table({
+      name: column.text
+  });
+  const users_profile = new Table({
+      organization_id: column.text
+  });
+  const organizations_lose = new Table({
+      cluster_ids: column.text,
+      record_ids: column.text,
+      name: column.text
+  });
+
+  const AppSchema = new Schema({
+      schemas,
+      records,
+      organizations,
+      troop,
+      users_profile,
+      organizations_lose,
+      //cluster,
+      ...lookupTable
+  });
+
+  return AppSchema;
+}
+
+// For TypeScript type inference - we'll need to make this async too
+export type Database = any; // Simplified for now, can be improved with conditional types

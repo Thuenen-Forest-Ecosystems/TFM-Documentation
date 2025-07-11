@@ -1,48 +1,50 @@
-import {
+// Avoid static imports from PowerSync to prevent SSR issues
+import type { Session } from '@supabase/supabase-js';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
+
+//import { config } from './config.js';
+
+export type SupabaseConfig = {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  powersyncUrl: string;
+};
+
+/// Postgres Response codes that we cannot recover from by retrying.
+const FATAL_RESPONSE_CODES = [
+  // Class 22 — Data Exception
+  // Examples include data type mismatch.
+  new RegExp('^22...$'),
+  // Class 23 — Integrity Constraint Violation.
+  // Examples include NOT NULL, FOREIGN KEY and UNIQUE violations.
+  new RegExp('^23...$'),
+  // INSUFFICIENT PRIVILEGE - typically a row-level security violation
+  new RegExp('^42501$')
+];
+
+export type SupabaseConnectorListener = {
+  initialized: () => void;
+  sessionStarted: (session: Session) => void;
+};
+
+// Factory function to create SupabaseConnector after PowerSync is available
+export async function createSupabaseConnector(supabaseUrl: string, supabaseAnonKey: string, powersyncUrl: string) {
+  // Dynamic import to avoid SSR issues
+  const {
     AbstractPowerSyncDatabase,
     BaseObserver,
-    CrudEntry,
-    type PowerSyncBackendConnector,
     UpdateType
-  } from '@powersync/web';
-  
-  import type { Session } from '@supabase/supabase-js';
-  import { SupabaseClient, createClient } from '@supabase/supabase-js';
+  } = await import('@powersync/web');
 
-  //import { config } from './config.js';
-  
-  export type SupabaseConfig = {
-    supabaseUrl: string;
-    supabaseAnonKey: string;
-    powersyncUrl: string;
-  };
-  
-  /// Postgres Response codes that we cannot recover from by retrying.
-  const FATAL_RESPONSE_CODES = [
-    // Class 22 — Data Exception
-    // Examples include data type mismatch.
-    new RegExp('^22...$'),
-    // Class 23 — Integrity Constraint Violation.
-    // Examples include NOT NULL, FOREIGN KEY and UNIQUE violations.
-    new RegExp('^23...$'),
-    // INSUFFICIENT PRIVILEGE - typically a row-level security violation
-    new RegExp('^42501$')
-  ];
-  
-  export type SupabaseConnectorListener = {
-    initialized: () => void;
-    sessionStarted: (session: Session) => void;
-  };
-  
-  export class SupabaseConnector extends BaseObserver<SupabaseConnectorListener> implements PowerSyncBackendConnector {
+  class SupabaseConnector extends BaseObserver<SupabaseConnectorListener> {
     readonly client: SupabaseClient;
     readonly config: SupabaseConfig;
-  
+
     ready: boolean;
-  
+
     currentSession: Session | null;
-  
-    constructor(supabaseUrl, supabaseAnonKey, powersyncUrl) {
+
+    constructor(supabaseUrl: string, supabaseAnonKey: string, powersyncUrl: string) {
       super();
 
       console.log(supabaseUrl);
@@ -52,7 +54,7 @@ import {
         powersyncUrl: powersyncUrl,
         supabaseAnonKey: supabaseAnonKey
       };
-  
+
       this.client = createClient(this.config.supabaseUrl, this.config.supabaseAnonKey, {
         auth: {
           persistSession: true
@@ -61,7 +63,7 @@ import {
       this.currentSession = null;
       this.ready = false;
     }
-  
+
     async init() {
       if (this.ready) {
         return;
@@ -70,12 +72,12 @@ import {
       const sessionResponse = await this.client.auth.getSession();
        
       this.updateSession(sessionResponse.data.session);
-  
+
       this.ready = true;
       this.iterateListeners((cb) => cb.initialized?.());
       console.log('init successfull');
     }
-  
+
     async login(username: string, password: string) {
       const {
         data: { session },
@@ -84,27 +86,27 @@ import {
         email: username,
         password: password
       });
-  
+
       if (error) {
         throw error;
       }
-  
+
       this.updateSession(session);
       console.log('init successfull');
     }
-  
+
     async fetchCredentials() {
       const {
         data: { session },
         error
       } = await this.client.auth.getSession();
-  
+
       if (!session || error) {
         throw new Error(`Could not fetch Supabase credentials: ${error}`);
       }
-  
+
       console.debug('session expires at', session.expires_at);
-  
+
       return {
         endpoint: this.config.powersyncUrl,
         token: session.access_token ?? ''
@@ -124,16 +126,16 @@ import {
 
       return record;
     }
-  
-    async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
+
+    async uploadData(database: any): Promise<void> {
       const transaction = await database.getNextCrudTransaction();
       console.log('Transaction to upload:', transaction);
       if (!transaction) {
         console.debug('No transaction to upload');
         return;
       }
-  
-      let lastOp: CrudEntry | null = null;
+
+      let lastOp: any | null = null;
       try {
         // Note: If transactional consistency is important, use database functions
         // or edge functions to process the entire transaction in a single call.
@@ -161,7 +163,7 @@ import {
               result = await table.delete().eq('id', op.id);
               break;
           }
-  
+
           if (result.error) {
             if(result.error.code == 'P0001'){
               console.error('P0001', result.error, op.id, op);
@@ -173,7 +175,7 @@ import {
             throw result.error;
           }
         }
-  
+
         await transaction.complete();
         console.debug('Transaction complete');
       } catch (ex: any) {
@@ -196,7 +198,7 @@ import {
         }
       }
     }
-  
+
     updateSession(session: Session | null) {
       this.currentSession = session;
       if (!session) {
@@ -205,3 +207,6 @@ import {
       this.iterateListeners((cb) => cb.sessionStarted?.(session));
     }
   }
+
+  return SupabaseConnector;
+}

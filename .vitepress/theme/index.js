@@ -5,6 +5,7 @@ import { isDark } from './composables/useGlobalTheme'
 import DashboardButton from '../../components/DashboardButton.vue'
 import OrganizationButton from '../../components/organizations/OrganizationButton.vue'
 
+
 import DefaultTheme from 'vitepress/theme'
 import './custom.css'
 
@@ -22,96 +23,89 @@ if(import.meta.env.DEV) {
 }
 
 // Create Supabase client - single instance to avoid multiple client warnings
-import { createClient } from '@supabase/supabase-js'
-//const supabase = createClient(url, apikey);
+// For GitHub Pages deployment, we need to provide a mock during SSR and real client in browser
 
+let supabase = null;
 
-// powersync - Initialize only in browser with dynamic imports
-const dbState = ref(null);
-let db = null;
-
-// Create a promise that resolves when PowerSync is initialized
-let powerSyncInitPromise = null;
-
-
-// Test WebSocket connectivity
-const testSocket = new WebSocket(powersyncUrl+ '/sync/stream');
-testSocket.onopen = () => {
-  console.log("WebSocket connection successful");
-  testSocket.close();
-};
-testSocket.onerror = (error) => {
-  console.error("WebSocket connection failed:", error);
-};
-
-const supabaseConnector = new SupabaseConnector(
-    url,
-    apikey,
-    powersyncUrl
-);
+// Create a mock Supabase client for SSR that prevents errors
+const createMockSupabase = () => ({
+  auth: {
+    signInWithPassword: () => Promise.resolve({ user: null, session: null, error: null }),
+    signUp: () => Promise.resolve({ data: null, error: null }),
+    signOut: () => Promise.resolve({ error: null }),
+    resetPasswordForEmail: () => Promise.resolve({ data: null, error: null }),
+    updateUser: () => Promise.resolve({ data: null, error: null }),
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: null } })
+  }
+});
 
 if (typeof window !== 'undefined') {
-  console.log('Initializing PowerSync in browser environment');
-  
-  // Use dynamic imports to avoid SSR issues and ESM resolution problems
-  powerSyncInitPromise = (async () => {
-    try {
-      const [
-        { PowerSyncDatabase },
-        { AppSchema },
-        { SupabaseConnector }
-      ] = await Promise.all([
-        import('@powersync/web'),
-        import('./powersync-schema'),
-        import('./supabase-connector')
-      ]);
+  // Only import and create real Supabase client in the browser
+  const { createClient } = await import('@supabase/supabase-js');
+  supabase = createClient(url, apikey);
+} else {
+  // Provide mock Supabase for SSR
+  supabase = createMockSupabase();
+}
 
 
-      db = new PowerSyncDatabase({
-        database: { 
-          dbFilename: 'bwi.db',
-          debugMode: true,
-          verbose: true
-        },
-        schema: AppSchema,
-        websocketOptions: {
-          reconnect: true, // Enable automatic reconnection
-          debug: true      // Enable debug logs
-        }
-      });
-      
-      
-     
+// Only initialize PowerSync in browser with dynamic imports
+// For GitHub Pages deployment, completely avoid PowerSync during SSR
+const dbState = ref(null);
+let db = null;
+let powerSyncInitPromise = null;
 
-      await supabaseConnector.init().then(() => {
-          console.log('SupabaseConnector initialized successfully');
-      }).catch((error) => {
-          console.error('SupabaseConnector initialization failed:', error);
-          throw error;
-      });
-      db.connect(supabaseConnector);
-
-      console.log("Database path:", db.database?.dbFilename);
-      
-      await db.init().then(() => {
-        console.log('PowerSync database initialized successfully');
-      }).catch((error) => {
-        console.error('PowerSync database initialization failed:', error);
-        throw error;
-      });
-      console.log('PowerSync database initialization completed.');
-
-      // Update the reactive state
-      dbState.value = db;
-      
-      console.log('PowerSync initialized successfully');
-      return db;
-      
-    } catch (error) {
-      console.error('=== sync initialization failed ===', error);
-      throw error;
-    }
-  })();
+// Only initialize PowerSync in browser AND after page is fully loaded to avoid SSR issues
+if (typeof window !== 'undefined') {
+  // Delay PowerSync initialization to ensure we're fully in browser context
+  powerSyncInitPromise = new Promise((resolve) => {
+    setTimeout(async () => {
+      try {
+        console.log('Initializing PowerSync in browser environment');
+        const [
+          { PowerSyncDatabase },
+          { createAppSchema },
+          { createSupabaseConnector }
+        ] = await Promise.all([
+          import('@powersync/web'),
+          import('./powersync-schema'),
+          import('./supabase-connector')
+        ]);
+        
+        // Create schema and connector using factory functions
+        const AppSchema = await createAppSchema();
+        const SupabaseConnector = await createSupabaseConnector(url, apikey, powersyncUrl);
+        
+        db = new PowerSyncDatabase({
+          database: { dbFilename: 'bwi.db', debugMode: true },
+          schema: AppSchema,
+          websocketOptions: { reconnect: true, debug: true }
+        });
+        
+        const supabaseConnector = new SupabaseConnector(
+          url,
+          apikey,
+          powersyncUrl
+        );
+        
+        await supabaseConnector.init();
+        db.connect(supabaseConnector);
+        await db.init();
+        dbState.value = db;
+        
+        console.log('PowerSync initialized successfully');
+        resolve(db);
+        return db;
+      } catch (error) {
+        console.error('=== PowerSync initialization failed ===', error);
+        resolve(null);
+      }
+    }, 100); // Small delay to ensure we're in browser context
+  });
+} else {
+  // Provide a resolved promise for SSR that doesn't try to import PowerSync
+  powerSyncInitPromise = Promise.resolve(null);
 }
 
 // Vuetify
@@ -120,7 +114,6 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
-import { SupabaseConnector } from './supabase-connector'
 
 const vuetify = createVuetify({
     components,
@@ -183,25 +176,24 @@ export default {
     enhanceApp({ app, router, siteData }) {
       app.use(vuetify)
 
-      
       // Provide the single Supabase instance globally to prevent multiple client warnings
-      app.provide('supabase', supabaseConnector.client);
-      app.config.globalProperties.$supabase = supabaseConnector.client;
+      // Always provide supabase (either real or mock) to prevent undefined errors
+      app.provide('supabase', supabase);
+      app.config.globalProperties.$supabase = supabase;
 
       // Provide reactive database state and initialization promise
       app.provide('db', dbState);
       app.provide('dbPromise', powerSyncInitPromise);
       app.config.globalProperties.$db = dbState;
       app.config.globalProperties.$dbPromise = powerSyncInitPromise;
-      
+
       app.provide('globalIsDark', globalIsDark);
       app.component('DashboardButton', DashboardButton)
       app.component('OrganizationButton', OrganizationButton)
-  
+
       app.config.globalProperties.$apikey = apikey
       app.config.globalProperties.$url = url;
       app.config.globalProperties.$redirectTo = redirectTo;
-    
     },
     setup() {
       // This ensures the theme is correct on initial load
@@ -212,3 +204,4 @@ export default {
       globalIsDark.value = isDark.value
     }
   }
+  

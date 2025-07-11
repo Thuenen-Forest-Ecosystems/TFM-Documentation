@@ -92,7 +92,8 @@ export default defineConfig({
     // Prevent Vuetify from optimizing imports by default
     ssr: {
       noExternal: ['vuetify'],
-      external: ['@powersync/vue', '@powersync/web', '@powersync/common']
+      // Make pattern matching more comprehensive
+      external: ['@powersync/vue', '@powersync/web', '@powersync/common', '@powersync/*', '@journeyapps/*']
     },
     resolve: {
       alias: {
@@ -100,9 +101,14 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite', '@powersync/web', '@powersync/vue', '@powersync/common', 'vue-maplibre-gl'],
-      include: ['geojson']
+      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite', '@powersync/web', '@powersync/vue', '@powersync/common']
     },
     assetsInclude: ['**/*.wgsl'],
+    build: {
+      // Add this section to control PowerSync in the build
+      rollupOptions: {
+        external: ['@powersync/web', '@powersync/vue', '@powersync/common', '@journeyapps/wa-sqlite', '@powersync/wa-sqlite'],
+      }
+    }
   }
 })

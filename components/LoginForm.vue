@@ -21,8 +21,8 @@
 
     const access_token = ref(null);
 
-    // Get Errors from URL
-    if(window.location.hash) {
+    // Get Errors from URL - only in browser
+    if(typeof window !== 'undefined' && window.location.hash) {
         var hash = window.location.hash.substring(1); //Puts hash in variable, and removes the # character
         // get error_description
         var error_description = hash.split('&').find(e => e.startsWith('error_description='));
@@ -39,7 +39,7 @@
     function parseJwt (token) {
         var base64Url = token.split('.')[1];
         var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
 
@@ -66,7 +66,9 @@
             authErrors.value = error.message;
         }else{
             // Forward to profile page
-            window.location.replace("/TFM-Documentation/dashboard/profile");
+            if (typeof window !== 'undefined') {
+                window.location.replace("/TFM-Documentation/dashboard/profile");
+            }
         }
     }
     const signUp = async () => {
@@ -80,7 +82,7 @@
             email: username.value,
             password: password.value,
             options: {
-                emailRedirectTo: window.location.origin + '/TFM-Documentation/dashboard/profile',
+                emailRedirectTo: (typeof window !== 'undefined' ? window.location.origin : '') + '/TFM-Documentation/dashboard/profile',
             }
         });
         if (error) {
@@ -97,7 +99,9 @@
             console.log('signed out');
             authErrors.value = null;
             // navigate to login page
-            window.location.replace("/TFM-Documentation/authentication/sign-in");
+            if (typeof window !== 'undefined') {
+                window.location.replace("/TFM-Documentation/authentication/sign-in");
+            }
         }).catch((error) => {
             console.log(error);
         }).finally(() => {

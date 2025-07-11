@@ -14,7 +14,7 @@
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
     import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
-    import MapRecords from './MapRecords.vue';
+
     const { waitForDb } = useDatabase()
     const lookupTablesValue = ref({});
     let currentGrid = ref(null);
@@ -582,9 +582,4 @@
         </div>
 
     </v-card>
-
-    <!--<v-list-subheader>Map View</v-list-subheader>
-    <v-card class="mt-4">
-        <MapRecords :geoJson="rowData" />
-    </v-card>-->
 </template>
