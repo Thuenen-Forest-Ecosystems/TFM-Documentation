@@ -500,7 +500,7 @@ import ClustersPerLos from './ClustersPerLos.vue';
                 Es wurde noch kein Trakt hinzugefügt.
             </div>
         </v-card-text>
-        <template v-slot:actions>
+        <!--template v-slot:actions>
             <v-spacer></v-spacer>
             <v-btn
                 v-if="props.is_admin"
@@ -513,7 +513,7 @@ import ClustersPerLos from './ClustersPerLos.vue';
                 <v-icon>mdi-plus</v-icon>
                 
             </v-btn>
-        </template>
+        </template>--><
     </v-card>
 
     

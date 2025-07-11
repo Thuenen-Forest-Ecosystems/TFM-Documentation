@@ -32,7 +32,6 @@
     const emit = defineEmits(['status-change']);
 
     function parseDownloading(downloadProgress){
-        console.log(downloadProgress);
         let globalSince = 0;
         let globalCount = 0;
         // loop through object downloadProgress
@@ -41,7 +40,6 @@
             globalSince += element.since_last; // / element.target_count * 100;
             globalCount += element.target_count;
         }
-        console.log(globalSince, globalCount, globalSince / globalCount * 100);
         return globalCount > 0 ? globalSince / globalCount * 100 : 0;
     }
 
@@ -51,7 +49,6 @@
             db.value.registerListener({
                 statusChanged: (status) => {
                     syncState.value = status;
-                    console.log(status);
                     if(status.dataFlowStatus.downloadProgress){
                         downloadingPercent.value = parseDownloading(status.dataFlowStatus.downloadProgress);
                     }

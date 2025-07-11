@@ -75,7 +75,6 @@ export async function createSupabaseConnector(supabaseUrl: string, supabaseAnonK
 
       this.ready = true;
       this.iterateListeners((cb) => cb.initialized?.());
-      console.log('init successfull');
     }
 
     async login(username: string, password: string) {
@@ -92,7 +91,6 @@ export async function createSupabaseConnector(supabaseUrl: string, supabaseAnonK
       }
 
       this.updateSession(session);
-      console.log('init successfull');
     }
 
     async fetchCredentials() {

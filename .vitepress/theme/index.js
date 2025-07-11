@@ -63,12 +63,11 @@ let isInitialized = false;
 // Only initialize PowerSync in browser AND after page is fully loaded to avoid SSR issues
 if (typeof window !== 'undefined') {
   // Add cleanup for page unload to properly close connections
-  window.addEventListener('beforeunload', () => {
+  /*window.addEventListener('beforeunload', () => {
     if (db && db.disconnectAndClear) {
-      console.log('Cleaning up PowerSync connection before page unload');
       db.disconnectAndClear();
     }
-  });
+  });*/
 
   // Delay PowerSync initialization to ensure we're fully in browser context
   powerSyncInitPromise = new Promise((resolve) => {
@@ -83,10 +82,6 @@ if (typeof window !== 'undefined') {
     
     setTimeout(async () => {
       try {
-        console.log('=== Starting PowerSync initialization ===');
-        console.log('Environment:', import.meta.env.DEV ? 'DEVELOPMENT' : 'PRODUCTION');
-        console.log('Supabase URL:', url);
-        console.log('PowerSync URL:', powersyncUrl);
         
         // Add overall timeout for the entire initialization process
         const initTimeout = setTimeout(() => {
@@ -95,7 +90,6 @@ if (typeof window !== 'undefined') {
           resolve(null);
         }, 30000);
         
-        console.log('Step 1: Importing PowerSync modules...');
         const [
           { PowerSyncDatabase },
           { createAppSchema },
@@ -108,23 +102,17 @@ if (typeof window !== 'undefined') {
           ]),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Module import timeout')), 5000))
         ]);
-        console.log('Step 1: ✓ PowerSync modules imported successfully');
         
-        console.log('Step 2: Creating schema...');
         const AppSchema = await Promise.race([
           createAppSchema(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Schema creation timeout')), 5000))
         ]);
-        console.log('Step 2: ✓ Schema created successfully');
         
-        console.log('Step 3: Creating SupabaseConnector class...');
         const SupabaseConnector = await Promise.race([
           createSupabaseConnector(url, apikey, powersyncUrl),
           new Promise((_, reject) => setTimeout(() => reject(new Error('SupabaseConnector creation timeout')), 5000))
         ]);
-        console.log('Step 3: ✓ SupabaseConnector class created successfully');
         
-        console.log('Step 4: Creating PowerSync database instance...');
         // Create database with a unique filename to avoid conflicts
         const dbFilename = `bwi_${Date.now()}.db`;
         
@@ -142,7 +130,6 @@ if (typeof window !== 'undefined') {
             }
           });
         } catch (workerError) {
-          console.warn('Failed to create PowerSync with worker, trying without worker:', workerError);
           // Try alternative configuration without worker if available
           db = new PowerSyncDatabase({
             database: { dbFilename: dbFilename, debugMode: true },
@@ -159,71 +146,40 @@ if (typeof window !== 'undefined') {
             }
           });
         }
-        console.log('Step 4: ✓ PowerSync database instance created with filename:', dbFilename);
         
-        console.log('Step 5: Creating Supabase connector instance...');
         const supabaseConnector = new SupabaseConnector(
           url,
           apikey,
           powersyncUrl
         );
-        console.log('Step 5: ✓ Supabase connector instance created');
         
-        console.log('Step 6: Initializing Supabase connector...');
         await Promise.race([
           supabaseConnector.init(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase connector init timeout')), 10000))
         ]);
-        console.log('Step 6: ✓ Supabase connector initialized');
         
-        console.log('Step 7: Connecting PowerSync to Supabase...');
         db.connect(supabaseConnector);
-        console.log('Step 7: ✓ PowerSync connected to Supabase');
         
-        console.log('Step 8: Initializing PowerSync database (checking connection limits)...');
+        console.log('Initializing');
         await Promise.race([
           db.init(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('PowerSync database init timeout - possible connection limit reached')), 20000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Database init timeout')), 20000))
         ]);
-        console.log('Step 8: ✓ PowerSync database initialized');
         
         dbState.value = db;
         isInitialized = true;
         isInitializing = false;
         clearTimeout(initTimeout);
         
-        console.log('=== PowerSync initialized successfully ===');
+        console.log('=== Initialized successfully ===');
         resolve(db);
         return db;
       } catch (error) {
         isInitializing = false;
-        console.error('=== PowerSync initialization failed ===');
+        console.error('=== initialization failed ===');
         console.error('Error details:', error);
         console.error('Stack trace:', error.stack);
-        
-        // Log connection details for debugging
-        console.error('Connection details:');
-        console.error('- Supabase URL:', url);
-        console.error('- PowerSync URL:', powersyncUrl);
-        console.error('- Environment:', import.meta.env.DEV ? 'DEVELOPMENT' : 'PRODUCTION');
-        
-        // Check if it's a connection limit issue
-        if (error.message.includes('timeout') || error.message.includes('connection')) {
-          console.error('This might be a connection limit issue. Try:');
-          console.error('1. Close other browser tabs with this app');
-          console.error('2. Wait a few minutes for connections to timeout');
-          console.error('3. Clear browser storage: localStorage.clear() and indexedDB databases');
-        }
-        
-        // Test basic connectivity
-        try {
-          console.log('Testing basic connectivity to PowerSync server...');
-          const response = await fetch(powersyncUrl + '/health');
-          console.log('Health check response status:', response.status);
-        } catch (fetchError) {
-          console.error('Health check failed:', fetchError.message);
-        }
-        
+
         resolve(null);
       }
     }, 100); // Small delay to ensure we're in browser context

@@ -417,7 +417,11 @@
         const clusterNames = selectedRows.value.map(row => row.cluster_name).join(', ');
         const clusterIds = selectedRows.value.map(row => row.cluster_id).join(', ');
         const uniqueClusterIds = [...new Set(selectedRows.value.map(row => row.cluster_id))];
-        console.log(losId);
+        
+        if (uniqueClusterIds.length === 0) {
+            console.warn('No unique cluster IDs found in selected rows');
+            return;
+        }
 
         supabase
             .from('organizations_lose')
@@ -519,10 +523,39 @@
         //totalRecords.value = await _countRecords();
         //pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);
     });
+    async function handleFileUpload(fileInputEvent){
+        const file = fileInputEvent.target.files[0];
+        if (!file) {
+            error.value = 'Keine Datei ausgewählt.';
+            return;
+        }
+
+        /*loading.value = true;
+        error.value = '';
+        success.value = '';*/
+
+        try {
+            const text = await file.text();
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            //
+            const numbers = lines.flatMap(line => line.split(',').map(v => v.trim()).filter(v => /^\d+$/.test(v)));
+            clusterListInput.value = numbers.join(',');
+            console.log('Cluster IDs from file:', clusterListInput.value);
+            //addValues(clusterListInput.value);
+        } catch (e) {
+            error.value = 'Fehler beim Verarbeiten der Datei: ' + e.message;
+        } finally {
+            loading.value = false;
+        }
+
+    }
 </script>
 
 <template>
     <!-- The AG Grid component -->
+    Mit Datei auswählen:
+    <v-file-input  accept=".csv, text/plain" label="wähle eine Datei" @change="handleFileUpload" style="display: none;"></v-file-input>
+
     <v-card>
         <v-toolbar density="comfortable" class="mb-4">
             <v-chip
