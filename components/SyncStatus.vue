@@ -41,8 +41,8 @@
             globalSince += element.since_last; // / element.target_count * 100;
             globalCount += element.target_count;
         }
-        console.log(globalSince, globalCount);
-        return globalSince / globalCount * 100;
+        console.log(globalSince, globalCount, globalSince / globalCount * 100);
+        return globalCount > 0 ? globalSince / globalCount * 100 : 0;
     }
 
     onMounted(async () => {
@@ -96,8 +96,9 @@
         <div v-if="syncState.dataFlowStatus?.uploading">Uploading...</div>
         <div v-if="syncState.dataFlowStatus?.downloading">
             <v-progress-circular
+                :size="20"
                 color="deep-orange-lighten-2"
-                model-value="downloadingPercent"
+                :model-value="downloadingPercent"
             ></v-progress-circular>
             Downloading...
         </div>
