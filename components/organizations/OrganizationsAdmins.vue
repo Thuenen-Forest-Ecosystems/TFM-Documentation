@@ -175,7 +175,9 @@
 
     function _openEmailLink(email) {
         if (email) {
-            window.location.href = `mailto:${email}`;
+            if (typeof window !== 'undefined') {
+                window.location.href = `mailto:${email}`;
+            }
         } else {
             alert('Email not available');
         }

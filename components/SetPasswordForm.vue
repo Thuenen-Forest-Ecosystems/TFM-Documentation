@@ -19,7 +19,7 @@
     const loading = ref(false)
 
 
-    if(window.location.hash) {
+    if(typeof window !== 'undefined' && window.location.hash) {
         var hash = window.location.hash.substring(1); //Puts hash in variable, and removes the # character
 
         var accessTokenQuery = hash.split('&').find(e => e.startsWith('access_token='));
@@ -58,7 +58,9 @@
             if (error) {
                 authErrors.value = error.message;
             } else {
-                window.location.href = withBase('/dashboard/profile');
+                if (typeof window !== 'undefined') {
+                    window.location.href = withBase('/dashboard/profile');
+                }
                 //signedUp.value = true;
             }
             

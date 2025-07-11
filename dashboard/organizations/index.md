@@ -18,8 +18,8 @@ layout: page
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
-    // Get organization from URL query parameter
-    const urlParams = new URLSearchParams(window.location.search);
+    // Get organization from URL query parameter - only in browser
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     const organizationId = urlParams.get('organization');
 
     const permission = ref({});

@@ -14,10 +14,14 @@
     });
 
     const _toProfile = () => {
-        window.location.href = withBase('/dashboard/profile');
+        if (typeof window !== 'undefined') {
+            window.location.href = withBase('/dashboard/profile');
+        }
     };
     const _toSignIn = () => {
-        window.location.href = withBase('/authentication/sign-in');
+        if (typeof window !== 'undefined') {
+            window.location.href = withBase('/authentication/sign-in');
+        }
     };
 </script>
 

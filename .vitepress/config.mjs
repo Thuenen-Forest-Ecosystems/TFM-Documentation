@@ -92,7 +92,7 @@ export default defineConfig({
     // Prevent Vuetify from optimizing imports by default
     ssr: {
       noExternal: ['vuetify'],
-      // Make pattern matching more comprehensive
+      // Make pattern matching more comprehensive - exclude PowerSync only during SSR
       external: ['@powersync/vue', '@powersync/web', '@powersync/common', '@powersync/*', '@journeyapps/*']
     },
     resolve: {
@@ -101,13 +101,14 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      exclude: ['@journeyapps/wa-sqlite', '@powersync/wa-sqlite', '@powersync/web', '@powersync/vue', '@powersync/common']
+      // Only exclude PowerSync during SSR build, but include in client build
+      exclude: []
     },
     assetsInclude: ['**/*.wgsl'],
     build: {
-      // Add this section to control PowerSync in the build
+      // Don't mark PowerSync as external for client build - we need it bundled for GitHub Pages
       rollupOptions: {
-        external: ['@powersync/web', '@powersync/vue', '@powersync/common', '@journeyapps/wa-sqlite', '@powersync/wa-sqlite'],
+        external: [],
       }
     }
   }

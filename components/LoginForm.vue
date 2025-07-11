@@ -116,7 +116,7 @@
             return;
         }
         const { data, error } = await supabase.auth.resetPasswordForEmail(username.value, {
-            redirectTo: window.location.origin + '/TFM-Documentation/authentication/reset-password'
+            redirectTo: (typeof window !== 'undefined' ? window.location.origin : '') + '/TFM-Documentation/authentication/reset-password'
         });
         if (error) {
             authErrors.value = error.message;

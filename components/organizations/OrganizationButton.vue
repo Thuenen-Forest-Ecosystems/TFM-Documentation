@@ -34,7 +34,9 @@ console.log('OrganizationButton component loaded');
     };
 
     const _toOrganizations = () => {
-        window.location.href = withBase('/dashboard/organizations');
+        if (typeof window !== 'undefined') {
+            window.location.href = withBase('/dashboard/organizations');
+        }
     };
 </script>
 
