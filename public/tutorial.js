@@ -9,7 +9,7 @@ let GridCell = "";
 // Helper function to call the API endpoint and get details for a specific cluster
 async function getDetails(itemId) {
   // Build API request for cluster (including dependend data)
-  const url2 = `https://ci.thuenen.de/rest/v1/cluster?select=*,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))&inspire_grid_cell=eq.${itemId}`;
+  const url2 = `https://ci.thuenen.de/rest/v1/cluster?select=*,plot!plot_cluster_id_fkey(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))&inspire_grid_cell=eq.${itemId}`;
   // headers for Auth and database scheme to use
   const headers2 = {
     apikey:
