@@ -4,7 +4,8 @@
 
 <div style="margin: 20px 0;">
   <button id="clear-storage" style="padding: 10px 20px; margin-right: 10px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear All Storage & Reload</button>
-  <button id="force-reconnect" style="padding: 10px 20px; background: #44ff44; color: black; border: none; border-radius: 4px; cursor: pointer;">Force Reconnect</button>
+  <button id="force-reconnect" style="padding: 10px 20px; margin-right: 10px; background: #44ff44; color: black; border: none; border-radius: 4px; cursor: pointer;">Force Reconnect</button>
+  <button id="test-db" style="padding: 10px 20px; background: #4444ff; color: white; border: none; border-radius: 4px; cursor: pointer;">Test Database</button>
 </div>
 
 <script setup>
@@ -56,6 +57,57 @@ onMounted(async () => {
       }
     } else {
       window.location.reload()
+    }
+  })
+  
+  // Add database test functionality
+  document.getElementById('test-db').addEventListener('click', async () => {
+    console.log('=== Database Connectivity Test ===')
+    
+    try {
+      // Check global state
+      if (window.checkPowerSyncState) {
+        const state = window.checkPowerSyncState()
+        console.log('PowerSync state:', state)
+      }
+      
+      const db = inject('db')
+      if (!db || !db.value) {
+        console.error('Database not available in component injection')
+        
+        // Try to trigger initialization
+        if (window.triggerPowerSyncInit) {
+          console.log('Attempting to trigger PowerSync initialization...')
+          const result = await window.triggerPowerSyncInit()
+          console.log('Initialization result:', result)
+        }
+        return
+      }
+      
+      console.log('Database instance found:', db.value)
+      
+      // Test basic connectivity
+      try {
+        console.log('Testing basic database query...')
+        const result = await db.value.execute('SELECT 1 as test')
+        console.log('Basic query successful:', result)
+      } catch (queryError) {
+        console.warn('Basic query failed (might be normal):', queryError.message)
+      }
+      
+      // Check if we can list tables
+      try {
+        console.log('Checking database tables...')
+        const tables = await db.value.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        console.log('Database tables:', tables)
+      } catch (tableError) {
+        console.warn('Table listing failed:', tableError.message)
+      }
+      
+      console.log('=== Database test completed ===')
+      
+    } catch (error) {
+      console.error('Database test failed:', error)
     }
   })
   

@@ -423,12 +423,15 @@
             return;
         }
 
+        console.log('Assigning clusters:', uniqueClusterIds, 'to los:', losId);
+
         supabase
             .from('organizations_lose')
             .update({
                 cluster_ids: uniqueClusterIds
             })
             .eq('id', losId)
+            .select('*')
             .then(({ data, error }) => {
                 if (error) {
                     console.error('Error updating organizations_lose:', error);
@@ -507,7 +510,6 @@
         loading.value = true;
 
         await _requestLose(props.organization_id);
-
         //await _requestcluster();
         console.log('cluster:', cluster.value.length);
         await _requestOrganizations();
@@ -523,26 +525,50 @@
         //totalRecords.value = await _countRecords();
         //pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);
     });
-    async function handleFileUpload(fileInputEvent){
-        const file = fileInputEvent.target.files[0];
-        if (!file) {
-            error.value = 'Keine Datei ausgewählt.';
+    function selectByClusterIds(clusterIds) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
             return;
         }
+        if (!Array.isArray(clusterIds) || clusterIds.length === 0) {
+            console.warn('No cluster IDs provided for selection');
+            return;
+        }
+
+        currentGrid.value.api.forEachNode((node) => {
+            if (clusterIds.includes(node.data.cluster_name)) {
+                node.setSelected(true);
+            }
+        });
+    }
+    async function handleFileUpload(fileInputEvent){
+        const file = fileInputEvent.target.files[0];
+        /*if (!file) {
+            error.value = 'Keine Datei ausgewählt.';
+            return;
+        }*/
 
         /*loading.value = true;
         error.value = '';
         success.value = '';*/
+        console.log('File selected:', file.name);
 
         try {
             const text = await file.text();
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-            //
             const numbers = lines.flatMap(line => line.split(',').map(v => v.trim()).filter(v => /^\d+$/.test(v)));
-            clusterListInput.value = numbers.join(',');
-            console.log('Cluster IDs from file:', clusterListInput.value);
-            //addValues(clusterListInput.value);
+
+            if (numbers.length === 0) {
+                console.warn('No valid cluster IDs found in the file');
+                return;
+            }
+
+            // array string to number
+            const numbersAsInt = numbers.map(Number);
+
+            selectByClusterIds(numbersAsInt);
         } catch (e) {
+            console.error('Error processing file:', e);
             error.value = 'Fehler beim Verarbeiten der Datei: ' + e.message;
         } finally {
             loading.value = false;
@@ -553,11 +579,11 @@
 
 <template>
     <!-- The AG Grid component -->
-    Mit Datei auswählen:
-    <v-file-input  accept=".csv, text/plain" label="wähle eine Datei" @change="handleFileUpload" style="display: none;"></v-file-input>
+    
+    <v-file-input v-if="!loading" accept=".csv, text/plain" label="Mit Datei auswählen:" @change="handleFileUpload" ></v-file-input>
 
     <v-card>
-        <v-toolbar density="comfortable" class="mb-4">
+        <v-toolbar v-if="!loading" density="comfortable" class="mb-4">
             <v-chip
                 class="ma-2"
                 color="primary"
@@ -565,18 +591,18 @@
                 variant="tonal"
                 rounded="xl"
             >
-                {{ selectedRows.length }} selected rows
+                {{ selectedRows.length }} ausgewählte Ecken
             </v-chip>
             <v-toolbar-title>Auswahl</v-toolbar-title>
             <template v-slot:append>
                 <v-btn
-                    class="ma-2"
+                    class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-file-download"
                     @click="exportSelected"
                     rounded="xl"
                 >
-                .csv
+                als .csv herunterladen
                 </v-btn>
                 Los zuordnen
                 <v-select 

@@ -94,9 +94,9 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             let first100 = ListOfRecordIds.slice(0, 100000000);
             //console.log(first100);
             // Ensure the array is passed as individual values
-            const query = `SELECT * FROM records WHERE cluster_id IN (${first100.map(() => '?').join(', ')}) GROUP BY cluster_id`;
+            const query = `SELECT * FROM records WHERE cluster_id IN (${first100.map(() => '?').join(', ')}) ORDER BY cluster_name`;
             const params = first100;
-
+            
             //console.log('Executing query:', query, 'with params:', params);
             const result = await powerSyncDB.getAll(query, params);
             rowData.value = result;
@@ -178,6 +178,6 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             size="40"
             width="3"
         ></v-progress-circular>
-        <p>Loading records...</p>
+        <p>Lade Plots...</p>
     </div>
 </template>

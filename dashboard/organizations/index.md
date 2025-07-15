@@ -127,12 +127,12 @@ layout: page
         </v-card>
     </v-tabs-window-item>
     <v-tabs-window-item value="2">
-        <p>
+        <p class="mb-5">
             Eine Liste aller Cluster, die ihrer Organisation zugewiesen wurden.
         </p>
-        <ListOfClusterRecord v-if="currentSyncStatus.options?.hasSynced" :organization_id="permission.organization_id" />
+        <ListOfClusterRecord v-if="currentSyncStatus.hasSynced" :organization_id="permission.organization_id" />
         <v-alert
-            v-else
+            v-if="!currentSyncStatus.hasSynced"
             density="compact"
             text="Warten Sie, bis die Synchronisation abgeschlossen ist."
             title="Synchronisation läuft"

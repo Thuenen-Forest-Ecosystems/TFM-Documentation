@@ -44,21 +44,50 @@
     }
 
     onMounted(async () => {
-        try{
-            db.value = await waitForDb()
-            db.value.registerListener({
-                statusChanged: (status) => {
-                    syncState.value = status;
-                    if(status.dataFlowStatus.downloadProgress){
-                        downloadingPercent.value = parseDownloading(status.dataFlowStatus.downloadProgress);
-                    }
-                    emit('status-change', status);
+        console.log('SyncStatus component mounted');
+        
+        // Add retry logic for full page refreshes
+        let retryCount = 0;
+        const maxRetries = 10;
+        const retryDelay = 500; // 500ms between retries
+        
+        const initializeWithRetry = async () => {
+            try {
+                db.value = await waitForDb();
+                
+                if (!db.value) {
+                    throw new Error('Database is null after waiting');
                 }
-            });
-        } catch (error) {
-            console.error('Error in SyncStatus mounted hook:', error);
-        }
-       
+                
+                syncState.value = db.value.currentStatus;
+                db.value.registerListener({
+                    statusChanged: (status) => {
+                        syncState.value = status;
+                        emit('status-change', status);
+                        if(status.dataFlowStatus?.downloadProgress){
+                            downloadingPercent.value = parseDownloading(status.dataFlowStatus.downloadProgress);
+                        }
+                        
+                    }
+                });
+                
+                emit('status-change', db.value.currentStatus);
+            } catch (error) {
+                retryCount++;
+                console.warn(`PowerSync initialization attempt ${retryCount} failed:`, error.message);
+                
+                if (retryCount < maxRetries) {
+                    console.log(`Retrying in ${retryDelay}ms...`);
+                    setTimeout(initializeWithRetry, retryDelay);
+                } else {
+                    console.error('PowerSync initialization failed after all retries:', error);
+                    // Still continue - the component should show "not initialized" state
+                }
+            }
+        };
+        
+        // Start the initialization with retry logic
+        await initializeWithRetry();
     });
     
 

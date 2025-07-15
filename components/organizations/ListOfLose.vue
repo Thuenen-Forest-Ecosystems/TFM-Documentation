@@ -4,7 +4,7 @@
     import DialogResponsible from './DialogResponsible.vue';
     import DialogTextfield from './DialogTextfield.vue';
     import DialogAddPlotsToLos from './DialogAddPlotsToLos.vue';
-import ClustersPerLos from './ClustersPerLos.vue';
+    import ClustersPerLos from './ClustersPerLos.vue';
 
 
     const instance = getCurrentInstance();
@@ -513,7 +513,7 @@ import ClustersPerLos from './ClustersPerLos.vue';
                 <v-icon>mdi-plus</v-icon>
                 
             </v-btn>
-        </template>--><
+        </template>-->
     </v-card>
 
     
