@@ -1,5 +1,9 @@
 // Avoid static imports - only import PowerSync modules dynamically when needed
 
+import { Index, IndexedColumn } from '@powersync/web';
+
+//import { Column, ColumnType } from '@powersync/web';
+
 export const listOfLookupTables = [
   'lookup_browsing',
   'lookup_cluster_situation',
@@ -17,7 +21,6 @@ export const listOfLookupTables = [
   'lookup_gnss_quality',
   'lookup_grid_density',
   'lookup_growth_district',
-  'lookup_harvesting_method',
   'lookup_land_use',
   'lookup_management_type',
   'lookup_marker_profile',
@@ -41,7 +44,7 @@ export const listOfLookupTables = [
   'lookup_trees_less_4meter_layer',
   'lookup_trees_less_4meter_mirrored',
   'lookup_trees_less_4meter_origin',
-  'lookup_usage_type',
+  //'lookup_usage_type',
   'lookup_natur_schutzgebiet',
   'lookup_vogel_schutzgebiet',
   'lookup_natur_park',
@@ -52,13 +55,17 @@ export const listOfLookupTables = [
   'lookup_basal_area_factor',
   'lookup_biotope',
   'lookup_harvest_restriction',
+  'lookup_harvest_condition',
+    //'lookup_harvest_type',
+    'lookup_harvest_reason',
+    'lookup_harvest_method',
   'lookup_accessibility'
 ];
 
 // Create the schema dynamically to avoid static imports
 export async function createAppSchema() {
   // Dynamic import to avoid SSR issues
-  const { column, Schema, Table } = await import('@powersync/web');
+  const { column, Schema, Table, ColumnType, Column, IndexedColumn, Index } = await import('@powersync/web');
 
   const lookupTemplate = {
       name_de: column.text,
@@ -74,18 +81,38 @@ export async function createAppSchema() {
   }, {});
 
   const records = new Table({
-      plot_id: column.text,
-      plot_name: column.integer,
-      created_at: column.text,
-      cluster_id: column.text,
-      cluster_name: column.integer,
-      responsible_administration: column.text,
-      responsible_state: column.text,
-      responsible_provider: column.text,
-      responsible_troop: column.text,
-      is_valid: column.integer,
-      schema_id: column.text,
-      previous_properties: column.text
+        name: 'records',
+        columns: [
+            new Column({name: 'plot_id', type: ColumnType.TEXT}),
+            new Column({name: 'plot_name', type: ColumnType.INTEGER}),
+            new Column({name: 'created_at', type: ColumnType.TEXT}),
+            new Column({name: 'cluster_id', type: ColumnType.TEXT}),
+            new Column({name: 'cluster_name', type: ColumnType.INTEGER}),
+            new Column({name: 'responsible_administration', type: ColumnType.TEXT}),
+            new Column({name: 'responsible_state', type: ColumnType.TEXT}),
+            new Column({name: 'responsible_provider', type: ColumnType.TEXT}),
+            new Column({name: 'responsible_troop', type: ColumnType.TEXT}),
+            new Column({name: 'is_valid', type: ColumnType.INTEGER}),
+            new Column({name: 'schema_id', type: ColumnType.TEXT}),
+            new Column({name: 'previous_properties', type: ColumnType.TEXT}),
+            new Column({name: 'administration_los', type: ColumnType.TEXT}),
+            new Column({name: 'troop_los', type: ColumnType.TEXT}),
+            new Column({name: 'state_los', type: ColumnType.TEXT}),
+            new Column({name: 'provider_los', type: ColumnType.TEXT})
+        ],
+        indexes: [
+            new Index({ name: 'idx_cluster_name', columns: [new IndexedColumn({ name: 'cluster_name' })] }),
+            new Index({ name: 'idx_cluster_id', columns: [new IndexedColumn({ name: 'cluster_id' })] }),
+            new Index({ name: 'idx_responsible_state', columns: [new IndexedColumn({ name: 'responsible_state' })] }),
+            new Index({ name: 'idx_responsible_provider', columns: [new IndexedColumn({ name: 'responsible_provider' })] }),
+            new Index({ name: 'idx_responsible_administration', columns: [new IndexedColumn({ name: 'responsible_administration' })] }),
+            // Composite index for the common OR query pattern
+            new Index({ name: 'idx_responsible_composite', columns: [
+                new IndexedColumn({ name: 'responsible_state' }),
+                new IndexedColumn({ name: 'responsible_provider' }),
+                new IndexedColumn({ name: 'responsible_administration' })
+            ]})
+        ]
   });
   /*const cluster = new Table({
       cluster_name: column.text,
@@ -115,7 +142,7 @@ export async function createAppSchema() {
 
   const AppSchema = new Schema({
       schemas,
-      records,
+      //records,
       organizations,
       troop,
       users_profile,

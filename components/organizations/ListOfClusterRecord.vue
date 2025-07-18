@@ -1,12 +1,11 @@
 <script setup>
-    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch } from 'vue';
+    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, defineEmits} from 'vue';
     import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
     ModuleRegistry.registerModules([AllCommunityModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 
     import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
-    
 
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
@@ -20,13 +19,23 @@
     let currentGrid = ref(null);
     let selectedRows = ref([]);
     let selectableLose = ref([]);
+    const assigning = ref(false);
 
+    const emit = defineEmits(['confirm']);
 
 
     const props = defineProps({
         organization_id: {
             type: String,
             required: true
+        },
+        organization_type: {
+            type: String,
+            default: null
+        },
+        los: {
+            type: Object,
+            default: null
         }
     });
 
@@ -58,14 +67,15 @@
 
     // Grid Options
     const gridOptions = {
+        //rowModelType: 'infinite', // Enable infinite scrolling
+        //cacheBlockSize: 100, // Number of rows per block
+        //maxBlocksInCache: 10, // Maximum number of blocks to cache
         rowSelection: {
             mode: 'multiRow',
             selectAll: 'filtered',
-            enableClickSelection: true,
-            
+            enableClickSelection: true
         }
     }
-
     const colDefs = ref([
         { 
             field: "cluster_id",
@@ -82,14 +92,16 @@
             filter: true,
             sortable: true,
             //type: "number",
-            pinned: 'left'
+            pinned: 'left',
+            headerTooltip: "cluster.cluster_name",
         },
         { 
             field: "plot_name",
             headerName: "Plot Name",
             filter: true,
             sortable: true,
-            pinned: 'left'
+            pinned: 'left',
+            headerTooltip: "plot.plot_name",
             //type: "number"
         },
         {
@@ -97,6 +109,7 @@
             headerName: "Cluster Status",
             filter: true,
             sortable: true,
+            headerTooltip: "cluster.cluster_status",
             //type: "string",
         },
         {
@@ -104,82 +117,58 @@
             headerName: "Cluster Situation",
             filter: true,
             sortable: true,
-            //type: "string",
-        },
-        
-        {
-            field: "responsible_administration",
-            headerName: "Administration",
-            filter: true,
-            sortable: true,
+            headerTooltip: "cluster.cluster_situation",
             //type: "string",
         },
         {
-            field: "responsible_state",
-            headerName: "Landesinventurleitung",
+            field: "state_responsible",
+            headerName: "state_responsible",
             filter: true,
             sortable: true,
+            headerTooltip: "cluster.state_responsible",
             //type: "string",
         },
         {
-            field: "responsible_provider",
-            headerName: "Dienstleister",
+            field: "forest_status_bwi2022",
+            headerName: "Wald Status (BWI 2022)",
             filter: true,
             sortable: true,
-            //type: "string",
         },
         {
-            field: "responsible_troop",
-            headerName: "Aufnahmetrupp",
+            field: "forest_status_ci2017",
+            headerName: "Wald Status (CI 2017)",
             filter: true,
             sortable: true,
-            //type: "string",
         },
         {
-            field: "is_valid",
-            headerName: "Gültigkeit",
+            field: "forest_status_ci2012",
+            headerName: "Wald Status (CI 2012)",
             filter: true,
             sortable: true,
-            //type: "boolean",
-            cellRenderer: (params) => {
-                return params.value ? 'Valid' : 'Invalid';
-            }
-            //type: "string",
-        },
-        {
-            field: "forest_status",
-            headerName: "Wald Status",
-            filter: true,
-            sortable: true,
-            type: "string",
         },
         {
             field: "forest_office",
             headerName: "Forstamt",
             filter: true,
             sortable: true,
-            type: "string",
         },
         {
             field: "growth_district",
             headerName: "Wuchsbezirk",
             filter: true,
             sortable: true,
-            type: "string",
         },
         {
             field: "ffh_forest_type",
             headerName: "FFH Waldlebensraumtyp",
             filter: true,
             sortable: true,
-            type: "string"
         },
         {
             field: "accessibility",
             headerName: "Zugänglichkeit",
             filter: true,
             sortable: true,
-            type: "string"
         },
         {
             field: "federal_state",
@@ -187,92 +176,110 @@
             filter: true,
             sortable: true,
             //type: "string",
+        },
+        {
+            field: "property_type",
+            headerName: "Eigentumsart",
+            filter: true,
+            sortable: true,
+            //type: "string",
+        },
+        {
+            field: "grid_density",
+            headerName: "Rasterdichte",
+            filter: true,
+            sortable: true,
+            //type: "string",
+        },
+        {
+            field: "states_affected",
+            headerName: "Affected States",
+            filter: true,
+            sortable: true,
         }
     ]);
-    function _renderLookup(tableName, fieldName, previousValue) {
-        if (!previousValue) return 'not defined';
-        if (previousValue[fieldName]) {
+    function _renderLookup(tableName, fieldName, code) {
+        if (!code) return null;
+
+        if (code) {
             const lookupTable = lookupTablesValue.value[tableName];
             // Find by "code" field
-            const entry = lookupTable?.find(item => item.code === previousValue[fieldName].toString());
+            const entry = lookupTable?.find(item => item.code === code.toString());
 
             if (entry) {
                 // Return the German name or the raw value
-                return `${entry.name_de}  (${previousValue[fieldName]})`;
-            }else{
-                console.warn(`No entry found for ${fieldName} in ${tableName} with code: ${previousValue[fieldName]}`);
+                return `${entry.name_de}  (${code})`;
             }
             // If no entry found, return the raw value
-            return `no lookup value | ${previousValue[fieldName]} (${tableName})`;
+            return `no lookup value | ${code} (${tableName})`;
         }
         return null;
     }
-    function _renderCluster(tableName, cluster_id) {
+    function _renderCluster(tableName, cluster_id, lookupTableName = null) {
         if (!cluster_id) return 'not defined';
         const clusterData = cluster.value.find(c => c.id === cluster_id);
         if (clusterData) {
-            return `${clusterData[tableName]} (${clusterData.cluster_name})`;
+            if(lookupTableName) {
+                return `${ _renderLookup(lookupTableName, tableName, clusterData[tableName]) }`;
+            }else{
+                return `${ clusterData[tableName] }`;
+            }
         }
         return `coming soon`;
     }
     function _preRenderRecords(records) {
+
         if (!records || records.length === 0) {
             console.warn('No records to render');
             return [];
         }
-        // return array something like: [{"plot_count": 4, cluster_name: "Cluster A"}, {}, ...]
-        console.log('start');
+
+        // Pre-compute all lookup maps once
+        const clusterMap = new Map(cluster.value.map(c => [c.id, c]));
+        
+        // Pre-compute lookup table maps for faster access
+        const lookupMaps = {};
+        Object.keys(lookupTablesValue.value).forEach(tableName => {
+            lookupMaps[tableName] = new Map(
+                lookupTablesValue.value[tableName]?.map(item => [item.code?.toString(), item]) || []
+            );
+        });
+
+        console.log('Mapping records:', records.length);
+
         return records.map(record => {
-            const previousValue = JSON.parse(record.previous_properties || '{}');
+            const clusterData = clusterMap.get(record.cluster_id);
+
             return {
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
-                cluster_status: _renderCluster('cluster_status', record.cluster_id),
-                cluster_situation: _renderCluster('cluster_situation', record.cluster_id),
-                state_responsible: _renderCluster('state_responsible', record.cluster_id),
-                responsible_administration: organizations.value.find(o => o.id == record.responsible_administration)?.name || record.responsible_administration,
-                responsible_state: organizations.value.find(o => o.id == record.responsible_state)?.name || record.responsible_state,
-                responsible_provider: organizations.value.find(o => o.id == record.responsible_provider)?.name || record.responsible_provider,
-                responsible_troop: troops.value.find(o => o.id == record.responsible_troop)?.name || record.responsible_troop,
+                administration_los: record.administration_los,
+                state_los: record.state_los,
+                provider_los: record.provider_los,
+                
+                cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', clusterData?.['cluster_status']),
+                cluster_situation: _renderClusterOptimized(clusterData, 'cluster_situation', lookupMaps, 'lookup_cluster_situation'),
+                state_responsible: _renderClusterOptimized(clusterData, 'state_responsible', lookupMaps, 'lookup_state'),
+                states_affected: clusterData?.['states_affected'] || 'not defined',
+                
                 is_valid: record.is_valid,
-                forest_status: _renderLookup('lookup_forest_status', 'forest_status', previousValue),
-                forest_office: _renderLookup('lookup_forest_office', 'forest_office', previousValue),
-                growth_district: _renderLookup('lookup_growth_district', 'growth_district', previousValue),
-                federal_state: _renderLookup('lookup_state', 'federal_state', previousValue),
-                ffh_forest_type: _renderLookup('lookup_ffh_forest_type', 'ffh_forest_type', previousValue),
-                accessibility: _renderLookup('lookup_accessibility', 'accessibility', previousValue),
+                
+                forest_status_bwi2022: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_bwi2022),
+                forest_status_ci2017: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_ci2017),
+                forest_status_ci2012: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_ci2012),
+                
+                forest_office: _renderLookupOptimized(lookupMaps, 'lookup_forest_office', record.forest_office),
+                growth_district: _renderLookupOptimized(lookupMaps, 'lookup_growth_district', record.growth_district),
+                federal_state: _renderLookupOptimized(lookupMaps, 'lookup_state', record.federal_state),
+                ffh_forest_type: _renderLookupOptimized(lookupMaps, 'lookup_ffh_forest_type', record.ffh_forest_type_field),
+                accessibility: _renderLookupOptimized(lookupMaps, 'lookup_accessibility', record.accessibility),
+                property_type: _renderLookupOptimized(lookupMaps, 'lookup_property_type', record.property_type),
+                grid_density: _renderClusterOptimized(clusterData, 'grid_density', lookupMaps, 'lookup_grid_density')
             };
         });
     }
-    function _groupByClusterId(records) {
-        // return array something like: [{"plot_count": 4, cluster_name: "Cluster A"}, {}, ...]
-        const clusterMap = new Map();
-        records.forEach(record => {
-            const clusterId = record.cluster_id;
-            if (!clusterMap.has(clusterId)) {
-                clusterMap.set(clusterId, {
-                    cluster_name: record.cluster_name,
-                    responsible_administration: organizations.value.find(o => o.id == record.responsible_administration)?.name || record.responsible_administration,
-                    responsible_state: organizations.value.find(o => o.id == record.responsible_state)?.name || record.responsible_state,
-                    responsible_provider: organizations.value.find(o => o.id == record.responsible_provider)?.name || record.responsible_provider,
-                    responsible_troop: troops.value.find(o => o.id == record.responsible_troop)?.name || record.responsible_troop
-                    
-                });
-            }else{
-                const cluster = clusterMap.get(clusterId);
-                if(record.responsible_administration && !cluster.responsible_administration) cluster.responsible_administration = organizations.value.find(o => o.id == record.responsible_administration)?.name || record.responsible_administration;
-                if(record.responsible_state && !cluster.responsible_state) cluster.responsible_state = organizations.value.find(o => o.id == record.responsible_state)?.name || record.responsible_state;
-                if(record.responsible_provider && !cluster.responsible_provider) cluster.responsible_provider = organizations.value.find(o => o.id == record.responsible_provider)?.name || record.responsible_provider;
-                if(record.responsible_troop && !cluster.responsible_troop) cluster.responsible_troop = troops.value.find(o => o.id == record.responsible_troop)?.name || record.responsible_troop;
-
-            }
-        });
-        return Array.from(clusterMap.values());
-    }
-    function onPageChange(newPage) {
-        page.value = newPage;
-    }
+   
     async function _requestAllLookupTables(){
         if (!powerSyncDB) {
             console.warn('PowerSync not available - using fallback data');
@@ -280,11 +287,23 @@
         }
         
         for (const table of listOfLookupTables) {
-            powerSyncDB.getAll(`SELECT * from ${table}`)
+            supabase
+                .schema('lookup')
+                .from(table)
+                .select('*')
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error(`Error loading ${table}:`, error);
+                    } else {
+                        lookupTablesValue.value[table] = data;
+                    }
+                })
+                .catch((e) => console.error(`Error loading ${table}:`, e));
+            /*powerSyncDB.getAll(`SELECT * from ${table}`)
                 .then((data) => {
                     lookupTablesValue.value[table] = data;
                 })
-                .catch((e) => console.error(`Error loading ${table}:`, e));
+                .catch((e) => console.error(`Error loading ${table}:`, e));*/
         }
     }
     async function _requestcluster() {
@@ -352,8 +371,64 @@
             console.warn('No troops found');
         }
     }
+    async function fetchAllDataPaginated(tableName, organizationId, companyType, filterRow) {
+        let allData = [];
+        let currentPage = 0;
+        const pageSize = 10000; // Choose an appropriate page size
+
+        console.log(`Fetching data from ${tableName} for organization ${organizationId} with companyType ${companyType} and filterRow ${filterRow}`);
+
+        while (true) {
+            const start = currentPage * pageSize;
+            const end = start + pageSize - 1;
+
+            const { data, error } = await supabase
+                .from(tableName)
+                .select(`
+                    cluster_id,
+                    cluster_name,
+                    plot_name,
+                    plot_id,
+                    responsible_state,
+                    responsible_provider,
+                    responsible_administration,
+                    responsible_troop,
+                    is_valid,
+                    administration_los,
+                    state_los,
+                    provider_los,
+                    troop_los,
+
+                    federal_state,
+                    growth_district,
+                    forest_status_bwi2022,
+                    forest_status_ci2017,
+                    forest_status_ci2012,
+                    accessibility,
+                    forest_office,
+                    property_type,
+                    ffh_forest_type_field
+                `)
+                .eq(companyType, organizationId)
+                .is(filterRow, null) // Ensure the filterRow is null
+                .is('troop_los', null) // Ensure troop_los is also null
+                .range(start, end); // Use range for pagination
+
+            if (error) {
+                console.error('Error fetching data:', error);
+            return null;
+            }
+
+            if (data.length === 0) {
+                break; // No more data
+            }
+
+            allData = allData.concat(data);
+            currentPage++;
+        }
+        return allData;
+    }
     async function _requestPlots() {
-        console.log('Requesting plots for organization:', props.organization_id);
 
         rowData.value = [];
 
@@ -363,42 +438,42 @@
           return;
         }
 
-        /*const { data: records, error } = await supabase
-            .from('records')
-            .select('*')
-            .or(`responsible_state.eq.${props.organization_id},responsible_provider.eq.${props.organization_id},responsible_administration.eq.${props.organization_id}`)
-            .order('cluster_name', { ascending: true });
+        let companyType = null; //'responsible_state'; // responsible_administration
+        let filterRow = null; //'provider_los'; 
 
-        if(error){
-            console.log(error)
+        switch (props.organization_type) {
+            case 'root':
+                companyType = 'responsible_administration';
+                filterRow = 'administration_los';
+                break;
+            case 'country':
+                companyType = 'responsible_state';
+                filterRow = 'state_los';
+                break;
+            case 'provider':
+                companyType = 'responsible_troop';
+                filterRow = 'provider_los';
+                break;
         }
-        
-        rowData.value = _preRenderRecords(records);
-        console.log(rowData.value);*/
-        const records = await powerSyncDB.getAll('SELECT * from records WHERE responsible_state = ? OR responsible_provider = ? OR responsible_administration = ? ORDER BY cluster_name asc', [
-            props.organization_id,
-            props.organization_id,
-            props.organization_id
-        ]);
-
-        if (records.length > 0) {
-            rowData.value = _preRenderRecords(records);
-            console.log('no DATA')
-            //records.value = records;
-            //rowData.value = _groupByClusterId(records.value);
-        } else {
-            console.warn('No records found for the organization:', props.organization_id);
+        if (!companyType || !filterRow) {
+            console.warn('No company type or filter row defined for organization type:', props.organization_type);
+            return;
         }
-        /*    .then((l) => {
-                rowData.value = _preRenderRecords(l);
-                console.log('Fetched records:', l.length);
-                //records.value = l;
-                //rowData.value = _groupByClusterId(records.value);
+       
+        fetchAllDataPaginated('view_records_details', props.organization_id, companyType, filterRow)
+            .then((records) => {
+                
+                if (records && records.length > 0) {
+                    loading.value = true;
+                    rowData.value = _preRenderRecords(records);
+                    loading.value = false;
+                } else {
+                    console.warn('No records found for the organization:', props.organization_id);
+                }
             })
-            .catch((e) => console.error(e))
-            .finally(() => {
-                loading.value = false;
-            });*/
+            .catch((error) => {
+                console.error('Error fetching records:', error);
+            });
     }
 
     function onSelectionChanged(event) {
@@ -406,56 +481,55 @@
         // Perform actions based on the selected rows
     }
 
-    function assignTo(selected){
-        if (!selected || selected === '' || !selected.id) {
-            console.warn('No selection made');
+    async function addToLos(){
+        assignTo(props.los.id);
+    }
+    async function assignTo(losId){
+        if (!losId) {
+            console.error('Error: losId is required.');
             return;
         }
-        const losId = selected.id;
 
-        //console.log(`[${selectedRows.value.map(row => row.id).join(',')}]`, losId);
-        const clusterNames = selectedRows.value.map(row => row.cluster_name).join(', ');
-        const clusterIds = selectedRows.value.map(row => row.cluster_id).join(', ');
         const uniqueClusterIds = [...new Set(selectedRows.value.map(row => row.cluster_id))];
-        
+
         if (uniqueClusterIds.length === 0) {
             console.warn('No unique cluster IDs found in selected rows');
             return;
         }
 
-        console.log('Assigning clusters:', uniqueClusterIds, 'to los:', losId);
+        assigning.value = true;
+        // Batch update the records in the database when assigning lots of clusters
+        try {
+            // Use Supabase to update the records
+            const batchSize = 100; // Adjust batch size as needed
+            for (let i = 0; i < uniqueClusterIds.length; i += batchSize) {
+                const batch = uniqueClusterIds.slice(i, i + batchSize);
 
-        supabase
-            .from('organizations_lose')
-            .update({
-                cluster_ids: uniqueClusterIds
-            })
-            .eq('id', losId)
-            .select('*')
-            .then(({ data, error }) => {
+                const { data, error } = await supabase
+                    .from('records')
+                    .update({ administration_los: losId })
+                    .in('cluster_id', batch);
+                
                 if (error) {
-                    console.error('Error updating organizations_lose:', error);
-                } else {
-                    console.log('Successfully assigned rows to los:', data);
-                    
+                    console.error('Error assigning clusters to LOS:', error);
+                    assigning.value = false;
+                    return;
                 }
-            })
-            .catch((e) => {
-                console.error('An unexpected error occurred while assigning rows:', e);
-            });
+            }
+            
+        } catch (error) {
+            console.error('Error assigning clusters to LOS:', error);
+            assigning.value = false;
+            return;
+        }
+
+        //powerSyncDB.execute(`UPDATE records SET administration_los = ? WHERE cluster_id IN (${uniqueClusterIds.map(() => '?').join(', ')})`, [losId, ...uniqueClusterIds]);
         
-        /*powerSyncDB.execute('UPDATE organizations_lose SET cluster_ids = ? WHERE id = ?', [
-            `[${uniqueClusterIds.join(',')}]`,
-            losId
-        ])
-        .catch((e) => {
-            console.error('Error assigning rows:', e);
-        });*/
+        assigning.value = false;
+
+        emit('confirm');
+
         selectedLos.value = null;
-
-        console.log('Assigning', selectedRows.value.length, 'rows to', selected);
-
-        //selectedLos.value = null;
     }
     function _requestLose(organizationId) {
         if (!organizationId) {
@@ -484,7 +558,7 @@
             });
     }
     watch(selectedLos, (newValue) => {
-        assignTo(newValue);
+        assignTo(newValue.id);
     });
 
     function exportSelected() {
@@ -503,27 +577,24 @@
     }
 
     onMounted(async () => {
-        //console.log('powerSyncDB not ready');
-        powerSyncDB = await waitForDb();
-        //console.log('powerSyncDB ready');
+
+        //powerSyncDB = await waitForDb();
 
         loading.value = true;
 
-        await _requestLose(props.organization_id);
-        //await _requestcluster();
-        console.log('cluster:', cluster.value.length);
-        await _requestOrganizations();
-        console.log('Organizations:', organizations.value.length);
-        await _requestTroops();
-        console.log('Troops:', troops.value.length);
+        //await _requestLose(props.organization_id);
+        await _requestcluster();
+        console.log('Clusters:', cluster.value.length);
+        //console.log('cluster:', cluster.value.length);
+        //await _requestOrganizations();
+        //console.log('Organizations:', organizations.value.length);
+        //await _requestTroops();
+        //console.log('Troops:', troops.value.length);
         await _requestAllLookupTables();
-        console.log('Lookup tables loaded');
+        //console.log('Lookup tables loaded');
         await _requestPlots();
         console.log('Plots:', rowData.value.length);
-
-        loading.value = false;
-        //totalRecords.value = await _countRecords();
-        //pages.value = Math.ceil(totalRecords.value / rowsPerPage.value);
+        
     });
     function selectByClusterIds(clusterIds) {
         if (!currentGrid.value || !currentGrid.value.api) {
@@ -540,18 +611,14 @@
                 node.setSelected(true);
             }
         });
+
     }
     async function handleFileUpload(fileInputEvent){
         const file = fileInputEvent.target.files[0];
-        /*if (!file) {
+        if (!file) {
             error.value = 'Keine Datei ausgewählt.';
             return;
-        }*/
-
-        /*loading.value = true;
-        error.value = '';
-        success.value = '';*/
-        console.log('File selected:', file.name);
+        }
 
         try {
             const text = await file.text();
@@ -567,6 +634,9 @@
             const numbersAsInt = numbers.map(Number);
 
             selectByClusterIds(numbersAsInt);
+
+
+
         } catch (e) {
             console.error('Error processing file:', e);
             error.value = 'Fehler beim Verarbeiten der Datei: ' + e.message;
@@ -575,50 +645,47 @@
         }
 
     }
+    function _renderLookupOptimized(lookupMaps, tableName, code) {
+        if (!code) return null;
+        
+        const lookupMap = lookupMaps[tableName];
+        if (!lookupMap) return `no lookup table | ${code} (${tableName})`;
+        
+        const entry = lookupMap.get(code.toString());
+        if (entry) {
+            return `${entry.name_de} (${code})`;
+        }
+        
+        return `no lookup value | ${code} (${tableName})`;
+    }
+
+    function _renderClusterOptimized(clusterData, fieldName, lookupMaps, lookupTableName = null) {
+        if (!clusterData) return 'not defined';
+        
+        const value = clusterData[fieldName];
+        if (!value) return 'not defined';
+        
+        if (lookupTableName) {
+            return _renderLookupOptimized(lookupMaps, lookupTableName, value);
+        }
+        
+        return value.toString();
+    }
 </script>
 
 <template>
+    <v-card-text class="pa-0">
     <!-- The AG Grid component -->
-    
-    <v-file-input v-if="!loading" accept=".csv, text/plain" label="Mit Datei auswählen:" @change="handleFileUpload" ></v-file-input>
+    <v-file-input v-if="!loading" 
+        accept=".csv, text/plain"
+        label="Mit Datei auswählen:"
+        @change="handleFileUpload"
+        class="ma-2"
+        rounded="xl"
+        variant="solo"></v-file-input>
 
-    <v-card>
-        <v-toolbar v-if="!loading" density="comfortable" class="mb-4">
-            <v-chip
-                class="ma-2"
-                color="primary"
-                text-color="white"
-                variant="tonal"
-                rounded="xl"
-            >
-                {{ selectedRows.length }} ausgewählte Ecken
-            </v-chip>
-            <v-toolbar-title>Auswahl</v-toolbar-title>
-            <template v-slot:append>
-                <v-btn
-                    class="mx-2"
-                    variant="tonal"
-                    prepend-icon="mdi-file-download"
-                    @click="exportSelected"
-                    rounded="xl"
-                >
-                als .csv herunterladen
-                </v-btn>
-                Los zuordnen
-                <v-select 
-                    :items="selectableLose" 
-                    item-title="name" 
-                    label="Los" 
-                    v-model="selectedLos"
-                    return-object
-                >
-                    <template v-slot:selection="{ item }">
-                        {{ item.raw.name }}
-                    </template>
-                </v-select>
-            </template>
-        </v-toolbar>
         <ag-grid-vue
+            class="ma-4"
             ref="currentGrid"
             v-if="!loading"
             @selection-changed="onSelectionChanged"
@@ -634,11 +701,64 @@
             <v-progress-circular
                 indeterminate
                 color="primary"
-                size="40"
-                width="3"
+                size="30"
+                width="2"
             ></v-progress-circular>
-            <p>Loading records...</p>
+            <p class="mt-2">Cluster laden...</p>
         </div>
+    </v-card-text>
+    <v-card-actions v-if="!loading">
+            <v-chip
+                class="ma-2"
+                color="primary"
+                text-color="white"
+                variant="tonal"
+                rounded="xl"
+            >
+                {{ selectedRows.length }} ausgewählte Ecken
+            </v-chip>
+            <v-toolbar-title></v-toolbar-title>
+            <div v-if="selectedRows.length > 0">
+                <v-btn
+                    class="mx-2"
+                    variant="tonal"
+                    prepend-icon="mdi-file-download"
+                    @click="exportSelected"
+                    rounded="xl"
+                >
+                    als .csv herunterladen
+                </v-btn>
 
-    </v-card>
+                
+                <v-select
+                    v-if="!props.los"
+                    :items="selectableLose" 
+                    item-title="name" 
+                    label="Los zuordnen" 
+                    v-model="selectedLos"
+                    return-object
+                    :disable="assigning"
+                    class="pa-2"
+                    rounded="xl"
+                    variant="solo"
+                    
+                >
+                    <template v-slot:selection="{ item }">
+                        {{ item.raw.name }}
+                    </template>
+                </v-select>
+                <v-btn
+                    v-if="props.los"
+                    class="mx-2"
+                    variant="tonal"
+                    rounded="xl"
+                    @click="addToLos"
+                    :disable="assigning"
+                    :loading="assigning"
+                    :loading-text="'Cluster zuweisen...'"
+                >
+                    Zu "{{ props.los.name }}" hinzufügen
+                </v-btn>
+            </div>
+    </v-card-actions>
 </template>

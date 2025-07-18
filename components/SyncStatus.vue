@@ -44,7 +44,6 @@
     }
 
     onMounted(async () => {
-        console.log('SyncStatus component mounted');
         
         // Add retry logic for full page refreshes
         let retryCount = 0;
@@ -122,7 +121,8 @@
         <div v-if="syncState.dataFlowStatus?.uploading">Uploading...</div>
         <div v-if="syncState.dataFlowStatus?.downloading">
             <v-progress-circular
-                :size="20"
+                :size="15"
+                :width="2"
                 color="deep-orange-lighten-2"
                 :model-value="downloadingPercent"
             ></v-progress-circular>

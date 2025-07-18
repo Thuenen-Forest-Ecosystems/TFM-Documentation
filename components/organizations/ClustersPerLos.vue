@@ -10,7 +10,11 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     const globalIsDark = inject('globalIsDark');
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
+    const instance = getCurrentInstance();
+    const supabase = instance.appContext.config.globalProperties.$supabase;
+
     import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
+    import ListOfClusterRecord from './ListOfClusterRecord.vue';
     const { waitForDb } = useDatabase()
 
     const rowData = ref([]);
@@ -18,12 +22,25 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     let loading = ref(true);
     let currentGrid = ref(null);
     let selectedRows = ref([]);
+    const addClusterDialog = ref(false);
 
     // props 
     const props = defineProps({
         records_Ids: {
             type: Array,
             default: () => []
+        },
+        los: {
+            type: Object,
+            default: () => ({})
+        },
+        organization_id: {
+            type: String,
+            default: ''
+        },
+        organization_type: {
+            type: String,
+            default: null
         }
     });
 
@@ -46,19 +63,13 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             //type: "number",
             pinned: 'left'
         },
-        {
-            field: "responsible_administration",
-            headerName: "Administration",
+        { 
+            field: "plot_name",
+            headerName: "Plot Name",
             filter: true,
             sortable: true,
-            //type: "string",
-        },
-        {
-            field: "responsible_state",
-            headerName: "Landesinventurleitung",
-            filter: true,
-            sortable: true,
-            //type: "string",
+            //type: "number",
+            pinned: 'left'
         },
         {
             field: "responsible_provider",
@@ -73,32 +84,38 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             filter: true,
             sortable: true,
             //type: "string",
-        },
-        {
-            field: "is_valid",
-            headerName: "Gültigkeit",
-            filter: true,
-            sortable: true,
-            //type: "boolean",
-            cellRenderer: (params) => {
-                return params.value ? 'Valid' : 'Invalid';
-            }
-            //type: "string",
         }
-        //{ field: "more", headerName: "Details", pinned: 'right', width: 50 },
     ]);
 
 
-    async function fetchRecords(ListOfRecordIds) {
+    async function fetchRecords(losId) {
+        console.log('Fetching records for LOS ID:', losId);
         try {
-            let first100 = ListOfRecordIds.slice(0, 100000000);
-            //console.log(first100);
-            // Ensure the array is passed as individual values
-            const query = `SELECT * FROM records WHERE cluster_id IN (${first100.map(() => '?').join(', ')}) ORDER BY cluster_name`;
-            const params = first100;
+            // Limit to reasonable batch size to avoid performance issues
+
+            if (!losId) {
+                rowData.value = [];
+                return;
+            }
+            console.log('Fetching records for LOS ID:', losId);
+            console.log('request database for records');
+            const {data:records, error} = await supabase
+                .from('records')
+                .select('cluster_id, cluster_name, plot_name, responsible_troop, responsible_provider, responsible_state')
+                .eq('administration_los', losId);
             
-            //console.log('Executing query:', query, 'with params:', params);
-            const result = await powerSyncDB.getAll(query, params);
+            if (error) {
+                console.error('Error fetching records:', error);
+                rowData.value = [];
+                return;
+            }
+            rowData.value = records;
+            return;
+            
+            // Use parameterized query for better performance
+            const query = `SELECT cluster_name, plot_name, responsible_troop, responsible_provider, responsible_state FROM records WHERE administration_los = ?`;
+            const result = await powerSyncDB.getAll(query, [losId]);
+            
             rowData.value = result;
         } catch (error) {
             console.error('Error fetching records:', error);
@@ -106,22 +123,56 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             loading.value = false;
         }
     }
-    function onCellClicked(event) {
-        console.log('Cell clicked:', event);
-        // You can handle cell click events here if needed
-    }
     function onSelectionChanged(event) {
         selectedRows.value = event.api.getSelectedRows();
-        // Perform actions based on the selected rows
+    }
+    const deleting = ref(false);
+    async function removeSelected() {
+        const selecteClusterNames = selectedRows.value.map(row => row.cluster_name);
+        const selecteClusterIds = rowData.value
+            .filter(row => selecteClusterNames.includes(row.cluster_name))
+            .map(row => row.cluster_id);
+        
+        const uniqueClusterIds = [...new Set(selecteClusterIds)];
+        const bulkSize = 100; // Adjust batch size as needed
+        try{
+            deleting.value = true;
+            for (let i = 0; i < uniqueClusterIds.length; i += bulkSize) {
+                const batch = uniqueClusterIds.slice(i, i + bulkSize);
+                // Use Supabase to update the records
+                const {data, error} = await supabase.from('records').update({administration_los: null}).in('cluster_id', batch);
+                if (error) {
+                    console.error('Error removing selected clusters:', error);
+                    deleting.value = false;
+                    return;
+                }
+            }
+            deleting.value = false;
+        } catch (error) {
+            deleting.value = false;
+            console.error('Error removing selected clusters:', error);
+            return;
+        }
+        
+        //console.log('Successfully removed selected clusters:', data);
+        await fetchRecords(props.los.id);
     }
 
     onMounted(async () => {
+        console.log(props.organization_id);
         loading.value = true;
-        powerSyncDB = await waitForDb();
-        await fetchRecords(props.records_Ids);
+        //powerSyncDB = await waitForDb();
+        await fetchRecords(props.los.id);
         loading.value = false;
 
     });
+    function cancelAction() {
+        addClusterDialog.value = false; // Close the dialog
+    }
+    function cancelUpdate() {
+        addClusterDialog.value = false; // Close the dialog
+        fetchRecords(props.los.id); // Refresh the records
+    }
 </script>
 
 
@@ -154,20 +205,14 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             <v-btn
                 class="ma-2"
                 variant="tonal"
-                prepend-icon="mdi-file-download"
-                @click="currentGrid.api.exportDataAsCsv()"
                 rounded="xl"
-            >
-            .csv
-            </v-btn>
-            <v-btn
-            class="ma-2"
-                variant="tonal"
-                rounded="xl"
-                @click="currentGrid.api.deselectAll()"
+                @click="removeSelected"
                 append-icon="mdi-delete"
+                :disabled="deleting"
+                :loading="deleting"
+                :loading-text="'Entferne Auswahl...'"
             >
-                remove
+                Auswahl aus Los entfernen
             </v-btn>
         </div>
     </div>
@@ -175,9 +220,30 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
         <v-progress-circular
             indeterminate
             color="primary"
-            size="40"
-            width="3"
+            size="30"
+            width="2"
         ></v-progress-circular>
-        <p>Lade Plots...</p>
+        <p class="mt-2">Lade Plots...</p>
     </div>
+    <v-card-actions v-if="props.organization_id && props.los.id">
+        <v-spacer></v-spacer>
+        <v-btn
+            variant="tonal"
+            rounded="xl"
+            @click=" addClusterDialog = true"
+            prepend-icon="mdi-plus"
+        >
+            Cluster hinzufügen
+        </v-btn>
+    </v-card-actions>
+    <v-dialog fullscreen scrollable v-model="addClusterDialog" max-width="500" @click:outside="cancelAction">
+        <v-card>
+            <v-toolbar>
+                <v-toolbar-title>Noch nicht zugewiesene Cluster</v-toolbar-title>
+                <v-btn icon="mdi-close" variant="text" @click="cancelAction"></v-btn>
+            </v-toolbar>
+            
+            <ListOfClusterRecord :organization_id="props.organization_id" :organization_type="props.organization_type" :los="props.los" @confirm="cancelUpdate" />
+        </v-card>
+    </v-dialog>
 </template>

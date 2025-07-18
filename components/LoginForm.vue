@@ -96,16 +96,13 @@
     const logout = async () => {
        
         supabase.auth.signOut().then(() => {
-            console.log('signed out');
             authErrors.value = null;
-            // navigate to login page
-            if (typeof window !== 'undefined') {
-                window.location.replace("/TFM-Documentation/authentication/sign-in");
-            }
         }).catch((error) => {
             console.log(error);
         }).finally(() => {
-            console.log('finally');
+            if (typeof window !== 'undefined') {
+                window.location.replace("/TFM-Documentation/authentication/sign-in");
+            }
         });
         return;
     }

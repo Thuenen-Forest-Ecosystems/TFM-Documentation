@@ -6,6 +6,7 @@ layout: page
 
 <script setup>
     import { onMounted, ref, getCurrentInstance } from 'vue';
+    import Firewall from '../../components/Firewall.vue';
 
     import ListOfOrganizations from '../../components/organizations/ListOfOrganizations.vue';
     import OrganizationsAdmins from '../../components/organizations/OrganizationsAdmins.vue';
@@ -30,7 +31,7 @@ layout: page
 
     const currentSyncStatus = ref({});
 
-    const tab = ref('1'); // Default tab
+    const tab = ref('3'); // Default tab
 
     const _getOrganizationById = async (organizationId) => {
         const { data, error } = await supabase.from('organizations').select('*').eq('id', organizationId).single();
@@ -92,7 +93,12 @@ layout: page
         currentSyncStatus.value = status;
     }
 </script>
-<div class="ma-11">
+
+
+<Firewall>
+
+
+<div class="ma-11" v-if="currentOrganization && currentOrganization.id">
 
 <div class="text-center mt-4">
     <h1>
@@ -106,7 +112,6 @@ layout: page
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">
     <v-tab value="1">Mitarbeitende</v-tab>
-    <v-tab value="2">Cluster</v-tab>
     <v-tab value="3">Lose</v-tab>
     <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Landesinventurleitung' : 'Dienstleister'}}</v-tab>
     <v-tab value="5">Trupps</v-tab>
@@ -142,7 +147,8 @@ layout: page
     <v-tabs-window-item value="3">
         <ListOfLose
             v-if="organizationId"
-            :organization_id="organizationId" 
+            :organization_id="currentOrganization.id"
+            :organization_type="currentOrganization.type"
             :title="'Lose'" 
             :is_admin="permission.is_organization_admin || false"
             :is_root="currentOrganization.is_root || false"
@@ -169,7 +175,9 @@ layout: page
 
 <div class="text-center mt-11 " >
     Organisation ID:<br/>
-    <span class="text-caption text-grey">{{ currentOrganization.id }}</span>
+    <span class="text-caption text-grey">{{ currentOrganization.id }} {{permission.organization_id}}</span>
 </div>
 
 </div>
+
+</Firewall>

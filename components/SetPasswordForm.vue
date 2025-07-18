@@ -1,7 +1,6 @@
 <script setup>
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
     import { createClient } from '@supabase/supabase-js'
-    console.log('createClient');
     import { withBase } from 'vitepress'
     
     const instance = getCurrentInstance();

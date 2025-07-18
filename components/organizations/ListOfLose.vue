@@ -35,6 +35,10 @@
             type: String,
             required: true
         },
+        organization_type: {
+            type: String,
+            default: null
+        },
         title: {
             type: String,
             default: ''
@@ -117,7 +121,7 @@
                 } else {
                     lose.value = [ ...data ] || [];
                     if (lose.value.length === 0) {
-                        console.warn('No lose found for the organization.');
+                        console.warn('No lose found for the organization.', organizationId);
                         return;
                     }
                     _updateAssignedClusters(lose.value);
@@ -225,8 +229,6 @@
         responsibleDialog.value = true;
     }
 
-    
-    
     async function _addClusterToLosDialog(losDetails){
         if (!losDetails || !losDetails.id) {
             console.error('Error: losDetails and losDetails.id are required.');
@@ -410,7 +412,8 @@
         }
     });
 
-    onMounted(() => {
+    onMounted(async () => {
+
         if (!props.organization_id) {
             console.error('Error: organization_id is required in attributes.');
             return;
@@ -467,10 +470,12 @@
     </div>
 
     <v-card v-for="los in lose" :key="los.id" class="mb-4" variant="tonal">
-        
         <v-card-item style="background-color: rgba(0, 0, 0, 0.1);">
             <template v-slot:prepend>
-                <v-icon>mdi-rectangle</v-icon>
+                <v-btn
+                    icon="mdi-chevron-down"
+                    @click="los.expanded = !los.expanded"
+                ></v-btn>
             </template>
             <template v-slot:append>
                 <v-btn
@@ -494,26 +499,9 @@
                 <v-chip variant="elevated" color="yellow" v-else>noch nicht zugewiesen</v-chip>
             </v-card-title>
         </v-card-item>
-        <v-card-text>
-            <ClustersPerLos v-if="los.cluster_ids && los.cluster_ids.length > 0" :records_Ids="los.cluster_ids"/>
-            <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="los.cluster_ids && los.cluster_ids.length === 0">
-                Es wurde noch kein Trakt hinzugefügt.
-            </div>
+        <v-card-text v-if="los.expanded">
+            <ClustersPerLos :los="los" :records_Ids="los.cluster_ids" :organization_id="props.organization_id" :organization_type="props.organization_type"/>
         </v-card-text>
-        <!--template v-slot:actions>
-            <v-spacer></v-spacer>
-            <v-btn
-                v-if="props.is_admin"
-                variant="tonal"
-                class="mx-auto"
-                @click="_addClusterToLosDialog(los)"
-                rounded="xl"
-            >
-                Trakt Hinzufügen
-                <v-icon>mdi-plus</v-icon>
-                
-            </v-btn>
-        </template>-->
     </v-card>
 
     

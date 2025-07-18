@@ -131,52 +131,33 @@ if (typeof window !== 'undefined') {
               enableWebWorker: false
             }
           });
-          console.log('Step 4: ✓ PowerSync database created (fallback mode)');
         } catch (fallbackError) {
           console.error('Failed to create PowerSync database even in fallback mode:', fallbackError);
           throw fallbackError;
         }
       }
       
-      console.log('Step 5: Creating Supabase connector instance...');
       const supabaseConnector = new SupabaseConnector(
         url,
         apikey,
         powersyncUrl
       );
-      console.log('Step 5: ✓ Supabase connector instance created');
       
-      console.log('Step 6: Initializing Supabase connector...');
       await Promise.race([
         supabaseConnector.init(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase connector init timeout')), 10000))
       ]);
-      console.log('Step 6: ✓ Supabase connector initialized');
       
-      console.log('Step 7: Connecting PowerSync to Supabase...');
       await db.connect(supabaseConnector);
-      console.log('Step 7: ✓ PowerSync connected to Supabase');
       
-      console.log('Step 8: Initializing PowerSync database (connecting to existing data if available)...');
       await Promise.race([
         db.init(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Database init timeout')), 30000))
       ]);
-      console.log('Step 8: ✓ PowerSync database initialized');
       
       // Add a small delay to ensure the database is fully ready
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Verify the database is in a good state
-      try {
-        console.log('Step 9: Verifying database connectivity...');
-        // Try a simple operation to ensure the database is working
-        await db.execute('SELECT 1 as test');
-        console.log('Step 9: ✓ Database connectivity verified');
-      } catch (verifyError) {
-        console.warn('Database verification failed (this might be normal):', verifyError.message);
-        // Don't fail the initialization for this - the database might still work fine
-      }
       
       dbState.value = db;
       clearTimeout(initTimeout);
@@ -284,8 +265,9 @@ export default {
       watch(
         () => vitePressDark.value,
         (newIsDark) => {
-          vuetify.theme.global.name.value = newIsDark ? 'dark' : 'light'
+          //vuetify.theme.global.name.value = newIsDark ? 'dark' : 'light'
           isDark.value = newIsDark // Update our composable's isDark value
+          vuetify.theme.change(newIsDark ? 'dark' : 'light')
         },
         { immediate: true }
       )
@@ -320,7 +302,8 @@ export default {
       // This ensures the theme is correct on initial load
       const { isDark } = useData()
       if (isDark.value) {
-        vuetify.theme.global.name.value = 'dark'
+        //vuetify.theme.global.name.value = 'dark'
+        vuetify.theme.change('dark')
       }
       globalIsDark.value = isDark.value
     }

@@ -16,7 +16,7 @@
     const state_responsible_name = ref(null);
 
     const selections = [
-        'ci2012',
+        'bwi2012',
         'ci2017',
         'bwi2022'
     ];
