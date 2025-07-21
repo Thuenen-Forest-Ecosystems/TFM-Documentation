@@ -85,7 +85,7 @@
                 .delete()
                 .eq('id', pendingDeleteAdminId.value)
                 .eq('organization_id', attrs.organization_id);
-                
+
             if (error) {
                 console.error('Error deleting administrator:', error);
                 alert(`Error deleting administrator: ${error.message}`);

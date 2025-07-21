@@ -14,7 +14,6 @@ layout: page
     import ListOfCluster from '../../components/organizations/ListOfCluster.vue';
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
     import ListOfLose from '../../components/organizations/ListOfLose.vue';
-    import SyncStatus from '../../components/SyncStatus.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -28,8 +27,6 @@ layout: page
     const user = ref({});
 
     const currentOrganization = ref({});
-
-    const currentSyncStatus = ref({});
 
     const tab = ref('3'); // Default tab
 
@@ -88,10 +85,6 @@ layout: page
             return null;
         }
     }
-
-    function handleStatusChange(status) {
-        currentSyncStatus.value = status;
-    }
 </script>
 
 
@@ -105,9 +98,6 @@ layout: page
         {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
     </h1>
     Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
-    <div>
-        <SyncStatus @status-change="handleStatusChange" />
-    </div>
 </div>
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">

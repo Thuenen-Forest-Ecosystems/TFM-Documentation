@@ -89,7 +89,8 @@
                 users.value = data || [];
             });
     }
-
+    
+    const deleting = ref({});
     function _removeTroop(e, troopId) {
         e.stopPropagation(); // Prevent the click from propagating to the list item
         if (!troopId) {
@@ -97,6 +98,12 @@
             return;
         }
 
+        // Confirm the deletion
+        if (!confirm('Sind Sie sicher, dass Sie diesen Trupp entfernen möchten?')) {
+            return;
+        }
+
+        deleting.value[troopId] = true; // Set loading state
         supabase
             .from('troop')
             .delete()
@@ -110,22 +117,35 @@
             })
             .catch((e) => {
                 console.error('An unexpected error occurred while removing troop:', e);
+            })
+            .finally(() => {
+                deleting.value[troopId] = false; // Reset loading state
             });
     }
 
+    const deletingUser = ref({});
     function _removeUserFromTroop(e, userId, troopId) {
         e.stopPropagation(); // Prevent the click from propagating to the list item
-        console.log('Removing user from troop:', userId, troopId);
+
         if (!userId || !troopId) {
             console.error('Error: userId and troopId are required.');
             return;
         }
+
+        // Confirm the deletion
+        if (!confirm('Sind Sie sicher, dass Sie diesen Benutzer aus dem Trupp entfernen möchten?')) {
+            return;
+        }
+
+        
 
         const userIds = troops.value.find(t => t.id === troopId)?.user_ids || [];
         if (!userIds.includes(userId)) {
             console.warn('User is not in this troop.');
             return; // User not in the troop
         }
+
+        deletingUser.value[userId] = true; // Set loading state
 
         supabase
             .from('troop')
@@ -145,6 +165,9 @@
                         troops.value[troopIndex] = updatedTroop;
                     }
                 }
+            })
+            .finally(() => {
+                deletingUser.value[userId] = false; // Reset loading state
             });
     }
 
@@ -248,6 +271,8 @@
                     v-if="props.is_admin"
                     color="grey-lighten-1"
                     icon="mdi-delete"
+                    :disabled="troop.id && deleting[troop.id]"
+                    :loading="troop.id && deleting[troop.id]"
                     variant="text"
                     @click="(e) => _removeTroop(e, troop.id)"
                 ></v-btn>

@@ -53,6 +53,29 @@
   function _sortOrganizations(organizations) {
       return organizations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
+  const deleting = ref({});
+  async function _removeOrganization(organizationId) {
+    if (!organizationId) return;
+    try {
+        if (!confirm('Are you sure you want to remove this organization?')) {
+            return; // User cancelled the deletion
+        }
+
+        deleting.value[organizationId] = true;
+      const { data, error } = await supabase.from('organizations').delete().eq('id', organizationId);
+      if (error) {
+        console.error('Error removing organization:', error);
+        alert(`Error removing organization: ${error.message}`);
+        return;
+      }
+      organizations.value = organizations.value.filter(org => org.id !== organizationId);
+    } catch (e) {
+      console.error('An unexpected error occurred:', e);
+      alert(`An unexpected error occurred: ${e.message}`);
+    } finally {
+        deleting.value[organizationId] = false;
+    }
+  }
 
   async function _createOrganization(organizationName = 'New Organization', entityName = 'Los', parentOrganizationId = null) {
     if (!parent_organization_id.value) {
@@ -295,6 +318,13 @@
                     Einladen
                     <v-icon>mdi-email-plus</v-icon>
                 </v-btn>
+                <v-btn
+                    icon="mdi-delete" 
+                    variant="text" 
+                    :loading="deleting[organization.id]"
+                    :disabled="deleting[organization.id]"
+                    v-if="props.is_admin"
+                    @click="_removeOrganization(organization.id)"></v-btn>
             </template>
             <template v-if="is_organization_admin">
                 <v-btn icon="mdi-pencil" variant="text" @click="_createOrganization(organization.name, organization.entityName, organization.parent_organization_id)"></v-btn>

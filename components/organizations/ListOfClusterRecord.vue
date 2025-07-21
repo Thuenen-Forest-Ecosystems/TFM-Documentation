@@ -376,8 +376,6 @@
         let currentPage = 0;
         const pageSize = 10000; // Choose an appropriate page size
 
-        console.log(`Fetching data from ${tableName} for organization ${organizationId} with companyType ${companyType} and filterRow ${filterRow}`);
-
         while (true) {
             const start = currentPage * pageSize;
             const end = start + pageSize - 1;
@@ -494,38 +492,98 @@
 
         if (uniqueClusterIds.length === 0) {
             console.warn('No unique cluster IDs found in selected rows');
-            return;
+            return; // 13591
         }
 
+        console.log(`Starting batch assignment of ${uniqueClusterIds.length} clusters to LOS: ${losId}`);
         assigning.value = true;
-        // Batch update the records in the database when assigning lots of clusters
+        
+        const batchSize = 100;
+        let successCount = 0;
+        let failedBatches = [];
+        let totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
+
         try {
-            // Use Supabase to update the records
-            const batchSize = 100; // Adjust batch size as needed
+            // Process all batches and collect results
             for (let i = 0; i < uniqueClusterIds.length; i += batchSize) {
                 const batch = uniqueClusterIds.slice(i, i + batchSize);
-
-                const { data, error } = await supabase
-                    .from('records')
-                    .update({ administration_los: losId })
-                    .in('cluster_id', batch);
+                const batchNumber = Math.floor(i / batchSize) + 1;
                 
-                if (error) {
-                    console.error('Error assigning clusters to LOS:', error);
-                    assigning.value = false;
-                    return;
+                console.log(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} clusters)`);
+                
+                try {
+                    const { data, error } = await supabase
+                        .from('records')
+                        .update({ administration_los: losId })
+                        .in('cluster_id', batch);
+                    
+                    if (error) {
+                        console.error(`Error in batch ${batchNumber}:`, error);
+                        failedBatches.push({
+                            batchNumber,
+                            clusterIds: batch,
+                            error: error.message
+                        });
+                    } else {
+                        // Count successful updates - data contains the updated records
+                        const updatedCount = data ? data.length : batch.length;
+                        successCount += updatedCount;
+                        console.log(`Batch ${batchNumber} completed: ${updatedCount} records updated`);
+                    }
+                } catch (batchError) {
+                    console.error(`Unexpected error in batch ${batchNumber}:`, batchError);
+                    failedBatches.push({
+                        batchNumber,
+                        clusterIds: batch,
+                        error: batchError.message
+                    });
+                }
+                
+                // Small delay between batches to avoid overwhelming the database
+                if (i + batchSize < uniqueClusterIds.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            // Report results
+            console.log(`Assignment completed: ${successCount} clusters assigned successfully`);
+            
+            if (failedBatches.length > 0) {
+                console.warn(`${failedBatches.length} batches failed:`, failedBatches);
+                
+                // Optionally retry failed batches
+                if (confirm(`${failedBatches.length} batches failed. Would you like to retry the failed batches?`)) {
+                    for (const failedBatch of failedBatches) {
+                        console.log(`Retrying batch ${failedBatch.batchNumber}`);
+                        try {
+                            const { data, error } = await supabase
+                                .from('records')
+                                .update({ administration_los: losId })
+                                .in('cluster_id', failedBatch.clusterIds);
+                            
+                            if (!error) {
+                                const updatedCount = data ? data.length : failedBatch.clusterIds.length;
+                                successCount += updatedCount;
+                                console.log(`Retry successful: ${updatedCount} additional records updated`);
+                            } else {
+                                console.error(`Retry failed for batch ${failedBatch.batchNumber}:`, error);
+                            }
+                        } catch (retryError) {
+                            console.error(`Retry error for batch ${failedBatch.batchNumber}:`, retryError);
+                        }
+                    }
                 }
             }
             
         } catch (error) {
-            console.error('Error assigning clusters to LOS:', error);
-            assigning.value = false;
-            return;
+            console.error('Unexpected error during batch assignment:', error);
         }
 
         //powerSyncDB.execute(`UPDATE records SET administration_los = ? WHERE cluster_id IN (${uniqueClusterIds.map(() => '?').join(', ')})`, [losId, ...uniqueClusterIds]);
         
         assigning.value = false;
+        
+        console.log(`Final result: ${successCount} out of ${uniqueClusterIds.length} clusters assigned to LOS`);
 
         emit('confirm');
 

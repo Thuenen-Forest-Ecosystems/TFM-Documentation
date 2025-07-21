@@ -30,6 +30,8 @@
     const troops = ref([]);
     const companies = ref([]);
 
+    const deleting = ref({});
+
     const props = defineProps({
         organization_id: {
             type: String,
@@ -161,8 +163,6 @@
         }
     }
 
-    
-
     function _removeLose(e, loseId) {
         e.stopPropagation(); // Prevent the click from propagating to the list item
         if (!loseId) {
@@ -170,6 +170,12 @@
             return;
         }
 
+        // Confirm the deletion
+        if (!confirm('Sind Sie sicher, dass Sie dieses Los entfernen möchten?')) {
+            return;
+        }
+
+        deleting.value[loseId] = true;
         supabase
             .from('organizations_lose')
             .delete()
@@ -183,6 +189,8 @@
             })
             .catch((e) => {
                 console.error('An unexpected error occurred while removing lose:', e);
+            }).finally(() => {
+                deleting.value[loseId] = false;
             });
     }
     async function _removeCluster(e, losId, clusterId) {
@@ -424,11 +432,16 @@
         _getTroops();
     });
 
-    async function _handleConfirm (value) {
+    async function _handleConfirm (value, name) {
+        
         // Handle the confirm action
         const { data, error } = await supabase
             .from('organizations_lose')
-            .update({ responsible_organization_id: value.responsible_organization_id, troop_id: value.troop_id })
+            .update({
+                responsible_organization_id: value.responsible_organization_id,
+                troop_id: value.troop_id,
+                name: name || value.name // Update the name if provided
+            })
             .eq('id', value.id)
             .select()
             .single();
@@ -479,15 +492,19 @@
             </template>
             <template v-slot:append>
                 <v-btn
-                    v-if="props.is_admin"
+                    v-if="props.is_admin&& deleting"
                     icon="mdi-pencil"
                     variant="text"
+                    :disabled="los.id && deleting[los.id]"
                     @click="(e) => _openResponsibleDialog(los)"
                 ></v-btn>
                 <v-btn
-                    v-if="props.is_admin"
+                    v-if="props.is_admin && deleting"
                     icon="mdi-delete"
                     variant="plain"
+                    :disabled="los.id && deleting[los.id]"
+                    :loading="los.id && deleting[los.id]"
+                    :loading-text="'Entferne Los...'"
                     @click="(e) => _removeLose(e, los.id)"
                 ></v-btn>
             </template>
@@ -535,6 +552,6 @@
         v-model="responsibleDialog"
         :selected="selectedLos"
         @close="_handleClose"
-        @confirm="(value) => _handleConfirm(value)"
+        @confirm="(value, name) => _handleConfirm(value, name)"
     />
 </template>

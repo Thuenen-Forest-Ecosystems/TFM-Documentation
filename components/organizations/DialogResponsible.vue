@@ -12,7 +12,7 @@
 
     const companies = ref([]);
     const selectedCompany = ref(null);
-
+    const losName = ref('');
 
     const props = defineProps({
         modelValue: Boolean,
@@ -22,8 +22,11 @@
     const emit = defineEmits(['close', 'confirm']);
 
     // Call this when user confirms
+    const savingChanges = ref(false);
     function confirmAction() {
-        emit('confirm', props.selected);
+        savingChanges.value = true;
+        emit('confirm', props.selected, losName.value);
+        emit('update:modelValue', false); // Close the dialog
     }
 
     function updateLos(){
@@ -86,6 +89,8 @@
         if (newDialog && newSelected && newSelected.id) {
             selectedTroop.value = newSelected.troop_id || null;
             selectedCompany.value = newSelected.responsible_organization_id || null;
+            losName.value = newSelected.name || '';
+            savingChanges.value = false;
             _getTroops();
             _getCompanies();
         }else {
@@ -93,7 +98,12 @@
         }
     }, { immediate: true });
 
-
+    
+    const rules = {
+        required: value => !!value || 'wird benötigt',
+        minLength: value => ( value && value.length >= 4 ) || 'Muss mindestens 4 Zeichen lang sein',
+        //disabled: value => !props.disabled.includes(value.toLowerCase()) || 'Name schon vergeben'
+    };
 </script>
 
 <template>
@@ -113,49 +123,60 @@
                 </v-toolbar-items>
             </v-toolbar>
             <v-card-text>
+                <v-text-field
+                    label="Name ändern"
+                    persistent-hint
+                    type="text"
+                    v-model.trim="losName"
+                    :placeholder="props.selected.name"
+                    class="my-4"
+                    rounded="xl"
+                    variant="outlined"
+                    :rules="[rules.required, rules.minLength, rules.disabled]"
+                />
+
                 <p class="mb-6 text-body-2 text-medium-emphasis">
-                    Wähle einen Dienstleister oder einen Trupp, welcher für das Los zuständig ist.
+                    Wähle einen Dienstleister ODER einen Trupp, welcher für das Los zuständig ist.
                 </p>
-                <v-row class="mt-4">
-                    <v-col cols="5" class="align-center">
-                        <v-list-subheader>Dienstleister</v-list-subheader>
-                        <v-chip-group
-                            selected-class="text-primary"
-                            column
-                            v-model="selectedCompany"
+
+                <div class="align-center">
+                    <v-list-subheader>Dienstleister</v-list-subheader>
+                    <v-chip-group
+                        selected-class="text-primary"
+                        column
+                        v-model="selectedCompany"
+                    >
+                        <v-chip
+                            v-for="company in companies"
+                            :key="company.id"
+                            :value="company.id"
+                            @click="_selectCompany(company)"
+                            class="ma-1"
                         >
-                            <v-chip
-                                v-for="company in companies"
-                                :key="company.id"
-                                :value="company.id"
-                                @click="_selectCompany(company)"
-                                class="ma-1"
-                            >
-                            {{ company.name || company.entityName || 'unknown' }}
-                            </v-chip>
-                        </v-chip-group>
-                    </v-col>
-                    <v-col class="align-center">oder</v-col>
-                     <v-col cols="5">
-                        <v-list-subheader>Troops</v-list-subheader>
-                        <v-chip-group
-                            selected-class="text-primary"
-                            column
-                            v-model="selectedTroop"
+                        {{ company.name || company.entityName || 'unknown' }}
+                        </v-chip>
+                    </v-chip-group>
+                </div>
+                <div>
+                    <v-list-subheader>Troops</v-list-subheader>
+                    <v-chip-group
+                        selected-class="text-primary"
+                        column
+                        v-model="selectedTroop"
+                    >
+                        <v-chip
+                            v-for="troop in troops"
+                            :key="troop.id"
+                            :value="troop.id"
+                            @click="_selectTroop(troop)"
+                            class="ma-1"
                         >
-                            <v-chip
-                                v-for="troop in troops"
-                                :key="troop.id"
-                                :value="troop.id"
-                                @click="_selectTroop(troop)"
-                                class="ma-1"
-                            >
-                            {{ troop.name || troop.entityName || 'unknown' }}
-                            </v-chip>
-                        </v-chip-group>
-                    </v-col>
-                </v-row>
-            </v-card-text>
+                        {{ troop.name || troop.entityName || 'unknown' }}
+                        </v-chip>
+                    </v-chip-group>
+                </div>
+
+                </v-card-text>
             <v-card-actions>
                 
                 <v-spacer></v-spacer>
@@ -164,6 +185,9 @@
                     variant="elevated"
                     rounded="xl"
                     color="primary"
+                    :loading="savingChanges"
+                    :disabled="savingChanges"
+                    :loading-text="savingChanges ? 'Änderungen werden gespeichert...' : ''"
                     @click="confirmAction"
                 ></v-btn>
             </v-card-actions>
