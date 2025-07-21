@@ -624,7 +624,7 @@
             console.warn('No rows selected for export');
             return;
         }
-        console.log(currentGrid.value.api);
+
         currentGrid.value.api.exportDataAsCsv({
             fileName: `selected_records_${new Date().toISOString()}.csv`,
             onlySelected: true,
@@ -654,6 +654,38 @@
         console.log('Plots:', rowData.value.length);
         
     });
+    let filteredRows = ref({});
+    function onFilterChanged(filter) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        filteredRows.value = currentGrid.value.api.getFilterModel();
+    }
+    function clearFilters() {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        currentGrid.value.api.setFilterModel(null);
+        filteredRows.value = {};
+    }
+    function clearFilter(filterKey) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        if (filterKey && filteredRows.value[filterKey]) {
+            currentGrid.value.api.setFilterModel({
+                ...currentGrid.value.api.getFilterModel(),
+                [filterKey]: null
+            });
+            delete filteredRows.value[filterKey];
+        } else {
+            console.warn('No filter key provided or filter not found');
+        }
+
+    }
     function selectByClusterIds(clusterIds) {
         if (!currentGrid.value || !currentGrid.value.api) {
             console.error('Grid API not available');
@@ -742,28 +774,55 @@
         rounded="xl"
         variant="solo"></v-file-input>
 
-        <ag-grid-vue
-            class="ma-4"
-            ref="currentGrid"
-            v-if="!loading"
-            @selection-changed="onSelectionChanged"
-            :gridOptions="gridOptions"
-            :theme="currentTheme"
-            :pagination="true"
-            :rowData="rowData"
-            :columnDefs="colDefs"
-            style="height: 700px"
-        >
-        </ag-grid-vue>
-        <div v-else-if="loading" class="text-center ma-11">
-            <v-progress-circular
-                indeterminate
-                color="primary"
-                size="30"
-                width="2"
-            ></v-progress-circular>
-            <p class="mt-2">Cluster laden...</p>
-        </div>
+    <!-- Replace v-app-bar with v-toolbar or v-card-title -->
+    <v-card class="mx-4 mt-4 mb-1">
+        <v-toolbar density="compact" v-if="Object.keys(filteredRows).length" >
+            <template v-slot:prepend>
+                <v-icon>mdi-filter</v-icon>
+            </template>
+            <v-toolbar-title>Aktive Filter ({{ Object.keys(filteredRows).length }})</v-toolbar-title>
+            <template v-slot:append>
+                <v-chip
+                    v-for="(value, key) in filteredRows"
+                    :key="key"
+                    class="ma-1"
+                    color="primary"
+                    text-color="white"
+                    variant="tonal"
+                    rounded="xl"
+                    @click="clearFilter(key)"
+                >
+                    {{ key }}: {{ value.filter }}
+                </v-chip>
+                <v-btn @click="clearFilters" variant="outlined" prepend-icon="mdi-delete" rounded="xl">
+                    Alle entfernen
+                </v-btn>
+            </template>
+        </v-toolbar>
+    </v-card>
+    <ag-grid-vue
+        class="mx-4"
+        ref="currentGrid"
+        v-if="!loading"
+        @selection-changed="onSelectionChanged"
+        @filter-changed="onFilterChanged"
+        :gridOptions="gridOptions"
+        :theme="currentTheme"
+        :pagination="true"
+        :rowData="rowData"
+        :columnDefs="colDefs"
+        style="height: 700px"
+    >
+    </ag-grid-vue>
+    <div v-else-if="loading" class="text-center ma-11">
+        <v-progress-circular
+            indeterminate
+            color="primary"
+            size="30"
+            width="2"
+        ></v-progress-circular>
+        <p class="mt-2">Cluster laden...</p>
+    </div>
     </v-card-text>
     <v-card-actions v-if="!loading">
             <v-chip
