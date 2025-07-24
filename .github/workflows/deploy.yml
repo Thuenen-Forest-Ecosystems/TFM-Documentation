@@ -43,6 +43,15 @@ jobs:
       - name: Run create-md script
         run: npm run create-md
         
+      - name: List files
+        run: ls -R
+
+      - name: Upload markdown files
+        uses: actions/upload-artifact@v3
+        with:
+          name: markdown-files
+          path: migration.md
+
   build:
     runs-on: ubuntu-latest
     steps:
