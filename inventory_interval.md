@@ -6,9 +6,9 @@
 
 # Filter by Interval
 
-Data is collected in regular intervals. Currently `ci2012`, `ci2017` and `bwi2022` are available. The interval data is stored in the `interval_name` columne of the `inventory_archive.plot` table. The `interval_name` is used to identify the data of a specific interval.
+Data is collected in regular intervals. Currently `bwi2012`, `ci2017` and `bwi2022` are available. The interval data is stored in the `interval_name` columne of the `inventory_archive.plot` table. The `interval_name` is used to identify the data of a specific interval.
 
-- `ci2012`: Kohlenstoffinventur in 2012
+- `bwi2012`: Kohlenstoffinventur in 2012
 - `ci2017`: Kohlenstoffinventur in 2017
 - `bwi2022`: Bundeswaldinventur in 2022
 
@@ -30,9 +30,9 @@ More information about [Horizontal Filtering](https://docs.postgrest.org/en/v12/
 ## Comparing Intervals
 To compare cluster data from different intervals, you can use the `interval_name` column in the `inventory_archive.cluster` table.
 
-The following example shows how to query a specific cluster (`cluster_name=eq.5207`) for the `ci2012` and `ci2017` intervals.
+The following example shows how to query a specific cluster (`cluster_name=eq.5207`) for the `bwi2012` and `ci2017` intervals.
 
 ```txt-vue
-curl -X GET "{{ url }}/rest/v1/cluster?cluster_name=eq.5207&select=*,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),structure_gt4m(*),edges(*),plot_landmark(*),position(*),subplots_relative_position(*))&plot.interval_name=in.(ci2012,ci2017)" -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}"
+curl -X GET "{{ url }}/rest/v1/cluster?cluster_name=eq.5207&select=*,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),structure_gt4m(*),edges(*),plot_landmark(*),position(*),subplots_relative_position(*))&plot.interval_name=in.(bwi2012,ci2017)" -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}"
 ```
-This will return the cluster data for the specified cluster, including 8 plots. 4 plots are from the `ci2012` interval and 4 plots are from the `ci2017` interval. The data is structured in a way that allows you to compare the data from both intervals.
+This will return the cluster data for the specified cluster, including 8 plots. 4 plots are from the `bwi2012` interval and 4 plots are from the `ci2017` interval. The data is structured in a way that allows you to compare the data from both intervals.
