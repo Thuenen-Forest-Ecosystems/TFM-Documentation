@@ -1,0 +1,3091 @@
+{
+    "title": "Cluster",
+    "description": "Cluster schema",
+    "type": "object",
+    "required": [
+        "cluster_name",
+        "grid_density",
+        "inspire_grid_cell",
+        "plot"
+    ],
+    "properties": {
+        "intkey": {
+            "title": "intkey",
+            "description": "Column intkey from nfi2022",
+            "type": "string",
+            "$migration": {
+                "nfi2022": {
+                    "function": "fixIntkey",
+                    "function_arguments": [
+                        "tnr"
+                    ],
+                    "source": [
+                        "b3_tnr",
+                        "0",
+                        "intkey"
+                    ],
+                    "pointer": "bwineu.dbo.b3_tnr.intkey"
+                }
+            }
+        },
+        "cluster_name": {
+            "title": "Cluster ID",
+            "description": "The unique identifier for a cluster",
+            "type": "number",
+            "minimum": 0,
+            "$migration": {
+                "nfi2022": {
+                    "source": [
+                        "tnr"
+                    ],
+                    "pointer": "bwi.dat.b0_tab.Tnr"
+                }
+            }
+        },
+        "inspire_grid_cell": {
+            "title": "Cluster ID",
+            "description": "The unique identifier for a cluster",
+            "type": "string",
+            "$migration": {
+                "nfi2022": {
+                    "function": "fixINSPIREGridCell",
+                    "source": [
+                        "bwinetz_500m_INSPIRE_Tnr",
+                        "0",
+                        "cell_id"
+                    ],
+                    "pointer": "bwi.raum1.bwinetz_500m_INSPIRE_Tnr.cell_id"
+                }
+            }
+        },
+        "state_responsible": {
+            "title": "Strata",
+            "description": "The unique identifier for a cluster",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "$migration": {
+                "nfi2022": {
+                    "function": "checkEnum",
+                    "function_arguments": {
+                        "checkEnum": "enum_state",
+                        "column": "abbreviation"
+                    },
+                    "source": [
+                        "b3_tnr",
+                        "0",
+                        "dathoheit"
+                    ],
+                    "pointer": "bwineu.dbo.b3_tnr.dathoheit",
+                    "lookup": "lookup.lookup_state.code"
+                }
+            }
+        },
+        "topo_map_sheet": {
+            "title": "Topographic Map Sheet",
+            "description": "The topographic map sheet",
+            "type": "integer",
+            "minimum": 0,
+            "$migration": {
+                "nfi2022": {
+                    "source": [
+                        "b3_tnr",
+                        "0",
+                        "TopKar"
+                    ],
+                    "pointer": "bwineu.dbo.b3_tnr.TopKar"
+                }
+            }
+        },
+        "states_affected": {
+            "title": "States Affected",
+            "description": "The states affected by the cluster",
+            "type": "array",
+            "$migration": {
+                "nfi2022": {
+                    "function": "enumSqlToArray",
+                    "function_arguments": {
+                        "checkEnum": "enum_state",
+                        "column": "abbreviation"
+                    },
+                    "source": [
+                        "b3_tnr",
+                        "0",
+                        "Laender"
+                    ],
+                    "pointer": "bwineu.dbo.b3_tnr.Laender",
+                    "lookup": "lookup.lookup_state.code"
+                }
+            },
+            "items": {
+                "title": "State",
+                "type": "integer"
+            }
+        },
+        "grid_density": {
+            "title": "Grid Density",
+            "description": "The grid density of the cluster",
+            "type": "integer",
+            "$migration": {
+                "nfi2022": {
+                    "source": [
+                        "Netz"
+                    ],
+                    "pointer": "bwi.dat.b0_tab.Netz",
+                    "lookup": "lookup.lookup_grid_density.code"
+                }
+            }
+        },
+        "cluster_status": {
+            "title": "Cluster Status",
+            "description": "The status of the cluster",
+            "type": "integer",
+            "$migration": {
+                "nfi2022": {
+                    "source": [
+                        "ktg4"
+                    ],
+                    "pointer": "bwi.dat.b0_tab.ktg4",
+                    "lookup": "lookup.lookup_cluster_status.code"
+                }
+            }
+        },
+        "cluster_situation": {
+            "title": "Cluster Situation",
+            "description": "The situation of the cluster",
+            "type": "integer",
+            "$migration": {
+                "nfi2022": {
+                    "source": [
+                        "b3f_tnr_vorkl",
+                        "0",
+                        "TrStatus"
+                    ],
+                    "pointer": "bwineu.dbo.b3f_tnr_vorkl.TrStatus",
+                    "lookup": "lookup.lookup_cluster_situation.code"
+                }
+            }
+        },
+        "plot": {
+            "title": "Plot",
+            "description": "The plots in the cluster",
+            "$migration": {
+                "title": "plot"
+            },
+            "type": "array",
+            "$tfm": {
+                "ui:layout": {
+                    "type": "grid"
+                }
+            },
+            "items": {
+                "title": "Plot",
+                "type": "object",
+                "required": [
+                    "plot_name",
+                    "cluster_name",
+                    "cluster_id",
+                    "protected_landscape",
+                    "histwald",
+                    "harvest_restriction_nature_reserve",
+                    "harvest_restriction_protection_forest",
+                    "harvest_restriction_recreational_forest",
+                    "harvest_restriction_protection_area",
+                    "harvest_restriction_scattered",
+                    "harvest_restriction_fragmented",
+                    "harvest_restriction_insufficient_access",
+                    "harvest_restriction_wetness",
+                    "harvest_restriction_low_yield",
+                    "harvest_restriction_private_conservation",
+                    "harvest_restriction_other_internalcause",
+                    "plot_landmark",
+                    "plot_coordinates",
+                    "tree",
+                    "deadwood",
+                    "position",
+                    "edges",
+                    "regeneration",
+                    "structure_gt4m",
+                    "structure_lt4m"
+                ],
+                "properties": {
+                    "plot_landmark": {
+                        "title": "Landmake",
+                        "description": "",
+                        "type": "object",
+                        "required": [
+                            "landmark_azimuth",
+                            "landmark_distance"
+                        ],
+                        "properties": {
+                            "intkey": {
+                                "title": "intkey",
+                                "description": "Column intkey from nfi2022",
+                                "type": "string",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "fixIntkey",
+                                        "function_arguments": [
+                                            "Tnr",
+                                            "Enr"
+                                        ],
+                                        "source": [
+                                            "b3_ecke",
+                                            "0",
+                                            "intkey"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3_ecke.intkey"
+                                    },
+                                    "frontend": {
+                                        "display": false
+                                    }
+                                }
+                            },
+                            "landmark_azimuth": {
+                                "title": "Azimut",
+                                "description": "Markanter Geländepunkt, hier Azimut [gon]",
+                                "type": "integer",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "b3v_ecke_feld",
+                                            "0",
+                                            "Mark_Azi"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_ecke_feld.Mark_Azi"
+                                    }
+                                }
+                            },
+                            "landmark_distance": {
+                                "title": "Horizontalentfernung",
+                                "description": "Markanter Geländepunkt, hier Horizontalentfernung [cm]",
+                                "type": "integer",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "b3v_ecke_feld",
+                                            "0",
+                                            "Mark_Hori"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_ecke_feld.Mark_Hori"
+                                    }
+                                }
+                            },
+                            "landmark_note": {
+                                "title": "Geländepunkt",
+                                "description": "Kurz-Beschreibung eines markanten Geländepunktes",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "b3v_ecke_feld",
+                                            "0",
+                                            "Mark_Beschreibung"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_ecke_feld.Mark_Beschreibung"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "plot_coordinates": {
+                        "title": "Koordinaten",
+                        "description": "The coordinates of the cluster",
+                        "type": "object",
+                        "$migration": {
+                            "frontend": {
+                                "display": false
+                            }
+                        },
+                        "properties": {
+                            "center_location": {
+                                "title": "Center Location",
+                                "description": "",
+                                "type": "string",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "fromSollWGS84",
+                                        "source": [
+                                            "plot_coordinates",
+                                            "0",
+                                            "Soll_X_WGS84"
+                                        ],
+                                        "pointer": "bwi.koord.b0_ecke_soll.Soll_X_WGS84"
+                                    }
+                                }
+                            },
+                            "cartesian_x": {
+                                "title": "Hoch",
+                                "type": "number",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "plot_coordinates",
+                                            "0",
+                                            "Soll_Hoch"
+                                        ],
+                                        "pointer": "bwi.koord.b0_ecke_soll.Soll_Hoch"
+                                    }
+                                }
+                            },
+                            "cartesian_y": {
+                                "title": "Rechts",
+                                "type": "number",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "plot_coordinates",
+                                            "0",
+                                            "Soll_Rechts"
+                                        ],
+                                        "pointer": "bwi.koord.b0_ecke_soll.Soll_Rechts"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "intkey": {
+                        "title": "intkey",
+                        "description": "Column intkey from nfi2022",
+                        "type": "string",
+                        "$migration": {
+                            "nfi2022": {
+                                "function": "fixIntkey",
+                                "function_arguments": [
+                                    "Tnr",
+                                    "Enr"
+                                ],
+                                "source": [
+                                    "b3_ecke",
+                                    "0",
+                                    "intkey"
+                                ],
+                                "pointer": "bwineu.dbo.b3_ecke.intkey"
+                            },
+                            "frontend": {
+                                "display": false
+                            }
+                        }
+                    },
+                    "tree": {
+                        "title": "Winkelzählprobe",
+                        "description": "WZP",
+                        "$migration": {
+                            "title": "tree"
+                        },
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$tfm": {
+                            "ui": {
+                                "layout": "fullSize"
+                            }
+                        },
+                        "items": {
+                            "title": "Tree",
+                            "description": "WZP",
+                            "type": "object",
+                            "required": [
+                                "tree_number",
+                                "tree_marked",
+                                "azimuth",
+                                "distance"
+                            ],
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Bnr"
+                                            ],
+                                            "pointer": "bwineu.dbo.b3v_wzp.intkey"
+                                        },
+                                        "frontend": {
+                                            "display": false
+                                        },
+                                        "pg": {
+                                            "columns": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Bnr"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "tree_number": {
+                                    "title": "Baumnummer",
+                                    "description": "Eindeutige Baumnummer",
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Bnr"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Bnr"
+                                        }
+                                    }
+                                },
+                                "tree_marked": {
+                                    "title": "Markiert",
+                                    "description": "Baum permanent markiert",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Perm"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Perm"
+                                        }
+                                    }
+                                },
+                                "tree_status": {
+                                    "title": "Probebaumkennziffer",
+                                    "description": "Probebaumkennziffer",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Pk"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Pk",
+                                            "lookup": "lookup.lookup_tree_status.code"
+                                        }
+                                    }
+                                },
+                                "azimuth": {
+                                    "title": "Azimut",
+                                    "description": "Azimut [gon] des Baumes",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Azi"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Azi"
+                                        }
+                                    }
+                                },
+                                "distance": {
+                                    "title": "Horizontalentfernung",
+                                    "description": "Horizontalentfernung [cm] des Baumes",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Hori"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Hori"
+                                        }
+                                    }
+                                },
+                                "tree_species": {
+                                    "title": "Baumart",
+                                    "description": "Baumart",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Ba"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Ba",
+                                            "lookup": "lookup.lookup_tree_species.code"
+                                        }
+                                    }
+                                },
+                                "dbh": {
+                                    "title": "Brusthöhendurchmesser",
+                                    "description": "gemessener BHD [mm]",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "M_bhd"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.M_Bhd"
+                                        }
+                                    }
+                                },
+                                "dbh_height": {
+                                    "title": "Messhöhe des BHD",
+                                    "description": "Messhöhe des BHD [cm] (Standard 130 cm)",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "M_h"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.M_h"
+                                        }
+                                    }
+                                },
+                                "tree_height": {
+                                    "title": "Baumhöhe",
+                                    "description": "gemessene Baumhöhe [dm]",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "M_Hoe"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.M_Hoe"
+                                        }
+                                    }
+                                },
+                                "stem_height": {
+                                    "title": "Baumhöhe",
+                                    "description": "gemessene Stammhöhe [dm]",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "M_StHoe"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.M_StHoe"
+                                        }
+                                    }
+                                },
+                                "tree_height_azimuth": {
+                                    "title": "Azimut des Höhenmessbaums",
+                                    "description": "Azimut [Gon] der Messposition zum Höhenmessbaum",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "MPos_Azi"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.MPos_Azi"
+                                        }
+                                    }
+                                },
+                                "tree_height_distance": {
+                                    "title": "Distanz zum Höhenmessbaum",
+                                    "description": "Horizontalentfernung [cm] der Messposition zum Höhenmessbaum",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "MPos_Hori"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.MPos_Hori"
+                                        }
+                                    }
+                                },
+                                "tree_age": {
+                                    "title": "Distanz zum Höhenmessbaum",
+                                    "description": "Alter des Baumes [Jahre]",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Al_ba"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Al_ba"
+                                        }
+                                    }
+                                },
+                                "stem_breakage": {
+                                    "title": "Höhenkennziffer",
+                                    "description": "Höhenkennziffer",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Kh"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Kh",
+                                            "lookup": "lookup.lookup_stem_breakage.code"
+                                        }
+                                    }
+                                },
+                                "stem_form": {
+                                    "title": "Höhenkennziffer",
+                                    "description": "Höhenkennziffer",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Kst"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Kst",
+                                            "lookup": "lookup.lookup_stem_form.code"
+                                        }
+                                    }
+                                },
+                                "pruning": {
+                                    "title": "Astung",
+                                    "description": "Astung",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Ast"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Ast",
+                                            "lookup": "lookup.lookup_pruning.code"
+                                        }
+                                    }
+                                },
+                                "within_stand": {
+                                    "title": "Bestandeszugehörigkeit",
+                                    "description": "RAUS: Bestandeszugehörigkeit",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Bz"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Bz"
+                                        }
+                                    }
+                                },
+                                "stand_layer": {
+                                    "title": "Bestandesschicht",
+                                    "description": "Bestandesschicht",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Bs"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Bs",
+                                            "lookup": "lookup.lookup_stand_layer.code"
+                                        }
+                                    }
+                                },
+                                "damage_dead": {
+                                    "title": "abgestorben",
+                                    "description": "frisch abgestorben",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "tot"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.tot"
+                                        },
+                                        "bwi2022": {
+                                            "table": "bwi.dat.b4_wzp",
+                                            "column": "tot"
+                                        },
+                                        "bwi2012": {
+                                            "table": "bwi.dat.b3_wzp",
+                                            "column": "tot"
+                                        },
+                                        "ci2017": {
+                                            "table": "bwi.dat.c3z_wzp",
+                                            "column": "tot"
+                                        }
+                                    }
+                                },
+                                "damage_peel_new": {
+                                    "title": "Schälschäden",
+                                    "description": "jüngere/frische Schälschäden",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "jSchael"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.jSchael"
+                                        }
+                                    }
+                                },
+                                "damage_peel_old": {
+                                    "title": "Schälschäden",
+                                    "description": "ältere Schälschäden",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "aeSchael"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.aeSchael"
+                                        }
+                                    }
+                                },
+                                "damage_logging": {
+                                    "title": "Rücke- und Fällschäden",
+                                    "description": "Rücke- und Fällschäden",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Ruecke"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Ruecke"
+                                        }
+                                    }
+                                },
+                                "damage_fungus": {
+                                    "title": "Pilz",
+                                    "description": "Pilzkonsolen",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Pilz"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Pilz"
+                                        }
+                                    }
+                                },
+                                "damage_resin": {
+                                    "title": "Harzlachten",
+                                    "description": "Harzlachten",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Harz"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Harz"
+                                        }
+                                    }
+                                },
+                                "damage_beetle": {
+                                    "title": "Käferbohrlöcher",
+                                    "description": "Käferbohrlöcher",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Kaefer"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Kaefer"
+                                        }
+                                    }
+                                },
+                                "damage_other": {
+                                    "title": "sonstige Stammschäden",
+                                    "description": "sonstige Stammschäden",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "sStamm"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.sStamm"
+                                        }
+                                    }
+                                },
+                                "cave_tree": {
+                                    "title": "Höhlenbaum",
+                                    "description": "Biotop - Höhlenbaum",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Hoehle"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Hoehle"
+                                        }
+                                    }
+                                },
+                                "crown_dead_wood": {
+                                    "title": "Lichtkrone abgestorben",
+                                    "description": "Biotop - mehr als ein Drittel der Lichtkrone abgestorben oder drei starke Totäste",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Totast"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Totast"
+                                        },
+                                        "bwi2022": {
+                                            "table": "bwi.dat.b4_wzp",
+                                            "column": "Totast"
+                                        },
+                                        "bwi2012": {
+                                            "table": "bwi.dat.b3_wzp",
+                                            "column": "Totast"
+                                        },
+                                        "ci2017": {
+                                            "table": "bwi.dat.c3z_wzp",
+                                            "column": "Totast"
+                                        }
+                                    }
+                                },
+                                "tree_top_drought": {
+                                    "title": "Zopftrocknis",
+                                    "description": "Zopftrocknis",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Zopf"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Zopf"
+                                        },
+                                        "bwi2022": {
+                                            "table": "bwi.dat.b4_wzp",
+                                            "column": "Zopf"
+                                        }
+                                    }
+                                },
+                                "bark_pocket": {
+                                    "title": "Rinde",
+                                    "description": "mit sich lösender Rinde oder Rindentasche >500 cm². Mindestbereite 10 cm",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Rinde"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.Rinde"
+                                        },
+                                        "bwi2022": {
+                                            "table": "bwi.dat.b4_wzp",
+                                            "column": "Rinde"
+                                        }
+                                    }
+                                },
+                                "biotope_marked": {
+                                    "title": "MarkBiotop",
+                                    "description": "Biotop - Speziell markierter Biotopbaum",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "MBiotop"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wzp.MBiotop"
+                                        }
+                                    }
+                                },
+                                "bark_condition": {
+                                    "title": "Rindenzustand",
+                                    "description": "Rindenzustand für frisch abgestorbene WZP4-Bäume",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "b3v_wzp",
+                                                "0",
+                                                "RiZustand"
+                                            ],
+                                            "pointer": "bwineu.dbo.b3v_wzp.RiZustand"
+                                        },
+                                        "bwi2022": {
+                                            "table": "bwi.dat.b4_wzp",
+                                            "column": "RiZustand"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "deadwood": {
+                        "title": "Totholz",
+                        "description": "Deadwood",
+                        "$migration": {
+                            "title": "Deadwood"
+                        },
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$tfm": {
+                            "ui": {
+                                "layout": "fullSize"
+                            }
+                        },
+                        "items": {
+                            "title": "Totholz",
+                            "type": "object",
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Nr"
+                                            ],
+                                            "source": [
+                                                "c3z_tot",
+                                                "0",
+                                                "intkey"
+                                            ],
+                                            "pointer": "bwineu.dbo.c3z_tot.intkey"
+                                        },
+                                        "frontend": {
+                                            "display": false
+                                        }
+                                    }
+                                },
+                                "tree_species_group": {
+                                    "title": "Baumartengruppe",
+                                    "description": "Baumartengruppe für Totholz",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Tbagr"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Tbagr",
+                                            "lookup": "lookup.lookup_tree_species_group.code"
+                                        }
+                                    }
+                                },
+                                "dead_wood_type": {
+                                    "title": "Totholztyp",
+                                    "description": "Totholztyp",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Tart"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Tart",
+                                            "lookup": "lookup.lookup_dead_wood_type.code"
+                                        }
+                                    }
+                                },
+                                "decomposition": {
+                                    "title": "Zersetzungsgrad",
+                                    "description": "Zersetzungsgrad",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Tzg"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Tzg",
+                                            "lookup": "lookup.lookup_decomposition.code"
+                                        }
+                                    }
+                                },
+                                "length_height": {
+                                    "title": "Länge / Höhe",
+                                    "description": "Länge / Höhe Totholz [dm]",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Tl"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Tl"
+                                        }
+                                    }
+                                },
+                                "diameter_butt": {
+                                    "title": "maximale Durchmesser",
+                                    "description": "Durchmesser am dicken Ende [cm] (liegende Bruchstücke); Schnittflächen- (Stöcke), Bhd (mit Wurzel, >=130 cm Länge)",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Tbd"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Tbd"
+                                        }
+                                    }
+                                },
+                                "diameter_top": {
+                                    "title": "minimale Durchmesser",
+                                    "description": "Durchmesser am dünnen Ende [cm] (nur bei liegenden Totholz OHNE Wurzelanlauf)",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Tsd"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Tsd"
+                                        }
+                                    }
+                                },
+                                "count": {
+                                    "title": "Anzahl",
+                                    "description": "Anzahl gleichartiger Totholzstücke",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Anz"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.Anz"
+                                        }
+                                    }
+                                },
+                                "bark_pocket": {
+                                    "title": "Rindentaschen",
+                                    "description": "Rindentaschen > 500 cm² mit einer Mindestbreite von 10 cm (nur für stehendes Totholz)",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "TRinde"
+                                            ],
+                                            "pointer": "bwi.dat.b4_tot.TRinde"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "position": {
+                        "title": "Position",
+                        "type": "object",
+                        "nfi2022": {
+                            "function": "jsonParse"
+                        },
+                        "properties": {
+                            "intkey": {
+                                "title": "intkey",
+                                "description": "Column intkey from nfi2022",
+                                "type": "string",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "fixIntkey",
+                                        "function_arguments": [
+                                            "Tnr",
+                                            "Enr"
+                                        ],
+                                        "source": [
+                                            "position",
+                                            "intkey"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.intkey"
+                                    }
+                                }
+                            },
+                            "position_median": {
+                                "title": "Koordinaten Median",
+                                "description": "Latitude / Longitude",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "toLatLonMED",
+                                        "source": [
+                                            "position"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.LAT_MED"
+                                    }
+                                },
+                                "items": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "position_mean": {
+                                "title": "Koordinaten Mittel",
+                                "description": "Latitude / Longitude",
+                                "type": "number",
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "toLatLonMEAN",
+                                        "source": [
+                                            "position"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.LAT_MED"
+                                    }
+                                },
+                                "items": {
+                                    "type": [
+                                        "number",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "hdop_mean": {
+                                "title": "Genauigkeit",
+                                "description": "Genauigkeit der Positionsmessung",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "HDOP"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.HDOP"
+                                    }
+                                }
+                            },
+                            "pdop_mean": {
+                                "title": "Genauigkeit",
+                                "description": "Genauigkeit der Positionsmessung",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "PDOP"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.PDOP"
+                                    }
+                                }
+                            },
+                            "satellites_count_mean": {
+                                "title": "Anzahl der Satelliten",
+                                "description": "Mittlere Anzahl der Satelliten",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "NumSat"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.NumSat"
+                                    }
+                                }
+                            },
+                            "measurement_count": {
+                                "title": "Anzahl der Messungen",
+                                "description": "Anzahl der GPS Messungen",
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "AnzahlMessungen"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.AnzahlMessungen"
+                                    }
+                                }
+                            },
+                            "rtcm_age": {
+                                "title": "Anzahl der Messungen",
+                                "description": "Anzahl der GPS Messungen",
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "RTCMAlter"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.RTCMAlter"
+                                    }
+                                }
+                            },
+                            "start_measurement": {
+                                "title": "Startzeit",
+                                "description": "Beginn der Messung",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "toTimestamp",
+                                        "source": [
+                                            "position",
+                                            "UTCStartzeit"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.UTCStartzeit"
+                                    }
+                                }
+                            },
+                            "stop_measurement": {
+                                "title": "Stopzeit",
+                                "description": "Ende der Messung",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "function": "toTimestamp",
+                                        "source": [
+                                            "position",
+                                            "UTCStopzeit"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.UTCStopzeit"
+                                    }
+                                }
+                            },
+                            "device_gnss": {
+                                "title": "GNSS-Gerät",
+                                "description": "Technische Bezeichnung des Gerätes",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "Geraet"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.Geraet"
+                                    }
+                                }
+                            },
+                            "quality": {
+                                "title": "Qualität",
+                                "description": "Qualität der verwendeten GNSS-Einmessung",
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "$migration": {
+                                    "nfi2022": {
+                                        "source": [
+                                            "position",
+                                            "GNSS_Qualitaet"
+                                        ],
+                                        "pointer": "bwineu.dbo.b3v_gps.GNSS_Qualitaet",
+                                        "lookup": "lookup.lookup_gnss_quality.code"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "edges": {
+                        "title": "Ränder",
+                        "description": "Rand",
+                        "$migration": {
+                            "title": "edges"
+                        },
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$tfm": {
+                            "ui": {
+                                "layout": "fullSize"
+                            }
+                        },
+                        "items": {
+                            "title": "edges",
+                            "type": "object",
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Rnr",
+                                                "SpA_gon",
+                                                "SpA_m"
+                                            ],
+                                            "source": [
+                                                "b3v_wrand",
+                                                "0",
+                                                "intkey"
+                                            ],
+                                            "pointer": "bwineu.dbo.b3v_wrand.intkey"
+                                        }
+                                    }
+                                },
+                                "edge_status": {
+                                    "title": "Kennziffer des Wald-/Bestandesrandes",
+                                    "description": "Kennziffer des Wald-/Bestandesrandes",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "default": "0",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Rk"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wrand.Rk",
+                                            "lookup": "lookup.lookup_edge_status.code"
+                                        }
+                                    }
+                                },
+                                "edge_number": {
+                                    "title": "Waldrandnummer",
+                                    "description": "Waldrandnummer",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Rnr"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wrand.Rnr"
+                                        }
+                                    }
+                                },
+                                "edge_type_deprecated": {
+                                    "title": "Art des Wald- /Bestandesrandes",
+                                    "description": "Art des Wald- /Bestandesrandes",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Rart"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wrand.Rart",
+                                            "lookup": "lookup.lookup_edge_type.code"
+                                        }
+                                    }
+                                },
+                                "terrain": {
+                                    "title": "Vorgelagertes Terrain",
+                                    "description": "Vorgelagertes Terrain",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Rterrain"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wrand.Rterrain",
+                                            "lookup": "lookup.lookup_terrain.code"
+                                        }
+                                    }
+                                },
+                                "edges": {
+                                    "title": "Geometrie des Wald-/Bestandesrandes",
+                                    "description": "Geometrie des Wald-/Bestandesrandes",
+                                    "type": [
+                                        "array",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "edgesToJSONB",
+                                            "function_arguments": {
+                                                "table": "bwineu.dbo.b3_ecke",
+                                                "where": "Tnr =  AND Enr = ",
+                                                "to": "Soll_Y_WGS84, Soll_X_WGS84"
+                                            },
+                                            "source": [
+                                                "Rterrain"
+                                            ],
+                                            "pointer": "bwi.dat.b4_wrand.Rterrain"
+                                        }
+                                    },
+                                    "items": {
+                                        "title": "edges",
+                                        "type": "object",
+                                        "properties": {
+                                            "azimuth": {
+                                                "title": "Azimut",
+                                                "description": "Azimut in Gon",
+                                                "type": "integer"
+                                            },
+                                            "distance": {
+                                                "title": "Distanz",
+                                                "description": "Distanz in cm",
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "subplots_relative_position": {
+                        "title": "subplots_relative_position",
+                        "description": "subplots_relative_position",
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$migration": {
+                            "frontend": {
+                                "display": false
+                            }
+                        },
+                        "items": {
+                            "title": "subplots_relative_position",
+                            "type": "object",
+                            "required": [
+                                "azimuth",
+                                "distance",
+                                "radius"
+                            ],
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "B0_Move",
+                                                "B0_Hori",
+                                                "B0_Radius"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "azimuth": {
+                                    "title": "azimuth",
+                                    "description": "Richtung in GON",
+                                    "type": "integer",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "toAzimuth",
+                                            "source": [
+                                                "B0_Move"
+                                            ],
+                                            "default": 0,
+                                            "pointer": "bwineu.dbo.b3v_ecke_feld.B0_Move"
+                                        }
+                                    }
+                                },
+                                "distance": {
+                                    "title": "distance",
+                                    "description": "Entfernung in Zentimeter",
+                                    "type": "integer",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "B0_Hori"
+                                            ],
+                                            "default": 500,
+                                            "pointer": "bwineu.dbo.b3v_ecke_feld.B0_Hori"
+                                        }
+                                    }
+                                },
+                                "radius": {
+                                    "title": "radius",
+                                    "description": "Radius in Meter",
+                                    "type": "integer",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "defaultRadius",
+                                            "source": [
+                                                "B0_Radius"
+                                            ],
+                                            "default": 100,
+                                            "pointer": "bwineu.dbo.b3v_ecke_feld.B0_Radius"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "regeneration": {
+                        "title": "Verjüngung",
+                        "description": "Regeneration",
+                        "$migration": {
+                            "title": "regeneration"
+                        },
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$tfm": {
+                            "ui": {
+                                "layout": "fullSize"
+                            }
+                        },
+                        "items": {
+                            "title": "Regeneration",
+                            "type": "object",
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Ba",
+                                                "Verbiss",
+                                                "Gr",
+                                                "Anz",
+                                                "Schael",
+                                                "Schu",
+                                                "Bnr"
+                                            ],
+                                            "source": [
+                                                "b3v_b0",
+                                                "0",
+                                                "intkey"
+                                            ],
+                                            "pointer": "bwineu.dbo.b3v_b0.intkey"
+                                        }
+                                    }
+                                },
+                                "tree_species": {
+                                    "title": "Baumart",
+                                    "description": "Baumart",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Ba"
+                                            ],
+                                            "pointer": "bwi.dat.b4_jung.Ba",
+                                            "lookup": "lookup.lookup_tree_species.code"
+                                        }
+                                    }
+                                },
+                                "browsing": {
+                                    "title": "Verbiss",
+                                    "description": "einfacher oder mehrfacher Verbiss der Terminalknospe",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Verbiss"
+                                            ],
+                                            "pointer": "bwi.dat.b4_jung.Verbiss",
+                                            "lookup": "lookup.lookup_browsing.code"
+                                        }
+                                    }
+                                },
+                                "tree_size_class": {
+                                    "title": "Baumgrößenklasse",
+                                    "description": "Baumgrößenklasse",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Gr"
+                                            ],
+                                            "pointer": "bwi.dat.b4_jung.Gr",
+                                            "lookup": "lookup.lookup_tree_size_class.code"
+                                        }
+                                    }
+                                },
+                                "damage_peel": {
+                                    "title": "Schälschäden",
+                                    "description": "Schälschäden (frische und/oder ältere)",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Schael"
+                                            ],
+                                            "pointer": "bwi.dat.b4_jung.Schael",
+                                            "lookup": "lookup.lookup_damage_peel.code"
+                                        }
+                                    }
+                                },
+                                "protection_individual": {
+                                    "title": "Schälschäden",
+                                    "description": "Schälschäden (frische und/oder ältere)",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Schu"
+                                            ],
+                                            "pointer": "bwi.dat.b4_jung.Schu"
+                                        }
+                                    }
+                                },
+                                "tree_count": {
+                                    "title": "Anzahl gleichartiger Bäume",
+                                    "description": "Anzahl gleichartiger Bäume",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "minimum": 0,
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Anz"
+                                            ],
+                                            "pointer": "bwi.dat.b4_jung.Anz"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "structure_gt4m": {
+                        "title": "Struktur größer 4 Meter",
+                        "description": "structure_gt4m",
+                        "$migration": {
+                            "title": "structure_gt4m"
+                        },
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$tfm": {
+                            "ui": {
+                                "layout": "fullSize"
+                            }
+                        },
+                        "items": {
+                            "title": "structure_gt4m",
+                            "type": "object",
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Ba",
+                                                "Schi",
+                                                "Sp"
+                                            ],
+                                            "source": [
+                                                "b4_bestock_gt4m_ba",
+                                                "0",
+                                                "intkey"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_gt4m_ba.intkey"
+                                        }
+                                    }
+                                },
+                                "tree_species": {
+                                    "title": "Baumart",
+                                    "description": "Baumart",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Ba"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_gt4m_ba.Ba",
+                                            "lookup": "lookup.lookup_tree_species.code"
+                                        }
+                                    }
+                                },
+                                "stock_layer": {
+                                    "title": "Bestockungsschicht",
+                                    "description": "Bestockungsschicht",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Schi"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_gt4m_ba.Schi",
+                                            "lookup": "lookup.lookup_layer.code"
+                                        }
+                                    }
+                                },
+                                "count": {
+                                    "title": "Anzahl",
+                                    "description": "Anzahl gleichartiger Bäume nach Baumart und Bestockungsschicht",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Anz"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_gt4m_ba.Anz"
+                                        }
+                                    }
+                                },
+                                "is_mirrored": {
+                                    "title": "Ist gespiegelt",
+                                    "description": "Manuelle Spiegelung bei WZP1/2",
+                                    "type": [
+                                        "boolean",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Sp"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_gt4m_ba.Sp"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "structure_lt4m": {
+                        "title": "Struktur kleiner 4 Meter",
+                        "description": "structure_lt4m",
+                        "$migration": {
+                            "title": "structure_lt4m"
+                        },
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "$tfm": {
+                            "ui": {
+                                "layout": "fullSize"
+                            }
+                        },
+                        "items": {
+                            "title": "structure_lt4m",
+                            "type": "object",
+                            "properties": {
+                                "intkey": {
+                                    "title": "intkey",
+                                    "description": "Column intkey from nfi2022",
+                                    "type": "string",
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "function": "fixIntkey",
+                                            "function_arguments": [
+                                                "Tnr",
+                                                "Enr",
+                                                "Ba",
+                                                "Anteil",
+                                                "Vart_ba"
+                                            ],
+                                            "source": [
+                                                "b3v_le4m_ba",
+                                                "0",
+                                                "intkey"
+                                            ],
+                                            "pointer": "bwineu.dbo.b3v_le4m_ba.intkey"
+                                        }
+                                    }
+                                },
+                                "tree_species": {
+                                    "title": "Baumart",
+                                    "description": "Baumart",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Ba"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_le4m_ba.Ba",
+                                            "lookup": "lookup.lookup_tree_species.code"
+                                        }
+                                    }
+                                },
+                                "coverage": {
+                                    "title": "Anteil der Baumart in Zehntel",
+                                    "description": "Anteil der Baumart in Zehntel (Deckungsgrad entspricht 10 Zehntel = 100 %)",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Anteil"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_le4m_ba.Anteil"
+                                        }
+                                    }
+                                },
+                                "regeneration_type": {
+                                    "title": "Verjüngungsart",
+                                    "description": "Verjüngungsart der Baumart",
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "$migration": {
+                                        "nfi2022": {
+                                            "source": [
+                                                "Vart_ba"
+                                            ],
+                                            "pointer": "bwi.dat.b4_bestock_le4m_ba.Vart_ba",
+                                            "lookup": "lookup.lookup_trees_less_4meter_origin.code"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "plot_name": {
+                        "title": "Plot Name",
+                        "description": "The unique identifier for a plot",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4,
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "Enr"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.Enr"
+                            },
+                            "frontend": {
+                                "display": false
+                            }
+                        }
+                    },
+                    "cluster_name": {
+                        "title": "Cluster Name",
+                        "description": "The unique identifier for a plot",
+                        "type": "integer",
+                        "minimum": 1,
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "Tnr"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.Tnr"
+                            },
+                            "frontend": {
+                                "display": false
+                            }
+                        }
+                    },
+                    "sampling_stratum": {
+                        "title": "Sampling stratum",
+                        "description": "The unique identifier for a plot",
+                        "type": "integer",
+                        "minimum": 0,
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "Vbl"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.Vbl",
+                                "lookup": "lookup.lookup_sampling_stratum.code"
+                            }
+                        }
+                    },
+                    "federal_state": {
+                        "title": "Federal State",
+                        "description": "Kürzel des Aufnahmelandes",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "function": "checkEnum",
+                                "function_arguments": {
+                                    "checkEnum": "enum_state",
+                                    "column": "abbreviation"
+                                },
+                                "source": [
+                                    "Bl"
+                                ],
+                                "pointer": "bwineu.dbo.b3_ecke.dathoheit",
+                                "lookup": "lookup.lookup_state.code"
+                            }
+                        }
+                    },
+                    "growth_district": {
+                        "title": "Wuchsbezirk",
+                        "description": "Wuchsbezirk",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "Wb"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.Wb",
+                                "lookup": "lookup.lookup_growth_district.code"
+                            }
+                        }
+                    },
+                    "forest_status": {
+                        "title": "Waldentscheid",
+                        "description": "Waldentscheid an der Traktecke",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "Wa"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.Wa",
+                                "lookup": "lookup.lookup_forest_status.code"
+                            }
+                        }
+                    },
+                    "accessibility": {
+                        "title": "Begehbarkeit",
+                        "description": "Waldentscheid an der Traktecke",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "Begehbar"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.Begehbar",
+                                "lookup": "lookup.lookup_accessibility.code"
+                            }
+                        }
+                    },
+                    "forest_office": {
+                        "title": "Forstamt",
+                        "description": "Forstamt",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "FA"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.FA",
+                                "lookup": "lookup.lookup_forest_office.code"
+                            }
+                        }
+                    },
+                    "elevation_level": {
+                        "title": "elevation_level",
+                        "description": "Forstamt",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "NatHoe"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.NatHoe",
+                                "lookup": "lookup.lookup_elevation_level.code"
+                            }
+                        }
+                    },
+                    "property_type": {
+                        "title": "Eigentumsart",
+                        "description": "Eigentumsart",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "Eg"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.Eg",
+                                "lookup": "lookup.lookup_property_type.code"
+                            }
+                        }
+                    },
+                    "property_size_class": {
+                        "title": "Eigentumsgrößenklasse",
+                        "description": "Eigentumsgrößenklasse",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "EgGrkl"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.EgGrkl",
+                                "lookup": "lookup.lookup_property_size_class.code"
+                            }
+                        }
+                    },
+                    "forest_community": {
+                        "title": "Waldgesellschaft",
+                        "description": "potentielle natürliche Waldgesellschaft",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NatWgV"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NatWgV",
+                                "lookup": "lookup.lookup_forest_community.code"
+                            }
+                        }
+                    },
+                    "forest_community_field": {
+                        "title": "Waldgesellschaft",
+                        "description": "potentielle natürliche Waldgesellschaft im Feld zu bestimmen",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NatWgF"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NatWgF",
+                                "lookup": "lookup.lookup_forest_community.code"
+                            }
+                        }
+                    },
+                    "ffh_forest_type": {
+                        "title": "Waldlebesraumtyp",
+                        "description": "Waldlebesraumtyp",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "WLT_V"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.WLT_V",
+                                "lookup": "lookup.lookup_ffh_forest_type.code"
+                            }
+                        }
+                    },
+                    "ffh_forest_type_field": {
+                        "title": "Waldlebesraumtyp",
+                        "description": "Waldlebesraumtyp im Feld zu bestimmen",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_wlt_f",
+                                    "0",
+                                    "WLT"
+                                ],
+                                "pointer": "bwi.dat.b4_wlt_f.WLT",
+                                "lookup": "lookup.lookup_ffh_forest_type.code"
+                            }
+                        }
+                    },
+                    "land_use_before": {
+                        "title": "Landnutzungsart",
+                        "description": "Landnutzungsart",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3_ecke_raum",
+                                    "0",
+                                    "LaNu"
+                                ],
+                                "pointer": "bwi.dat.b3_ecke_raum.LaNu",
+                                "lookup": "lookup.lookup_land_use.code"
+                            }
+                        }
+                    },
+                    "land_use_after": {
+                        "title": "Waldlebesraumtyp (TODO CHECKED:  bwineu.dbo.bv_ecke.LaNu ?)",
+                        "description": "Waldlebesraumtyp im Feld zu bestimmen",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "LaNu"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.LaNu",
+                                "lookup": "lookup.lookup_land_use.code"
+                            }
+                        }
+                    },
+                    "coast": {
+                        "title": "Küsten-/Strandnähe",
+                        "description": "bewaldete Küstendüne (unmittelbar in Küsten- bzw. Strandnähe)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "Kueste"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.Kueste"
+                            }
+                        }
+                    },
+                    "sandy": {
+                        "title": "Sand / Vegetationszeiger",
+                        "description": "trockener sandiger Boden oder wechseltrockene Standorte oder Vegetationszeiger oder andere gesicherte Bestätigung",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3f_ecke_vorkl",
+                                    "0",
+                                    "Gestein"
+                                ],
+                                "pointer": "bwineu.dbo.b3f_ecke_vorkl.Gestein"
+                            }
+                        }
+                    },
+                    "protected_landscape": {
+                        "title": "Landschaftschutzgebiet",
+                        "description": "neu verschnitten mit Soll-Koordinaten (EPSG: 31463 DHDN GK3; nach EPSG:25832 projiziert) von S. Schnell mit BfN-Layer Stand 2018; übernommen 30.10.2020 (Thünen-Institut)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "LSG"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.LSG"
+                            }
+                        }
+                    },
+                    "histwald": {
+                        "title": "Historischer Wald",
+                        "description": "Historischer Wald, seit langem (bisher nur NI) Input für WLT_Algorithmus",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "HistWald"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.HistWald"
+                            }
+                        }
+                    },
+                    "harvest_restriction": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (x3_ne)",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "Ne"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.Ne",
+                                "lookup": "lookup.lookup_harvest_restriction.code"
+                            }
+                        }
+                    },
+                    "harvest_restriction_nature_reserve": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeNSchutz"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeNSchutz"
+                            }
+                        }
+                    },
+                    "harvest_restriction_protection_forest": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeSWald"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeSWald"
+                            }
+                        }
+                    },
+                    "harvest_restriction_recreational_forest": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeEWald"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeEWald"
+                            }
+                        }
+                    },
+                    "harvest_restriction_scattered": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeSplitter"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeSplitter"
+                            }
+                        }
+                    },
+                    "harvest_restriction_fragmented": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeStreu"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeStreu"
+                            }
+                        }
+                    },
+                    "harvest_restriction_insufficient_access": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeUnErschlies"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeUnErschlies"
+                            }
+                        }
+                    },
+                    "harvest_restriction_wetness": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeGelEig"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeGelEig"
+                            }
+                        }
+                    },
+                    "harvest_restriction_low_yield": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeGerErtrag"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeGerErtrag"
+                            }
+                        }
+                    },
+                    "harvest_restriction_private_conservation": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeEigenbin"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeEigenbin"
+                            }
+                        }
+                    },
+                    "harvest_restriction_other_internalcause": {
+                        "title": "Nutzungseinschränkung",
+                        "description": "Nutzungseinschränkung (_x3_ne) (TODO CHECKED:  bwi.dat.b4_ecke_w.Ne ?)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "NeSIBUrsach"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.NeSIBUrsach"
+                            }
+                        }
+                    },
+                    "marker_status": {
+                        "title": "Markierung",
+                        "description": "Permanente Trakteckenmarkierung gefunden/gesetzt",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "Perm"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.Perm",
+                                "lookup": "lookup.lookup_marker_status.code"
+                            }
+                        }
+                    },
+                    "marker_azimuth": {
+                        "title": "Azimut",
+                        "description": "Position (Azimut [gon]) der permanenten Trakteckenmarkierung",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld",
+                                    "0",
+                                    "Perm_Azi"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld.Perm_Azi"
+                            }
+                        }
+                    },
+                    "marker_distance": {
+                        "title": "Horizontalentfernung",
+                        "description": "Position (Horizontalentfernung [cm]) der permanenten Trakteckenmarkierung",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld",
+                                    "0",
+                                    "Perm_Hori"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld.Perm_Hori"
+                            }
+                        }
+                    },
+                    "harvest_method": {
+                        "title": "Harvest Method",
+                        "description": "Erntemethode",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld_4",
+                                    "0",
+                                    "NutzArt"
+                                ],
+                                "pointer": "bwi.dat.b3v_ecke_feld_4.NutzArt",
+                                "lookup": "lookup.lookup_harvest_method.code"
+                            }
+                        }
+                    },
+                    "harvest_reason": {
+                        "title": "Harvest Reason",
+                        "description": "Erntegrund",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld_4",
+                                    "0",
+                                    "NutzUrsache"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld_4.NutzUrsache",
+                                "lookup": "lookup.lookup_harvest_reason.code"
+                            }
+                        }
+                    },
+                    "marker_profile": {
+                        "title": "Profil",
+                        "description": "Profil der permanenten Trakteckenmarkierung; fakultativ",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld",
+                                    "0",
+                                    "Perm_Profil"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld.Perm_Profil",
+                                "lookup": "lookup.lookup_marker_profile.code"
+                            }
+                        }
+                    },
+                    "terrain_form": {
+                        "title": "Geländeform",
+                        "description": "Geländeform",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "Gform"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.Gform",
+                                "lookup": "lookup.lookup_terrain_form.code"
+                            }
+                        }
+                    },
+                    "terrain_slope": {
+                        "title": "Geländeneigung",
+                        "description": "Geländeneigung [Grad]",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "neigung",
+                                    "0",
+                                    "gneig_in_degrees"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.Gneig"
+                            }
+                        }
+                    },
+                    "terrain_exposure": {
+                        "title": "Geländeexposition",
+                        "description": "Geländeexposition [Gon]",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "function": "fixAzimuth",
+                                "source": [
+                                    "Gexp"
+                                ],
+                                "pointer": "bwi.dat.b0_ecke.Gexp"
+                            }
+                        }
+                    },
+                    "management_type": {
+                        "title": "Betriebsart",
+                        "description": "Betriebsart",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_holzbod",
+                                    "0",
+                                    "Be"
+                                ],
+                                "pointer": "bwi.dat.b4_holzbod.Be",
+                                "lookup": "lookup.lookup_management_type.code"
+                            }
+                        }
+                    },
+                    "harvest_condition": {
+                        "title": "Ernte",
+                        "description": "Bedingungen für die Holzernte",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_holzbod",
+                                    "0",
+                                    "Ernte"
+                                ],
+                                "pointer": "bwi.dat.b4_holzbod.Ernte",
+                                "lookup": "lookup.lookup_harvest_condition.code"
+                            }
+                        }
+                    },
+                    "biotope": {
+                        "title": "GeschütztesBiotop",
+                        "description": "Besonders geschütztes Waldbiotop",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_w",
+                                    "0",
+                                    "Biotop"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_w.Biotop",
+                                "lookup": "lookup.lookup_biotope.code"
+                            }
+                        }
+                    },
+                    "stand_structure": {
+                        "title": "Aufbau",
+                        "description": "Aufbau der Bestockung",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_bestock",
+                                    "0",
+                                    "BestockAb"
+                                ],
+                                "pointer": "bwi.dat.b4_bestock.BestockAb",
+                                "lookup": "lookup.lookup_stand_structure.code"
+                            }
+                        }
+                    },
+                    "stand_age": {
+                        "title": "Alter",
+                        "description": "Alter der Bestockung [Jahre], zum Stichjahr 2022",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_bestock",
+                                    "0",
+                                    "BestockAl"
+                                ],
+                                "pointer": "bwi.dat.b4_bestock.BestockAl"
+                            }
+                        }
+                    },
+                    "stand_development_phase": {
+                        "title": "Phase/Dimensionsklasse",
+                        "description": "Entwicklungsphase / Wuchsklasse / Dimensionsklasse",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_bestock",
+                                    "0",
+                                    "Phase"
+                                ],
+                                "pointer": "bwi.dat.b4_bestock.Phase",
+                                "lookup": "lookup.lookup_stand_development_phase.code"
+                            }
+                        }
+                    },
+                    "stand_layer_regeneration": {
+                        "title": "Schicht",
+                        "description": "Bestandesschicht aller jungen Bäume der Probekreise r=1 / 2m (Baumgrößen 0-6)",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld_3",
+                                    "0",
+                                    "B0_Bs"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld_3.B0_Bs",
+                                "lookup": "lookup.lookup_stand_layer.code"
+                            }
+                        }
+                    },
+                    "fence_regeneration": {
+                        "title": "Zaun",
+                        "description": "Zäunung der Probeflächen r=1 / 2 m (Baumgrößen 0-6)",
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld_3",
+                                    "0",
+                                    "B0_Zaun"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld_3.B0_Zaun"
+                            }
+                        }
+                    },
+                    "trees_greater_4meter_mirrored": {
+                        "title": "Spiegelungsart",
+                        "description": "Art der Spiegelung aller Bäume der Bestockung über 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld_2",
+                                    "0",
+                                    "SpWie"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld.SpWie",
+                                "lookup": "lookup.lookup_trees_less_4meter_mirrored.code"
+                            }
+                        }
+                    },
+                    "trees_greater_4meter_basal_area_factor": {
+                        "title": "Zählfaktor",
+                        "description": "Zählfaktor aller Bäume der Bestockung über 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b3v_ecke_feld_2",
+                                    "0",
+                                    "ZF"
+                                ],
+                                "pointer": "bwineu.dbo.b3v_ecke_feld.ZF",
+                                "lookup": "lookup.lookup_basal_area_factor.code"
+                            }
+                        }
+                    },
+                    "trees_less_4meter_coverage": {
+                        "title": "Deckungsgrad",
+                        "description": "Gesamt-Deckungsgrad aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_bestock_le4m",
+                                    "0",
+                                    "BeDG"
+                                ],
+                                "pointer": "bwi.dat.b4_bestock_le4m.BeDG"
+                            }
+                        }
+                    },
+                    "trees_less_4meter_layer": {
+                        "title": "Schicht",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_bestock_le4m",
+                                    "0",
+                                    "Schi"
+                                ],
+                                "pointer": "bwi.dat.b4_bestock_le4m.Schi",
+                                "lookup": "lookup.lookup_trees_less_4meter_layer.code"
+                            }
+                        }
+                    },
+                    "biogeographische_region": {
+                        "title": "biogeographische_region",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "BiogeogrRegion"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.BiogeogrRegion",
+                                "lookup": "lookup.lookup_biogeographische_region.code"
+                            }
+                        }
+                    },
+                    "biosphaere": {
+                        "title": "Biosphaere",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "Biosphaere"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.Biosphaere",
+                                "lookup": "lookup.lookup_biosphaere.code"
+                            }
+                        }
+                    },
+                    "ffh": {
+                        "title": "FFH",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "FFH"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.FFH",
+                                "lookup": "lookup.lookup_ffh.code"
+                            }
+                        }
+                    },
+                    "national_park": {
+                        "title": "NationalP",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "NationalP"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.NationalP",
+                                "lookup": "lookup.lookup_national_park.code"
+                            }
+                        }
+                    },
+                    "natur_park": {
+                        "title": "naturP",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "NaturP"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.NaturP",
+                                "lookup": "lookup.lookup_natur_park.code"
+                            }
+                        }
+                    },
+                    "vogel_schutzgebiet": {
+                        "title": "VogelSG",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "VogelSG"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.VogelSG",
+                                "lookup": "lookup.lookup_vogel_schutzgebiet.code"
+                            }
+                        }
+                    },
+                    "natur_schutzgebiet": {
+                        "title": "NaturSG",
+                        "description": "Schicht aller Bäume der Bestockung bis ca. 4 m Höhe",
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "$migration": {
+                            "nfi2022": {
+                                "source": [
+                                    "b4_ecke_raum",
+                                    "0",
+                                    "NaturSG"
+                                ],
+                                "pointer": "bwi.dat.b4_ecke_raum.NaturSG",
+                                "lookup": "lookup.lookup_natur_schutzgebiet.code"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

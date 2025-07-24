@@ -258,7 +258,7 @@
                 state_los: record.state_los,
                 provider_los: record.provider_los,
                 
-                cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', clusterData?.['cluster_status']),
+                cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_cluster_status', clusterData?.['cluster_status']),
                 cluster_situation: _renderClusterOptimized(clusterData, 'cluster_situation', lookupMaps, 'lookup_cluster_situation'),
                 state_responsible: _renderClusterOptimized(clusterData, 'state_responsible', lookupMaps, 'lookup_state'),
                 states_affected: clusterData?.['states_affected'] || 'not defined',
@@ -795,7 +795,7 @@
                     {{ key }}: {{ value.filter }}
                 </v-chip>
                 <v-btn @click="clearFilters" variant="outlined" prepend-icon="mdi-delete" rounded="xl">
-                    Alle entfernen
+                    Alle zurücksetzen
                 </v-btn>
             </template>
         </v-toolbar>
