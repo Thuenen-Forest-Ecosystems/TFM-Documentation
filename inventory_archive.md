@@ -33,7 +33,7 @@ curl -X GET "{{ url }}/rest/v1/lookup_state"
 
 :::
 
-With knowledge of the Federal State code, the clusters can be queried by Federal State is affected.
+With knowledge of the Federal State code, the clusters can be filtered by Federal State using the table `clusters` and the column `states_affected`.
 
 ::: code-group
 
