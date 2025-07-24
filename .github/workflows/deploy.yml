@@ -25,33 +25,6 @@ concurrency:
 
 jobs:
   # Build job
-  run-create-md:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run create-md script
-        run: npm run create-md
-
-      - name: List files
-        run: ls -R
-
-      - name: Upload markdown files
-        uses: actions/upload-artifact@v4
-        with:
-          name: markdown-files
-          path: migration.md
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -68,10 +41,15 @@ jobs:
         with:
           node-version: 20
           cache: npm # or pnpm / yarn
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Install dependencies
         run: npm ci # or pnpm install / yarn install / bun install
+      
+      - name: Run create-md script
+        run: npm run create-md
+      
       - name: Build with VitePress
         run: npm run docs:build # or pnpm docs:build / yarn docs:build / bun run docs:build
       - name: Upload artifact
