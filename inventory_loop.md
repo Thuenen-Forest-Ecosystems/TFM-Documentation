@@ -1345,7 +1345,7 @@ print("Downloadzeit Traktliste: ", time.time() - start)
 
 start = time.time()
 for cluster in dfClusterList[dfClusterList.keys()[0]].values:
-    requestHand.set_endpoint(f'{detailEndpoint}{cluster}&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))')
+    requestHand.set_endpoint(f'{detailEndpoint}{cluster}&select=*,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))&plot.interval_name=eq.bwi2022')
     requestHand.get_response()
     try:
         dfDetails = pd.concat([dfDetails, requestHand.return_response_dataFrame()])
