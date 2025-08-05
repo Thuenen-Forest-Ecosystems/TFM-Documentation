@@ -2,6 +2,12 @@
 
 You can access data in two ways. The first is to use the API, which is the most common way to access data. The second is to use the self-hosted version of the database.
 
+::: tip Technical issues
+There can be downtime of the API or temporary issues with the self-hosted version due to updates or maintenance.
+
+If you have problems using the **self-hosted** version or the **API**, please create an issue on [GitHub](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/issues).
+:::
+
 ## Self Hosted
 
 Using the self-hosted version need some **technical knowledge**. The self-hosted version is a PostgreSQL database that contains all the structure, data and API. You download the database and host it on your own server or locally. This way you can access the data **without any limitations**.
