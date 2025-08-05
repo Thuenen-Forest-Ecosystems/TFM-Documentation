@@ -457,17 +457,18 @@
             console.warn('No company type or filter row defined for organization type:', props.organization_type);
             return;
         }
-       
+        
         fetchAllDataPaginated('view_records_details', props.organization_id, companyType, filterRow)
             .then((records) => {
                 
                 if (records && records.length > 0) {
                     loading.value = true;
                     rowData.value = _preRenderRecords(records);
-                    loading.value = false;
+                    
                 } else {
                     console.warn('No records found for the organization:', props.organization_id);
                 }
+                loading.value = false;
             })
             .catch((error) => {
                 console.error('Error fetching records:', error);
