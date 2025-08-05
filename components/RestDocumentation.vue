@@ -2,6 +2,9 @@
     import { ref, onMounted, getCurrentInstance } from 'vue'
     import { useAttrs } from 'vue';
 
+    const instance = getCurrentInstance();
+    const apikey = instance.appContext.config.globalProperties.$apikey;
+    const url = instance.appContext.config.globalProperties.$url;
 
     const contentProfile = useAttrs('content-profile');
     
@@ -13,6 +16,7 @@
        
         let data = null, error = null;
         try{
+
             const headers = {
                 'Content-Type': 'application/json',
                 'Accept-Profile': contentProfile.contentProfile,
@@ -32,6 +36,7 @@
                 data = await response.json();
             }
         } catch (error) {
+            console.error('Error fetching REST schema:', error);
             error = error;
         }
         return {data, error};

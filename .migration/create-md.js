@@ -3,6 +3,8 @@ const path = require('path')
 
 const jsonSchema = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'migration-map-cluster-new.json'), 'utf8'))
 
+// Load schema from 
+
 function getType(schema) {
     if(typeof schema.type === 'string'){
         return schema.type
