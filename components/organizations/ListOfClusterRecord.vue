@@ -76,6 +76,10 @@ const listOfLookupTables = [
     let selectableLose = ref([]);
     const assigning = ref(false);
 
+    const snackbar = ref(false);
+    const snackbarText = ref('');
+    const snackbarColor = ref('info');
+
     const emit = defineEmits(['confirm']);
 
 
@@ -767,20 +771,33 @@ const listOfLookupTables = [
         }
         if (!Array.isArray(clusterIds) || clusterIds.length === 0) {
             console.warn('No cluster IDs provided for selection');
+            snackbarText.value = 'Keine Cluster IDs zum Auswählen angegeben.';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
             return;
         }
 
+        let selectedRows = 0;
         currentGrid.value.api.forEachNode((node) => {
             if (clusterIds.includes(node.data.cluster_name)) {
                 node.setSelected(true);
+                selectedRows++;
             }
         });
+
+        // count selected rows
+        //const selectedCount = currentGrid.value.api.getSelectedRows().length;
+        snackbarText.value = `${selectedRows} Ecken ausgewählt.`;
+        snackbarColor.value = 'success';
+        snackbar.value = true;
 
     }
     async function handleFileUpload(fileInputEvent){
         const file = fileInputEvent.target.files[0];
         if (!file) {
-            error.value = 'Keine Datei ausgewählt.';
+            snackbarText.value = 'Keine Datei ausgewählt.';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
             return;
         }
 
@@ -799,11 +816,11 @@ const listOfLookupTables = [
 
             selectByClusterIds(numbersAsInt);
 
-
-
         } catch (e) {
             console.error('Error processing file:', e);
-            error.value = 'Fehler beim Verarbeiten der Datei: ' + e.message;
+            snackbarText.value = 'Fehler beim Verarbeiten der Datei: ' + e.message;
+            snackbarColor.value = 'error';
+            snackbar.value = true;
         } finally {
             loading.value = false;
         }
@@ -952,4 +969,10 @@ const listOfLookupTables = [
                 </v-btn>
             </div>
     </v-card-actions>
+    <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
+        {{ snackbarText }}
+        <template v-slot:action="{ attrs }">
+            <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
+        </template>
+    </v-snackbar>
 </template>
