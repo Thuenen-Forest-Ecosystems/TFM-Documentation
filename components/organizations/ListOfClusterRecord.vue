@@ -93,7 +93,7 @@
             sortable: true,
             //type: "number",
             pinned: 'left',
-            headerTooltip: "cluster.cluster_name",
+            headerTooltip: "inventory_archive.cluster.cluster_name",
         },
         { 
             field: "plot_name",
@@ -101,7 +101,7 @@
             filter: true,
             sortable: true,
             pinned: 'left',
-            headerTooltip: "plot.plot_name",
+            headerTooltip: "inventory_archive.plot.plot_name",
             //type: "number"
         },
         {
@@ -109,7 +109,7 @@
             headerName: "Cluster Status",
             filter: true,
             sortable: true,
-            headerTooltip: "cluster.cluster_status",
+            headerTooltip: "inventory_archive.cluster.cluster_status",
             //type: "string",
         },
         {
@@ -117,7 +117,7 @@
             headerName: "Cluster Situation",
             filter: true,
             sortable: true,
-            headerTooltip: "cluster.cluster_situation",
+            headerTooltip: "inventory_archive.cluster.cluster_situation",
             //type: "string",
         },
         {
@@ -125,7 +125,7 @@
             headerName: "state_responsible",
             filter: true,
             sortable: true,
-            headerTooltip: "cluster.state_responsible",
+            headerTooltip: "inventory_archive.cluster.state_responsible",
             //type: "string",
         },
         {
@@ -133,42 +133,49 @@
             headerName: "Wald Status (BWI 2022)",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.forest_status",
         },
         {
             field: "forest_status_ci2017",
             headerName: "Wald Status (CI 2017)",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.forest_status",
         },
         {
             field: "forest_status_ci2012",
             headerName: "Wald Status (CI 2012)",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.forest_status",
         },
         {
             field: "forest_office",
             headerName: "Forstamt",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.forest_status",
         },
         {
             field: "growth_district",
             headerName: "Wuchsbezirk",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.growth_district",
         },
         {
             field: "ffh_forest_type",
             headerName: "FFH Waldlebensraumtyp",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.ffh_forest_type",
         },
         {
             field: "accessibility",
             headerName: "Zugänglichkeit",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.plot.accessibility",
         },
         {
             field: "federal_state",
@@ -176,6 +183,7 @@
             filter: true,
             sortable: true,
             //type: "string",
+            headerTooltip: "inventory_archive.plot.federal_state",
         },
         {
             field: "property_type",
@@ -183,6 +191,7 @@
             filter: true,
             sortable: true,
             //type: "string",
+            headerTooltip: "inventory_archive.plot.property_type",
         },
         {
             field: "grid_density",
@@ -190,12 +199,14 @@
             filter: true,
             sortable: true,
             //type: "string",
+            headerTooltip: "inventory_archive.cluster.grid_density",
         },
         {
             field: "states_affected",
             headerName: "Affected States",
             filter: true,
             sortable: true,
+            headerTooltip: "inventory_archive.cluster.states_affected",
         }
     ]);
     function _renderLookup(tableName, fieldName, code) {
