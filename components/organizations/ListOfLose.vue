@@ -52,6 +52,10 @@
         is_root: {
             type: Boolean,
             default: false
+        },
+        cluster: {
+            type: Array,
+            default: () => []
         }
     });
 
@@ -516,8 +520,8 @@
                 <v-chip variant="elevated" color="yellow" v-else>noch nicht zugewiesen</v-chip>
             </v-card-title>
         </v-card-item>
-        <v-card-text v-if="los.expanded">
-            <ClustersPerLos :los="los" :records_Ids="los.cluster_ids" :organization_id="props.organization_id" :organization_type="props.organization_type"/>
+        <v-card-text v-if="los.expanded && props.cluster">
+            <ClustersPerLos :los="los" :records_Ids="los.cluster_ids" :organization_id="props.organization_id" :organization_type="props.organization_type" :cluster="props.cluster"/>
         </v-card-text>
     </v-card>
 

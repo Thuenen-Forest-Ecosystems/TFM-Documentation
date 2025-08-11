@@ -27,6 +27,8 @@ layout: page
     const user = ref({});
 
     const currentOrganization = ref({});
+    const cluster = ref([]);
+    const loadingClusters = ref(false);
 
     const tab = ref('3'); // Default tab
 
@@ -38,10 +40,30 @@ layout: page
         }
         return data;
     };
+    async function _requestcluster() {
+        loadingClusters.value = true;
+        cluster.value = [];
+        await supabase
+            .schema('inventory_archive')
+            .from('cluster')
+            .select('*')
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('Error fetching clusters:', error);
+                } else {
+                    cluster.value = data;
+                }
+            })
+            .catch((e) => console.error('An unexpected error occurred while fetching clusters:', e))
+            .finally(() => {
+                loadingClusters.value = false;
+            });
+    }
 
     onMounted(async () => {
 
         currentOrganization.value = await _getOrganizationById(organizationId);
+
 
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
@@ -49,6 +71,9 @@ layout: page
             return;
         }
         if (sessionData && sessionData.session) {
+
+            _requestcluster();
+
             user.value = sessionData.session.user;
 
             const { data: permissionData, error: permissionError } = await supabase
@@ -102,7 +127,7 @@ layout: page
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">
     <v-tab value="1">Mitarbeitende</v-tab>
-    <v-tab value="3">Lose</v-tab>
+    <v-tab value="3" :loading="loadingClusters">Lose</v-tab>
     <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Landesinventurleitung' : 'Dienstleister'}}</v-tab>
     <v-tab value="5">Trupps</v-tab>
 </v-tabs>
@@ -142,6 +167,7 @@ layout: page
             :title="'Lose'" 
             :is_admin="permission.is_organization_admin || false"
             :is_root="currentOrganization.is_root || false"
+            :cluster="cluster"
         />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">

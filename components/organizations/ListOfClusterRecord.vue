@@ -5,7 +5,62 @@
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 
-    import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
+    //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
+const listOfLookupTables = [
+    //'lookup_browsing',
+    'lookup_cluster_situation',
+    'lookup_cluster_status',
+    //'lookup_dead_wood_type',
+    //'lookup_decomposition',
+    //'lookup_edge_status',
+    //'lookup_edge_type',
+    //'lookup_elevation_level',
+    //'lookup_exploration_instruction',
+    'lookup_ffh_forest_type',
+    //'lookup_forest_community',
+    'lookup_forest_office',
+    'lookup_forest_status',
+    //'lookup_gnss_quality',
+    'lookup_grid_density',
+    'lookup_growth_district',
+    //'lookup_land_use',
+    //'lookup_management_type',
+    //'lookup_marker_profile',
+    //'lookup_marker_status',
+    //'lookup_property_size_class',
+    'lookup_property_type',
+    //'lookup_pruning',
+    //'lookup_sampling_stratum',
+    //'lookup_stand_development_phase',
+    //'lookup_stand_layer',
+    //'lookup_stand_structure',
+    'lookup_state',
+    //'lookup_stem_breakage',
+    //'lookup_stem_form',
+    'lookup_terrain',
+    //'lookup_terrain_form',
+    //'lookup_tree_size_class',
+    //'lookup_tree_species_group',
+    //'lookup_tree_status',
+    //'lookup_trees_less_4meter_layer',
+    //'lookup_trees_less_4meter_mirrored',
+    //'lookup_trees_less_4meter_origin',
+    //'lookup_natur_schutzgebiet',
+    //'lookup_vogel_schutzgebiet',
+    //'lookup_natur_park',
+    //'lookup_national_park',
+    'lookup_ffh',
+    //'lookup_biosphaere',
+    //'lookup_biogeographische_region',
+    //'lookup_basal_area_factor',
+    //'lookup_biotope',
+    //'lookup_harvest_restriction',
+    //'lookup_harvest_condition',
+    //'lookup_harvest_type',
+    //'lookup_harvest_reason',
+    //'lookup_harvest_method',
+    'lookup_accessibility'
+];
 
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
@@ -36,6 +91,10 @@
         los: {
             type: Object,
             default: null
+        },
+        cluster: {
+            type: Array,
+            default: () => []
         }
     });
 
@@ -653,8 +712,11 @@
         loading.value = true;
 
         //await _requestLose(props.organization_id);
-        await _requestcluster();
-        console.log('Clusters:', cluster.value.length);
+        if(props.cluster && props.cluster.length){
+            cluster.value = props.cluster;
+        }else{
+             await _requestcluster();
+        }
         //console.log('cluster:', cluster.value.length);
         //await _requestOrganizations();
         //console.log('Organizations:', organizations.value.length);

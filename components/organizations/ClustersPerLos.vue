@@ -41,6 +41,10 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
         organization_type: {
             type: String,
             default: null
+        },
+        cluster: {
+            type: Array,
+            default: () => []
         }
     });
 
@@ -232,18 +236,19 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             rounded="xl"
             @click=" addClusterDialog = true"
             prepend-icon="mdi-plus"
+            :disabled="!props.cluster || props.cluster.length === 0"
         >
             Cluster hinzufügen
         </v-btn>
     </v-card-actions>
-    <v-dialog fullscreen scrollable v-model="addClusterDialog" max-width="500" @click:outside="cancelAction">
+    <v-dialog v-if="props.cluster && props.cluster.length" fullscreen scrollable v-model="addClusterDialog" max-width="500" @click:outside="cancelAction">
         <v-card>
             <v-toolbar>
                 <v-toolbar-title>Noch nicht zugewiesene Cluster</v-toolbar-title>
                 <v-btn icon="mdi-close" variant="text" @click="cancelAction"></v-btn>
             </v-toolbar>
-            
-            <ListOfClusterRecord :organization_id="props.organization_id" :organization_type="props.organization_type" :los="props.los" @confirm="cancelUpdate" />
+
+            <ListOfClusterRecord :organization_id="props.organization_id" :organization_type="props.organization_type" :los="props.los" @confirm="cancelUpdate" :cluster="props.cluster" />
         </v-card>
     </v-dialog>
 </template>
