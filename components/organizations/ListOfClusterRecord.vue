@@ -523,7 +523,7 @@ const listOfLookupTables = [
                 filterRow = 'state_los';
                 break;
             case 'provider':
-                companyType = 'responsible_troop';
+                companyType = 'responsible_provider';
                 filterRow = 'provider_los';
                 break;
         }
@@ -585,6 +585,8 @@ const listOfLookupTables = [
         let failedBatches = [];
         let totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
 
+        
+
         const update = {};
         switch (props.organization_type) {
             case 'root':
@@ -597,6 +599,8 @@ const listOfLookupTables = [
                 update.provider_los = losId;
                 break;
         }
+
+        console.log(`Organization Type: ${JSON.stringify(update)}`);
 
         try {
             // Process all batches and collect results
@@ -653,7 +657,7 @@ const listOfLookupTables = [
                         try {
                             const { data, error } = await supabase
                                 .from('records')
-                                .update({ administration_los: losId })
+                                .update(update)
                                 .in('cluster_id', failedBatch.clusterIds);
                             
                             if (!error) {

@@ -141,14 +141,14 @@ export async function createAppSchema() {
   });
 
   const AppSchema = new Schema({
-      schemas,
+      //schemas,
       //records,
-      organizations,
-      troop,
-      users_profile,
-      organizations_lose,
+      //organizations,
+      //troop,
+      //users_profile,
+      //organizations_lose,
       //cluster,
-      ...lookupTable
+      //...lookupTable
   });
 
   return AppSchema;

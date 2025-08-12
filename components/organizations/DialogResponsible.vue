@@ -39,13 +39,13 @@
         emit('update:modelValue', false);
     }
 
-    function _selectCompany(company) {
-        selectedCompany.value = company.id;
+    function _selectCompany() {
+        //selectedCompany.value = selectedCompany.value || null;
         selectedTroop.value = null; // Reset selected troop when a company is selected
         updateLos();
     }
     function _selectTroop(troop) {
-        selectedTroop.value = troop.id;
+        //selectedTroop.value = troop.id;
         selectedCompany.value = null; // Reset selected company when a troop is selected
         updateLos();
     }
@@ -145,12 +145,12 @@
                         selected-class="text-primary"
                         column
                         v-model="selectedCompany"
+                        @update:model-value="_selectCompany"
                     >
                         <v-chip
                             v-for="company in companies"
                             :key="company.id"
                             :value="company.id"
-                            @click="_selectCompany(company)"
                             class="ma-1"
                         >
                         {{ company.name || company.entityName || 'unknown' }}
@@ -163,12 +163,12 @@
                         selected-class="text-primary"
                         column
                         v-model="selectedTroop"
+                        @update:model-value="_selectTroop"
                     >
                         <v-chip
                             v-for="troop in troops"
                             :key="troop.id"
                             :value="troop.id"
-                            @click="_selectTroop(troop)"
                             class="ma-1"
                         >
                         {{ troop.name || troop.entityName || 'unknown' }}

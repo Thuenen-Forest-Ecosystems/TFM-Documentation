@@ -119,9 +119,9 @@ layout: page
 <div class="ma-11" v-if="currentOrganization && currentOrganization.id">
 
 <div class="text-center mt-4">
-    <h1>
+    <p class="text-h2 text-weight-bold">
         {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
-    </h1>
+    </p>
     Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
 </div>
 

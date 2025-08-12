@@ -81,8 +81,8 @@
         try {
             const { data, error } = await supabase
                 .from('organizations')
-                .select('*')
-                .eq('parent_organization_id', props.organization_id);
+                .select('*');
+                //.eq('parent_organization_id', props.organization_id);
             if (error) {
                 console.error('Error fetching companies:', error);
                 return [];
@@ -438,7 +438,9 @@
     });
 
     async function _handleConfirm (value, name) {
-        
+
+        console.log('Confirming:', value, name);
+
         // Handle the confirm action
         const { data, error } = await supabase
             .from('organizations_lose')

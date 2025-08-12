@@ -106,17 +106,39 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
         }
     ]);
 
-    function renameColumns(rawData){
+    async function _getTroops(troopIds) {
+        if (!troopIds || troopIds.length === 0) return [];
+        try {
+            const { data, error } = await supabase
+                .from('troop')
+                .select('id, name')
+                .in('id', troopIds);
+            if (error) {
+                console.error('Error fetching troops:', error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.error('An unexpected error occurred while fetching troops:', e);
+            return [];
+        }
+    }
+
+    async function renameColumns(rawData){
         const organizationsIDMap = new Map(props.organizations.map(org => [org.id, org.name]));
+        const troopIdsArray = Array.from(new Set(rawData.map(record => record.responsible_troop))).filter(Boolean);
+        const troops = await _getTroops(troopIdsArray);
+        console.log('organizations', troops);
         return rawData.map(record => {
-            console.log('organizations', record, props.organizations, organizationsIDMap)
+            
+            if (!record) return null; // Handle null records
             return {
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name || '',
                 plot_name: record.plot_name || '',
-                responsible_troop: record.responsible_troop || '-',
-                responsible_provider: record.responsible_provider || '-',
-                responsible_state: organizationsIDMap.get(record.responsible_state) || '-'
+                responsible_troop: troops.find(troop => troop.id === record.responsible_troop)?.name || record.responsible_troop,
+                responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
+                responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state
             };
         });
     }
@@ -162,7 +184,7 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
                 rowData.value = [];
                 return;
             }
-            rowData.value = renameColumns(records);
+            rowData.value = await renameColumns(records);
             return;
             
             // Use parameterized query for better performance
@@ -188,12 +210,26 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
         
         const uniqueClusterIds = [...new Set(selecteClusterIds)];
         const bulkSize = 100; // Adjust batch size as needed
+
+        const update = {};
+        switch (props.organization_type) {
+            case 'root':
+                update.administration_los = null;
+                break;
+            case 'country':
+                update.state_los = null;
+                break;
+            case 'provider':
+                update.provider_los = null;
+                break;
+        }
+
         try{
             deleting.value = true;
             for (let i = 0; i < uniqueClusterIds.length; i += bulkSize) {
                 const batch = uniqueClusterIds.slice(i, i + bulkSize);
                 // Use Supabase to update the records
-                const {data, error} = await supabase.from('records').update({administration_los: null}).in('cluster_id', batch);
+                const {data, error} = await supabase.from('records').update(update).in('cluster_id', batch);
                 if (error) {
                     console.error('Error removing selected clusters:', error);
                     deleting.value = false;
