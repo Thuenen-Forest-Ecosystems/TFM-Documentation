@@ -24,6 +24,10 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     let selectedRows = ref([]);
     const addClusterDialog = ref(false);
 
+    const snackbar = ref(false);
+    const snackbarText = ref('');
+    const snackbarColor = ref('info');
+
     // props 
     const props = defineProps({
         records_Ids: {
@@ -43,6 +47,10 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             default: null
         },
         cluster: {
+            type: Array,
+            default: () => []
+        },
+        organizations: {
             type: Array,
             default: () => []
         }
@@ -76,6 +84,13 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             pinned: 'left'
         },
         {
+            field: "responsible_troop",
+            headerName: "Aufnahmetrupp",
+            filter: true,
+            sortable: true,
+            //type: "string",
+        },
+        {
             field: "responsible_provider",
             headerName: "Dienstleister",
             filter: true,
@@ -83,17 +98,30 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             //type: "string",
         },
         {
-            field: "responsible_troop",
-            headerName: "Aufnahmetrupp",
+            field: "responsible_state",
+            headerName: "Landesinventurleitung",
             filter: true,
             sortable: true,
             //type: "string",
         }
     ]);
 
-
+    function renameColumns(rawData){
+        const organizationsIDMap = new Map(props.organizations.map(org => [org.id, org.name]));
+        return rawData.map(record => {
+            console.log('organizations', record, props.organizations, organizationsIDMap)
+            return {
+                cluster_id: record.cluster_id,
+                cluster_name: record.cluster_name || '',
+                plot_name: record.plot_name || '',
+                responsible_troop: record.responsible_troop || '-',
+                responsible_provider: record.responsible_provider || '-',
+                responsible_state: organizationsIDMap.get(record.responsible_state) || '-'
+            };
+        });
+    }
     async function fetchRecords(losId) {
-        console.log('Fetching records for LOS ID:', losId);
+        
         try {
             // Limit to reasonable batch size to avoid performance issues
 
@@ -101,19 +129,40 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
                 rowData.value = [];
                 return;
             }
-            console.log('Fetching records for LOS ID:', losId);
-            console.log('request database for records');
+
+            let filterRow = null;
+            switch (props.organization_type) {
+                case 'root':
+                    //companyType = 'responsible_administration';
+                    filterRow = 'administration_los';
+                    break;
+                case 'country':
+                    //companyType = 'responsible_state';
+                    filterRow = 'state_los';
+                    break;
+                case 'provider':
+                    //companyType = 'responsible_troop';
+                    filterRow = 'provider_los';
+                    break;
+            }
+
+            if(!filterRow) {
+                console.error('No filter row found for organization type:', props.organization_type);
+                rowData.value = [];
+                return;
+            }
+
             const {data:records, error} = await supabase
                 .from('records')
                 .select('cluster_id, cluster_name, plot_name, responsible_troop, responsible_provider, responsible_state')
-                .eq('administration_los', losId);
-            
+                .eq(filterRow, losId);
+
             if (error) {
                 console.error('Error fetching records:', error);
                 rowData.value = [];
                 return;
             }
-            rowData.value = records;
+            rowData.value = renameColumns(records);
             return;
             
             // Use parameterized query for better performance
@@ -251,4 +300,10 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             <ListOfClusterRecord :organization_id="props.organization_id" :organization_type="props.organization_type" :los="props.los" @confirm="cancelUpdate" :cluster="props.cluster" />
         </v-card>
     </v-dialog>
+    <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
+        {{ snackbarText }}
+        <template v-slot:action="{ attrs }">
+            <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
+        </template>
+    </v-snackbar>
 </template>

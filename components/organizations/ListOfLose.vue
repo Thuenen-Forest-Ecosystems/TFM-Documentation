@@ -88,6 +88,7 @@
                 return [];
             }
             companies.value = data || [];
+
         } catch (e) {
             console.error('An unexpected error occurred while fetching companies:', e);
             return [];
@@ -197,7 +198,7 @@
                 deleting.value[loseId] = false;
             });
     }
-    async function _removeCluster(e, losId, clusterId) {
+    /*async function _removeCluster(e, losId, clusterId) {
         e.stopPropagation(); // Prevent the click from propagating to the list item
         if (!losId || !clusterId) {
             console.error('Error: losId and clusterId are required.');
@@ -235,13 +236,13 @@
             snackbar.value = true;
             snackbarColor.value = 'success';
         }
-    }
+    }*/
     function _openResponsibleDialog(los) {
         selectedLos.value = { ...los }; // Create a shallow copy of los to avoid mutating the original object
         responsibleDialog.value = true;
     }
 
-    async function _addClusterToLosDialog(losDetails){
+    /*async function _addClusterToLosDialog(losDetails){
         if (!losDetails || !losDetails.id) {
             console.error('Error: losDetails and losDetails.id are required.');
             return;
@@ -258,8 +259,8 @@
         if (clusterNameInput) {
             clusterNameInput.value = '';
         }
-    }
-    async function _addClusterToLosDialog_deprecated(losDetails){
+    }*/
+    /*async function _addClusterToLosDialog_deprecated(losDetails){
         const clusterName = prompt('Enter cluster name:');
 
         const clusterNameArray = clusterName ? clusterName.split(',') : [];
@@ -292,8 +293,8 @@
         
 
         await _addClusterToLose(losDetails, filteredClusterNames);
-    }
-    async function _filterClustersAvailableFromDb(cluster_ids){
+    }*/
+   /* async function _filterClustersAvailableFromDb(cluster_ids){
         if (!cluster_ids || cluster_ids.length === 0) return [];
 
         try {
@@ -314,7 +315,7 @@
             console.error('An unexpected error occurred while fetching available clusters:', e);
             return [];
         }
-    }
+    }*/
     async function _addClusterToLoseFromDialog(losDetails, uniqueClusterIds){
 
         const { data, error } = await supabase
@@ -332,7 +333,7 @@
             _updateAssignedClusters([losDetails.value]);
         }
     }
-    async function _addClusterToLose(losDetails, clusterNames) {
+    /*async function _addClusterToLose(losDetails, clusterNames) {
         if (!losDetails || !clusterNames) return;
 
         //await _requestData(props.organization_id);
@@ -384,11 +385,11 @@
             losDetails.value = data;
             _updateAssignedClusters([losDetails.value]);
         }
-    }
+    }*/
 
 
     // root organization only
-    async function getClustersAvailable() {
+    /*async function getClustersAvailable() {
         if (!props.organization_id) {
             console.error('Error: organization_id is required to fetch available clusters.');
             return;
@@ -413,7 +414,7 @@
         } catch (e) {
             console.error('An unexpected error occurred while fetching available clusters:', e);
         }
-    }
+    }*/
 
     watch(() => props.organization_id, (newVal) => {
         if (newVal) {
@@ -521,7 +522,14 @@
             </v-card-title>
         </v-card-item>
         <v-card-text v-if="los.expanded && props.cluster">
-            <ClustersPerLos :los="los" :records_Ids="los.cluster_ids" :organization_id="props.organization_id" :organization_type="props.organization_type" :cluster="props.cluster"/>
+            <ClustersPerLos
+                :los="los"
+                :records_Ids="los.cluster_ids"
+                :organization_id="props.organization_id"
+                :organization_type="props.organization_type"
+                :cluster="props.cluster"
+                :organizations="companies"
+                />
         </v-card-text>
     </v-card>
 

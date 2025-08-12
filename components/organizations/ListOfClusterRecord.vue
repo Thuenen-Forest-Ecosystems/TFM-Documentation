@@ -69,7 +69,7 @@ const listOfLookupTables = [
 
     import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
 
-    const { waitForDb } = useDatabase()
+    //const { waitForDb } = useDatabase()
     const lookupTablesValue = ref({});
     let currentGrid = ref(null);
     let selectedRows = ref([]);
@@ -449,7 +449,7 @@ const listOfLookupTables = [
         let allData = [];
         let currentPage = 0;
         const pageSize = 10000; // Choose an appropriate page size
-
+        console.log('companyType', companyType, organizationId);
         while (true) {
             const start = currentPage * pageSize;
             const end = start + pageSize - 1;
@@ -531,6 +531,7 @@ const listOfLookupTables = [
             console.warn('No company type or filter row defined for organization type:', props.organization_type);
             return;
         }
+        console.log(companyType, filterRow);
         
         fetchAllDataPaginated('view_records_details', props.organization_id, companyType, filterRow)
             .then((records) => {
@@ -538,14 +539,20 @@ const listOfLookupTables = [
                 if (records && records.length > 0) {
                     loading.value = true;
                     rowData.value = _preRenderRecords(records);
-                    
+                    snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
+                    snackbarColor.value = 'success';
+                    snackbar.value = true;
+
                 } else {
-                    console.warn('No records found for the organization:', props.organization_id);
+                    snackbarText.value = 'Keine Datensätze gefunden für die Organisation.';
+                    snackbarColor.value = 'warning';
+                    snackbar.value = true;
                 }
-                loading.value = false;
             })
             .catch((error) => {
                 console.error('Error fetching records:', error);
+            }).finally(() => {
+                loading.value = false;
             });
     }
 
@@ -578,6 +585,19 @@ const listOfLookupTables = [
         let failedBatches = [];
         let totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
 
+        const update = {};
+        switch (props.organization_type) {
+            case 'root':
+                update.administration_los = losId;
+                break;
+            case 'country':
+                update.state_los = losId;
+                break;
+            case 'provider':
+                update.provider_los = losId;
+                break;
+        }
+
         try {
             // Process all batches and collect results
             for (let i = 0; i < uniqueClusterIds.length; i += batchSize) {
@@ -589,7 +609,7 @@ const listOfLookupTables = [
                 try {
                     const { data, error } = await supabase
                         .from('records')
-                        .update({ administration_los: losId })
+                        .update(update)
                         .in('cluster_id', batch);
                     
                     if (error) {

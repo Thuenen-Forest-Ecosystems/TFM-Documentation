@@ -80,6 +80,9 @@ export default defineConfig({
   },
   base: '/TFM-Documentation/',
   vite: {
+    esbuild: {
+      drop: ['console', 'debugger'],
+    },
     plugins: [
       vuetify(),
       wasm(),
@@ -110,7 +113,14 @@ export default defineConfig({
       // Don't mark PowerSync as external for client build - we need it bundled for GitHub Pages
       rollupOptions: {
         external: [],
-      }
+      },
+      minify: 'esbuild',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
     },
     // Special handling for PowerSync workers and WASM files
     server: {
