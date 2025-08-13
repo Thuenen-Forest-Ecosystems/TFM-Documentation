@@ -84,7 +84,7 @@
                 .from('users_permissions')
                 .delete()
                 .eq('id', pendingDeleteAdminId.value)
-                .eq('organization_id', attrs.organization_id);
+                //.eq('organization_id', attrs.organization_id);
 
             if (error) {
                 console.error('Error deleting administrator:', error);
@@ -123,13 +123,15 @@
             console.error('No user ID found in session data.');
             return null;
         }
-        const {data, error} = await supabase.from('users_permissions').select('is_organization_admin').eq('organization_id', organizationId).eq('user_id', userId).single();
-        if (error) {
+        const {data, error} = await supabase.from('users_permissions').select('is_organization_admin').eq('organization_id', organizationId).eq('user_id', userId);
+
+        if (error || !data) {
             console.error('Error fetching permissions:', error);
             return null;
         }
+
         //userRole.value = data?.role || null; // Default to null if no role found
-        isOrganizationAdmin.value = data?.is_organization_admin || false; // Default to false if not an organization admin
+        isOrganizationAdmin.value = data[0].is_organization_admin || false; // Default to false if not an organization admin
     }
     async function _requestData(organizationId) {
         if (!organizationId) return;
@@ -203,7 +205,7 @@
                     
                     <template v-slot:append>
                         <v-btn v-if="userProfiles.find(profile => profile.id === administrator.user_id)?.email" icon="mdi-email" variant="flat" @click="_openEmailLink(userProfiles.find(profile => profile.id === administrator.user_id)?.email)"/>
-                        <v-btn v-if="attrs.is_admin && currentUserId !== administrator.user_id" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
+                        <v-btn v-if="attrs.is_admin" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
                     </template>
                     
                 </v-list-item>

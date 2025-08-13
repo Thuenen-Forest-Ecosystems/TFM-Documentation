@@ -109,6 +109,4 @@
 </script>
 
 
-<LoginForm>
-
-</LoginForm>
+<LoginForm/>

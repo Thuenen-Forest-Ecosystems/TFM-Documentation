@@ -77,19 +77,19 @@ layout: page
 
             user.value = sessionData.session.user;
 
+            console.log('User:', user.value);
             const { data: permissionData, error: permissionError } = await supabase
                 .from('users_permissions')
                 .select('*')
                 .eq('user_id', user.value.id)
-                .eq('organization_id', organizationId)
-                .single();
+                .eq('organization_id', organizationId);
 
-            if (permissionError) {
+            if (permissionError || !permissionData) {
                 console.error('Error fetching user organization:', permissionError);
                 return;
             }
 
-            permission.value = permissionData || {};
+            permission.value = permissionData[0] || {};
 
             if (permission.value.organization_id) {
                 currentOrganization.value = await _getOrganizationById(organizationId);
