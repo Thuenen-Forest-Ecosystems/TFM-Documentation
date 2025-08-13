@@ -59,7 +59,7 @@
         });
     }
     async function _getOrganizations(userId){
-
+        
         await supabase.from('users_permissions').select("*, organizations(*)").eq('user_id', userId).then(({ data, error }) => {
             if (error) {
                 console.error(error);

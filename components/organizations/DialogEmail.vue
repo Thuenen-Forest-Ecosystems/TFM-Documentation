@@ -1,6 +1,8 @@
 <script setup>
 
     import { getCurrentInstance, onMounted, ref, watch, defineEmits } from 'vue';
+    import { FunctionsHttpError, FunctionsRelayError, FunctionsFetchError } from '@supabase/supabase-js'
+
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -56,13 +58,23 @@
                     }
                 }
             });
-            if (supabaseError) {
+            if (supabaseError instanceof FunctionsHttpError) {
+                const errorMessage = await supabaseError.context.json()
+                error.value = errorMessage.details || errorMessage.error;
+                if(error.value.startsWith('duplicate key value violates unique constraint')) {
+                    error.value = 'Diese E-Mail-Adresse ist bereits zugewiesen.';
+                }
+            } else if (supabaseError instanceof FunctionsRelayError) {
                 error.value = supabaseError.message;
-            } else {
+            } else if (supabaseError instanceof FunctionsFetchError) {
+                error.value = supabaseError.message;
+            }
+            if (!supabaseError) {
                 success.value = `Einladung an ${adminEmail} wurde gesendet.`;
             }
             loading.value = false;
         } catch (error) {
+            console.error('Error inviting user2:', error);
             error.value = error.message;
         }
         
