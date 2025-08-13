@@ -245,6 +245,7 @@
         <v-card-item>
             <v-card-title>{{ troop.name }}</v-card-title>
             <v-card-subtitle v-if="troop.is_control_troop">Kontroll-Trupp</v-card-subtitle>
+            <v-card-subtitle v-else>Aufnahme-Trupp</v-card-subtitle>
             <template v-slot:append  v-if="props.is_admin">
                 <v-menu>
                     <template v-slot:activator="{ props: menuProps }">

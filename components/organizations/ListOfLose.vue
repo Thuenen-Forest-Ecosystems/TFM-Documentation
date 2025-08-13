@@ -445,8 +445,8 @@
         const { data, error } = await supabase
             .from('organizations_lose')
             .update({
-                responsible_organization_id: value.responsible_organization_id,
-                troop_id: value.troop_id,
+                responsible_organization_id: value.responsible_organization_id || null,
+                troop_id: value.troop_id || null,
                 name: name || value.name // Update the name if provided
             })
             .eq('id', value.id)

@@ -14,6 +14,7 @@ layout: page
     import ListOfCluster from '../../components/organizations/ListOfCluster.vue';
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
     import ListOfLose from '../../components/organizations/ListOfLose.vue';
+    import VimeoPlayer from '../../components/VimeoPlayer.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -122,8 +123,13 @@ layout: page
     <p class="text-h2 text-weight-bold">
         {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
     </p>
-    Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
+    <p class="mb-4">
+        Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
+    </p>
+    <VimeoPlayer :btnTitle="'Info Video abspielen'" :title="'Cluster-Verwaltung für die CI/BWI'" />
 </div>
+
+
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">
     <v-tab value="1">Mitarbeitende</v-tab>
