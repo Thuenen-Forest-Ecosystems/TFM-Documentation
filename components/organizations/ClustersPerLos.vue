@@ -4,6 +4,8 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     ModuleRegistry.registerModules([AllCommunityModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
+    import ActionCellRenderer from './ActionCellRenderer.vue';
+
 
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
@@ -62,26 +64,36 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
             mode: 'multiRow',
             selectAll: 'filtered',
             enableClickSelection: true,
-            
+        },
+        components: {
+            actionCellRenderer: ActionCellRenderer // Register the custom cell renderer
         }
     }
 
     const colDefs = ref([
-        { 
-            field: "cluster_name",
-            headerName: "Cluster Name",
-            filter: true,
-            sortable: true,
-            //type: "number",
-            pinned: 'left'
+        {
+            cellRenderer: 'actionCellRenderer', // Custom cell renderer
+            pinned: 'left',
+            width: 50
         },
         { 
-            field: "plot_name",
-            headerName: "Plot Name",
+            field: "cluster_name",
+            headerName: "Trakt",
             filter: true,
             sortable: true,
             //type: "number",
-            pinned: 'left'
+            pinned: 'left',
+            width: 100
+        },
+        // To History Button
+        { 
+            field: "plot_name",
+            headerName: "Ecke",
+            filter: true,
+            sortable: true,
+            //type: "number",
+            pinned: 'left',
+            width: 100
         },
         {
             field: "responsible_troop",
@@ -269,9 +281,7 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
     <div v-if="!loading">
         <ag-grid-vue
             ref="currentGrid"
-
             @selection-changed="onSelectionChanged"
-
             :gridOptions="gridOptions"
             :theme="currentTheme"
             :pagination="true"
