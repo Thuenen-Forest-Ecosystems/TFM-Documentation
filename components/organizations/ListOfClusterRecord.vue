@@ -235,7 +235,7 @@ const listOfLookupTables = [
         },
         {
             field: "accessibility",
-            headerName: "Begehbarkeit (2022)", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
+            headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
             filter: true,
             sortable: true,
             headerTooltip: "inventory_archive.plot.accessibility",
@@ -310,7 +310,7 @@ const listOfLookupTables = [
 
         // Pre-compute all lookup maps once
         const clusterMap = new Map(cluster.value.map(c => [c.id, c]));
-        
+
         // Pre-compute lookup table maps for faster access
         const lookupMaps = {};
         Object.keys(lookupTablesValue.value).forEach(tableName => {
@@ -319,9 +319,15 @@ const listOfLookupTables = [
             );
         });
 
-        console.log('Mapping records:', records.length);
+        console.log('cluster length', cluster.value.length);
+    
+        // Add debugging for state lookup
+        console.log('lookup_state entries:', lookupMaps['lookup_state']?.size || 0);
+        console.log('Sample state lookup entries:', 
+            Array.from(lookupMaps['lookup_state']?.entries() || []).slice(0, 5));
 
-        return records.map(record => {
+
+        const processedRecords = records.map(record => {
             const clusterData = clusterMap.get(record.cluster_id);
 
             return {
@@ -336,6 +342,7 @@ const listOfLookupTables = [
                 cluster_situation: _renderClusterOptimized(clusterData, 'cluster_situation', lookupMaps, 'lookup_cluster_situation'),
                 state_responsible: _renderClusterOptimized(clusterData, 'state_responsible', lookupMaps, 'lookup_state'),
                 states_affected: clusterData?.['states_affected'] || 'not defined',
+                
                 
                 is_valid: record.is_valid,
                 
@@ -352,33 +359,44 @@ const listOfLookupTables = [
                 grid_density: _renderClusterOptimized(clusterData, 'grid_density', lookupMaps, 'lookup_grid_density')
             };
         });
+
+        // Enhanced debugging for nordrhein count
+        const nordrheinRows = processedRecords.filter(row => {
+            const v = row.state_responsible;
+            return v && v.toString().toLowerCase().startsWith('nordrhein');
+        });
+        
+        console.log(`Nordrhein count: ${nordrheinRows.length}`);
+        console.log('Sample nordrhein entries:', nordrheinRows.slice(0, 3));
+
+        return processedRecords;
     }
    
     async function _requestAllLookupTables(){
-        if (!powerSyncDB) {
-            console.warn('PowerSync not available - using fallback data');
-            return;
-        }
-        
-        for (const table of listOfLookupTables) {
-            supabase
-                .schema('lookup')
-                .from(table)
-                .select('*')
-                .then(({ data, error }) => {
-                    if (error) {
-                        console.error(`Error loading ${table}:`, error);
-                    } else {
-                        lookupTablesValue.value[table] = data;
-                    }
-                })
-                .catch((e) => console.error(`Error loading ${table}:`, e));
-            /*powerSyncDB.getAll(`SELECT * from ${table}`)
-                .then((data) => {
-                    lookupTablesValue.value[table] = data;
-                })
-                .catch((e) => console.error(`Error loading ${table}:`, e));*/
-        }
+        // Lade alle Lookup-Tabellen parallel und warte auf alle Ergebnisse,
+        // damit lookupTablesValue vollständig ist bevor _preRenderRecords ausgeführt wird.
+        const promises = listOfLookupTables.map(async (table) => {
+            try {
+                const { data, error } = await supabase
+                    .schema('lookup')
+                    .from(table)
+                    .select('*');
+
+                if (error) {
+                    console.error(`Error loading ${table}:`, error);
+                    return { table, data: [] };
+                }
+                return { table, data: data || [] };
+            } catch (e) {
+                console.error(`Error loading ${table}:`, e);
+                return { table, data: [] };
+            }
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(({ table, data }) => {
+            lookupTablesValue.value[table] = data;
+        });
     }
     async function _requestcluster() {
         cluster.value = [];
@@ -470,7 +488,6 @@ const listOfLookupTables = [
                     state_los,
                     provider_los,
                     troop_los,
-
                     federal_state,
                     growth_district,
                     forest_status_bwi2022,
@@ -484,7 +501,8 @@ const listOfLookupTables = [
                 .eq(companyType, organizationId)
                 .is(filterRow, null) // Ensure the filterRow is null
                 .is('troop_los', null) // Ensure troop_los is also null
-                .range(start, end); // Use range for pagination
+                .range(start, end) // Use range for pagination
+                .order('cluster_id', { ascending: true }); // <<-- deterministic order
 
             if (error) {
                 console.error('Error fetching data:', error);
@@ -498,6 +516,7 @@ const listOfLookupTables = [
             allData = allData.concat(data);
             currentPage++;
         }
+
         return allData;
     }
     async function _requestPlots() {
@@ -534,11 +553,20 @@ const listOfLookupTables = [
         console.log(companyType, filterRow);
         
         fetchAllDataPaginated('view_records_details', props.organization_id, companyType, filterRow)
-            .then((records) => {
+            .then(async (records) => {
                 
                 if (records && records.length > 0) {
                     loading.value = true;
+
+                    // show last record
+                    const lastRecord = records[records.length - 1];
+
+                    // Ensure lookup tables are fully loaded before processing
+                    await _requestAllLookupTables();
+
+                    console.log('Mapping records:', records.length); // 117166 Immer gleich
                     rowData.value = _preRenderRecords(records);
+
                     snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
                     snackbarColor.value = 'success';
                     snackbar.value = true;
@@ -562,30 +590,34 @@ const listOfLookupTables = [
     }
 
     async function addToLos(){
+        console.log(selectedRows.value.length);
         assignTo(props.los.id);
     }
     async function assignTo(losId){
         if (!losId) {
             console.error('Error: losId is required.');
-            return;
+            snackbarText.value = 'Fehler: Los ID ist erforderlich.';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+            return;// 6934
         }
 
         const uniqueClusterIds = [...new Set(selectedRows.value.map(row => row.cluster_id))];
 
         if (uniqueClusterIds.length === 0) {
-            console.warn('No unique cluster IDs found in selected rows');
-            return; // 13591
+            snackbarText.value = 'Keine Cluster IDs in der Auswahl gefunden.';
+            snackbarColor.value = 'warning';
+            snackbar.value = true;
+            return;
         }
 
         console.log(`Starting batch assignment of ${uniqueClusterIds.length} clusters to LOS: ${losId}`);
         assigning.value = true;
         
-        const batchSize = 100;
-        let successCount = 0;
-        let failedBatches = [];
+        const batchSize = 75; // Reduced batch size for more reliability
+        let processedCount = 0;
+        let failedClusters = [];
         let totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
-
-        
 
         const update = {};
         switch (props.organization_type) {
@@ -603,90 +635,86 @@ const listOfLookupTables = [
         console.log(`Organization Type: ${JSON.stringify(update)}`);
 
         try {
-            // Process all batches and collect results
+            // Process all batches and track progress
             for (let i = 0; i < uniqueClusterIds.length; i += batchSize) {
                 const batch = uniqueClusterIds.slice(i, i + batchSize);
                 const batchNumber = Math.floor(i / batchSize) + 1;
                 
-                console.log(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} clusters)`);
+                snackbarText.value = `Verarbeite ${batchNumber}/${totalBatches}`;
+                snackbarColor.value = 'info';
+                snackbar.value = true;
                 
                 try {
-                    const { data, error } = await supabase
+                    // Use count option to get the number of affected rows
+                    const { count, error } = await supabase
                         .from('records')
                         .update(update)
-                        .in('cluster_id', batch);
+                        .in('cluster_id', batch)
+                        .select('cluster_id');  // Request actual affected rows
                     
                     if (error) {
                         console.error(`Error in batch ${batchNumber}:`, error);
-                        failedBatches.push({
-                            batchNumber,
-                            clusterIds: batch,
-                            error: error.message
-                        });
+                        failedClusters.push(...batch);
                     } else {
-                        // Count successful updates - data contains the updated records
-                        const updatedCount = data ? data.length : batch.length;
-                        successCount += updatedCount;
-                        console.log(`Batch ${batchNumber} completed: ${updatedCount} records updated`);
+                        processedCount += count || 0;
                     }
                 } catch (batchError) {
                     console.error(`Unexpected error in batch ${batchNumber}:`, batchError);
-                    failedBatches.push({
-                        batchNumber,
-                        clusterIds: batch,
-                        error: batchError.message
-                    });
+                    failedClusters.push(...batch);
                 }
                 
-                // Small delay between batches to avoid overwhelming the database
+                // Add a small delay between batches
                 if (i + batchSize < uniqueClusterIds.length) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 200));
                 }
             }
             
-            // Report results
-            console.log(`Assignment completed: ${successCount} clusters assigned successfully`);
-            
-            if (failedBatches.length > 0) {
-                console.warn(`${failedBatches.length} batches failed:`, failedBatches);
+            // Handle any failed clusters with auto-retry once
+            if (failedClusters.length > 0) {
+                console.warn(`${failedClusters.length} clusters failed. Attempting auto-retry...`);
                 
-                // Optionally retry failed batches
-                if (confirm(`${failedBatches.length} batches failed. Would you like to retry the failed batches?`)) {
-                    for (const failedBatch of failedBatches) {
-                        console.log(`Retrying batch ${failedBatch.batchNumber}`);
-                        try {
-                            const { data, error } = await supabase
-                                .from('records')
-                                .update(update)
-                                .in('cluster_id', failedBatch.clusterIds);
+                // Break failed clusters into smaller batches for retry
+                const retryBatchSize = Math.floor(batchSize / 2);
+                
+                for (let i = 0; i < failedClusters.length; i += retryBatchSize) {
+                    const retryBatch = failedClusters.slice(i, i + retryBatchSize);
+                    
+                    try {
+                        const { count, error } = await supabase
+                            .from('records')
+                            .update(update)
+                            .in('cluster_id', retryBatch)
+                            .select('cluster_id');
                             
-                            if (!error) {
-                                const updatedCount = data ? data.length : failedBatch.clusterIds.length;
-                                successCount += updatedCount;
-                                console.log(`Retry successful: ${updatedCount} additional records updated`);
-                            } else {
-                                console.error(`Retry failed for batch ${failedBatch.batchNumber}:`, error);
-                            }
-                        } catch (retryError) {
-                            console.error(`Retry error for batch ${failedBatch.batchNumber}:`, retryError);
+                        if (!error) {
+                            processedCount += count || 0;
                         }
+                    } catch (retryError) {
+                        console.error('Retry error:', retryError);
+                    }
+                    
+                    // Longer delay for retries
+                    if (i + retryBatchSize < failedClusters.length) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
             }
             
+            const successRate = Math.round((processedCount / uniqueClusterIds.length) * 100);
+            snackbarText.value = `Zuordnung abgeschlossen: ${processedCount} von ${uniqueClusterIds.length} Clustern (${successRate}%) erfolgreich zugeordnet.`;
+            snackbarColor.value = processedCount === uniqueClusterIds.length ? 'success' : 'warning';
+            snackbar.value = true;
+            
         } catch (error) {
             console.error('Unexpected error during batch assignment:', error);
+            snackbarText.value = `Fehler bei der Zuordnung: ${error.message}`;
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+        } finally {
+            assigning.value = false;
+            emit('confirm');
+            selectedLos.value = null;
         }
-
-        //powerSyncDB.execute(`UPDATE records SET administration_los = ? WHERE cluster_id IN (${uniqueClusterIds.map(() => '?').join(', ')})`, [losId, ...uniqueClusterIds]);
-        
-        assigning.value = false;
-        
-        console.log(`Final result: ${successCount} out of ${uniqueClusterIds.length} clusters assigned to LOS`);
-
-        emit('confirm');
-
-        selectedLos.value = null;
     }
     function _requestLose(organizationId) {
         if (!organizationId) {
@@ -750,7 +778,9 @@ const listOfLookupTables = [
         //console.log('Organizations:', organizations.value.length);
         //await _requestTroops();
         //console.log('Troops:', troops.value.length);
-        await _requestAllLookupTables();
+
+        //await _requestAllLookupTables();
+
         //console.log('Lookup tables loaded');
         await _requestPlots();
         console.log('Plots:', rowData.value.length);
@@ -763,6 +793,9 @@ const listOfLookupTables = [
             return;
         }
         filteredRows.value = currentGrid.value.api.getFilterModel();
+    }
+    function updateGrid(){
+        
     }
     function clearFilters() {
         if (!currentGrid.value || !currentGrid.value.api) {
@@ -911,6 +944,18 @@ const listOfLookupTables = [
                 </v-chip>
                 <v-btn @click="clearFilters" variant="outlined" prepend-icon="mdi-delete" rounded="xl">
                     Alle zurücksetzen
+                </v-btn>
+            </template>
+        </v-toolbar>
+    </v-card>
+    <v-card class="mx-4 mt-4 mb-1">
+        <v-toolbar density="compact" v-if="rowData.length" >
+            <template v-slot:prepend>
+                <v-icon>mdi-update</v-icon>
+            </template>
+            <template v-slot:append>
+                <v-btn @click="updateGrid" variant="outlined" prepend-icon="mdi-delete" rounded="xl">
+                    Update Grid from existing data
                 </v-btn>
             </template>
         </v-toolbar>
