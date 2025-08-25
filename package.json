@@ -16,7 +16,7 @@
   "devDependencies": {
     "@mdi/font": "^7.4.47",
     "vite-plugin-vuetify": "^2.1.0",
-    "vitepress": "^1.6.3",
+    "vitepress": "^1.6.4",
     "vuetify": "^3.7.18",
     "wkt": "^0.1.1"
   },

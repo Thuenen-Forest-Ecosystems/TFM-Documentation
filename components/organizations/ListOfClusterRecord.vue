@@ -235,7 +235,7 @@ const listOfLookupTables = [
         },
         {
             field: "accessibility",
-            headerName: "Zugänglichkeit",
+            headerName: "Begehbarkeit (2022)", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
             filter: true,
             sortable: true,
             headerTooltip: "inventory_archive.plot.accessibility",
