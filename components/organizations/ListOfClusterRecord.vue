@@ -340,6 +340,7 @@ const listOfLookupTables = [
                 
                 cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_cluster_status', clusterData?.['cluster_status']),
                 cluster_situation: _renderClusterOptimized(clusterData, 'cluster_situation', lookupMaps, 'lookup_cluster_situation'),
+                
                 state_responsible: _renderClusterOptimized(clusterData, 'state_responsible', lookupMaps, 'lookup_state'),
                 states_affected: clusterData?.['states_affected'] || 'not defined',
                 
