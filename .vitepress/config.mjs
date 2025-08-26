@@ -75,7 +75,7 @@ export default defineConfig({
     ],
     footer: {
       message: 'Service of the <b>Thünen Institute</b>',
-      copyright: '<a href="https://www.thuenen.de/en/legal-notice-and-data-privacy">Legal notice</a>  <a href="https://www.thuenen.de/en/data-protection-statement">Data Protection Statement</a>'
+      copyright: '<a href="https://www.thuenen.de/en/legal-notice-and-data-privacy">Legal notice</a> . <a href="https://www.thuenen.de/en/data-protection-statement">Data Protection Statement</a> . <a href="/health-check">Health Check</a>'
     }
   },
   base: '/TFM-Documentation/',
