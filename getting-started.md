@@ -18,8 +18,8 @@ You can download the database as a `.sql` file. This file contains all the data 
 - [Structure Inventory Archive Tables](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/blob/main/supabase/migrations/20250115140817_inventory_archive.sql)
 - [Lookup and Inventory Data](https://git-dmz.thuenen.de/tfm-seeds/public)
 
-::: tip
-Dependent on your use case and database setup you might or might not need [additional configuration](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/tree/main/supabase/migrations).
+::: tip Setup
+Dependent on your use case and database setup you might need [additional configuration](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/tree/main/supabase/migrations).
 :::
 
 ### Full Server
@@ -32,4 +32,6 @@ The docker based source code of the self-hosted version of the database can be f
 
 The API is the easiest way to access the data. You can access the  RESTful API with any programming language that supports HTTP requests. The Database and API is hosted by the Thünen Institut.
 
-[More Information](./data-structure.md)
+::: warning Limitations
+API Requests are limited by time and the amount of data that can be retrieved in a single request. The API should only be used for filtered queries and not for bulk data extraction.
+:::
