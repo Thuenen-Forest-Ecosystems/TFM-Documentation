@@ -14,9 +14,9 @@ If you have problems using the **self-hosted** version or the **API**, please cr
 
 You can download the database as a `.sql` file. This file contains all the data and structure of the database. You can import this file into your own PostgreSQL database. This way you can access the data **without any limitations**.
 
-- Structure: [Lookup Tables](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/blob/main/supabase/migrations/20241202134805_lookup.sql)
-- Structure: [Inventory Archive Tables](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/blob/main/supabase/migrations/20250115140817_inventory_archive.sql)
-- Data: [Lookup and Inventory Data](https://git-dmz.thuenen.de/tfm-seeds/public)
+1. Structure: [Lookup Tables](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/blob/main/supabase/migrations/20241202134805_lookup.sql)
+2. Structure: [Inventory Archive Tables](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/blob/main/supabase/migrations/20250115140817_inventory_archive.sql)
+3. Data: [Lookup and Inventory Data](https://git-dmz.thuenen.de/tfm-seeds/public)
 
 ::: tip Setup
 Dependent on your use case and database setup you might need [additional configuration](https://github.com/Thuenen-Forest-Ecosystems/TFM-Server/tree/main/supabase/migrations).
