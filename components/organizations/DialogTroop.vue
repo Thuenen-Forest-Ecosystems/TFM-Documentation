@@ -10,6 +10,7 @@
     const error = ref('')
     const success = ref('')
 
+    const isControlTroop = ref(false)
 
     const props = defineProps({
         email: String,
@@ -18,6 +19,7 @@
         text: String,
         btnText: String,
         icon: String,
+        isControlTroop: Boolean,
         loading: {
             type: Boolean,
             default: false
@@ -37,8 +39,9 @@
 
 
     async function onSubmit() {
-        emit('confirm', email.value); // Emit the email value
-        
+        emit('confirm', email.value, isControlTroop.value); // Emit the email value
+        isControlTroop.value = false;
+        email.value = '';
     }
 
     const rules = {
@@ -94,6 +97,12 @@
                         variant="outlined"
                         :rules="[rules.required, rules.minLength, rules.disabled]"
                     ></v-text-field>
+
+                    <v-chip-group v-model="isControlTroop" selected-class="text-primary" column>
+                        <v-chip :value="false" filter>Aufnahme-Trupp</v-chip>
+                        <v-chip :value="true" filter>Kontroll-Trupp</v-chip>
+                    </v-chip-group>
+
                     <v-btn type="submit" block :disabled="!valid" :loading="props.loading"  rounded="xl" color="primary"  class="my-3">
                         {{ btnText }}
                     </v-btn>

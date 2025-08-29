@@ -189,13 +189,14 @@
 
 <template>
     <div v-if="attrs.organization_id">
-        <v-toolbar density="compact">
+        <v-toolbar density="compact" color="transparent" class="mt-0 pt-0">
             <v-btn v-if="attrs.showAdmins" icon="mdi-shield-account" variant="text"></v-btn>
             <v-btn v-if="!attrs.showAdmins" icon="mdi-account" variant="text"></v-btn>
             
             <v-toolbar-title>{{ attrs.title }}</v-toolbar-title>
             <v-btn v-if="attrs.is_admin" rounded="xl" variant="tonal" append-icon="mdi-email-plus" @click="_openAdminsDialog">einladen</v-btn>
         </v-toolbar>
+        <v-divider class="my-2" />
         <v-list lines="two">
                 <div class="text-center ma-2 text-body-2 text-medium-emphasis" v-if="!administrators.length">
                     <p>Kein Mitarbeiter hinzugefügt.</p>

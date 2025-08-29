@@ -21,7 +21,7 @@ import { onMounted } from 'vue';
 <template>
     <v-btn
         variant="plain"
-        icon="mdi-history"
+        icon="mdi-eye-outline"
         density="compact"
         @click="handleClick"
     ></v-btn>

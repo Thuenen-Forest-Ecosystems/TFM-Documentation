@@ -145,12 +145,6 @@ layout: page
                 Administratoren können Lose, Trupps und Dienstleister verwalten.
             </p>
         </v-card>
-        <v-card variant="tonal">
-            <OrganizationsAdmins title="Trupp Mitarbeitende" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
-            <p class="text-body-2 text-medium-emphasis px-2 my-0 " style="background-color:rgba(0, 0, 0, 0.04)">
-                Trupp Mitarbeitende können Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
-            </p>
-        </v-card>
     </v-tabs-window-item>
     <v-tabs-window-item value="2">
         <p class="mb-5">
@@ -186,11 +180,16 @@ layout: page
         />
     </v-tabs-window-item>
     <v-tabs-window-item value="5">
+        <OrganizationsAdmins title="Trupp Mitarbeitende" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
+        <p class="text-body-2 text-medium-emphasis px-2 ma-2 " style="background-color:rgba(0, 0, 0, 0.04)">
+            Trupp Mitarbeitende können Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
+        </p>
         <ListOfTroops 
             v-if="organizationId"
             :organization_id="organizationId" 
             :title="'Trupps'" 
             :is_admin="permission.is_organization_admin || false"
+            class="mt-11"
         />
     </v-tabs-window-item>
 </v-tabs-window>

@@ -1,6 +1,6 @@
 <script setup>
     import { getCurrentInstance, onMounted, useAttrs, ref, watch } from 'vue';
-    import DialogTextfield from './DialogTextfield.vue';
+    import DialogTroop from './DialogTroop.vue';
 
 
     const instance = getCurrentInstance();
@@ -53,12 +53,12 @@
             });
     }
 
-    function _addTroop(troopName) {
+    function _addTroop(troopName, isControlTroop) {
 
         if (troopName && props.organization_id) {
             supabase
                 .from('troop')
-                .insert({ name: troopName, organization_id: props.organization_id })
+                .insert({ name: troopName, organization_id: props.organization_id, is_control_troop: isControlTroop })
                 .then(({ data, error }) => {
                     if (error) {
                         console.error('Error adding troop:', error);
@@ -294,7 +294,7 @@
         </v-card-text>
     </v-card>
 
-    <DialogTextfield
+    <DialogTroop
         v-model="nameDialog"
         :value="''"
         :title="'Trupp hinzufügen'"
