@@ -78,8 +78,8 @@
 
     function _getListOfUserInOrganization(organizationId) {
         return supabase
-            .from('users_profile')
-            .select('*')
+            .from('users_permissions') // users_profile
+            .select('*, users_profile(*)')
             .eq('organization_id', organizationId)
             .then(({ data, error }) => {
                 if (error) {
@@ -257,9 +257,9 @@
                             v-for="(item, i) in users"
                             :key="i"
                             :value="i"
-                            @click="(e) => _addUserToTroop(e, item.id, troop.id)"
+                            @click="(e) => _addUserToTroop(e, item.users_profile.id, troop.id)"
                         >
-                            <v-list-item-title>{{ item.email }}</v-list-item-title>
+                            <v-list-item-title>{{ item.users_profile.email }}</v-list-item-title>
                         </v-list-item>
                         <v-list-item v-if="users.length === 0" class="text-center">
                             <p class="ma-2 text-body-2 text-medium-emphasis">

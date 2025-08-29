@@ -152,8 +152,10 @@ const getPropertyTitle = (key, schemaPath) => {
 // Computed properties
 const dataType = computed(() => getDataType(props.data));
 const isCurrentlyExpandable = computed(() => isExpandable(props.data));
-const isExpanded = computed(() => props.expandedNodes.has(props.path));
-const canExpand = computed(() => props.depth < props.maxDepth && isCurrentlyExpandable.value);
+const isExpanded = computed(() => {
+    if (props.depth === 0) return true; // Always expand root node
+    return props.expandedNodes.has(props.path);
+});const canExpand = computed(() => props.depth < props.maxDepth && isCurrentlyExpandable.value);
 
 // Handle toggle
 const handleToggle = () => {
@@ -211,29 +213,35 @@ const displayKey = computed(() => {
             </v-btn>
             <div v-else class="expand-button"></div>
             
-            <!-- Type Icon -->
+            <!-- Type Icon
             <v-icon 
                 :icon="getTypeIcon(dataType, isExpanded)" 
                 size="small"
                 class="mr-2"
-            />
+            /> -->
             
-            <!-- Property Key/Name -->
+            <!-- Property Key/Name (propertyKey ? getPropertyTitle(propertyKey, schemaPath.split('.').slice(0, -1).join('.')) : displayKey) -->
             <span 
                 v-if="propertyKey || path"
                 class="property-key mr-2"
-                :title="propertyKey ? getPropertyTitle(propertyKey, schemaPath.split('.').slice(0, -1).join('.')) : displayKey"
+                :title="propertyKey"
             >
                 {{ propertyKey ? getPropertyTitle(propertyKey, schemaPath.split('.').slice(0, -1).join('.')) : displayKey }}:
             </span>
+            <!--<v-tooltip :text="propertyKey">
+                <template v-slot:activator="{ props }">
+                    <span v-bind="props">{{ propertyKey ? getPropertyTitle(propertyKey, schemaPath.split('.').slice(0, -1).join('.')) : displayKey }}:</span>
+                </template>
+            </v-tooltip>-->
             
             <!-- Value or Summary -->
-            <span v-if="!isCurrentlyExpandable" class="property-value" :class="`${dataType}-value`">
+            <span v-if="!isCurrentlyExpandable" class="property-value">
                 {{ formatValue(data, dataType) }}
             </span>
+            <!--
             <span v-else-if="!isExpanded" class="expandable-summary">
                 {{ getSummary(data, dataType) }}
-            </span>
+            </span>-->
             <span v-else-if="dataType === 'object'" class="expandable-summary">
                 
             </span>

@@ -65,7 +65,6 @@
     });
 
     function isDifferent(item1, item2) {
-        console.log('Comparing:', item1, item2);
         return JSON.stringify(item1) !== JSON.stringify(item2);
     }
 
@@ -74,8 +73,8 @@
 
 
 <template>
-
-    <v-timeline align="start" side="end">
+    <div class="font-weight-bold ms-1 mb-2">Today</div>
+    <v-timeline align="start" density="compact">
         <v-timeline-item
             size="small"
             v-for="(item, index) in plotData"

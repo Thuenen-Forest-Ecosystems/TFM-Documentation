@@ -9,6 +9,8 @@ layout: page
     import { onMounted, ref, getCurrentInstance } from 'vue';
     import Firewall from '../../components/Firewall.vue';
     import History from '../../components/records/History.vue';
+    import JsonViewer from '../../components/records/JsonViewer.vue';
+    import GridView from '../../components/records/GridView.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -19,6 +21,8 @@ layout: page
     const records = ref([]);
     const tab = ref(null);
     const schema = ref(null);
+
+    const toggle_data_view = ref(0);
 
     async function fetchRecordsByCluster(_clusterId) {
         const { data, error } = await supabase
@@ -63,7 +67,8 @@ layout: page
 
     onMounted(async () => {
         if (clusterId) {
-            fetchRecordsByCluster(clusterId);
+            await fetchSchemaFromSupabaseStorage();
+            await fetchRecordsByCluster(clusterId);
         }
     });
 
@@ -93,7 +98,33 @@ layout: page
             :key="record.id"
             :value="record.id"
         >
-            <History :plot_id="record.plot_id" />
+            <v-card>
+                <v-toolbar color="transparent" dense>
+                    <v-toolbar-title>Data</v-toolbar-title>
+                    <template v-slot:append>
+                        <v-btn-toggle v-model="toggle_data_view" rounded="xl" variant="outlined">
+                            <v-btn>
+                                <v-icon>mdi-view-list</v-icon>
+                            </v-btn>
+                            <v-btn>
+                                <v-icon>mdi-code-braces</v-icon>
+                            </v-btn>
+                        </v-btn-toggle>
+                    </template>
+                </v-toolbar>
+                <v-card-text v-if="toggle_data_view === 1">
+                    <JsonViewer :data="record.previous_properties" :schema="schema" />
+                </v-card-text>
+                <GridView  v-if="toggle_data_view === 0" :data="record.previous_properties" :schema="schema" />
+            </v-card>
+            <v-card class="mt-11">
+                <v-toolbar color="transparent">
+                    <v-toolbar-title>History</v-toolbar-title>
+                </v-toolbar>
+                <v-card-text>
+                    <History :plot_id="record.plot_id" />
+                </v-card-text>
+            </v-card>
         </v-tabs-window-item>
     </v-tabs-window>
 </Firewall>
