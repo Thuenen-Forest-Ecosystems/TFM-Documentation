@@ -36,5 +36,5 @@ The API is the easiest way to access the data. You can access the  RESTful API w
 API Requests are limited by time and the amount of data that can be retrieved in a single request. The API should only be used for filtered queries and not for bulk data extraction.
 :::
 
-## Admission instructions
-[Admission instruction  CI2027](https://www.thuenen.de/media/institute/wo/Waldmonitoring/THG/Dokumente/ci2027_anweis_20250829.pdf)
+## Survey instructions
+[Survey instruction  CI2027](https://www.thuenen.de/media/institute/wo/Waldmonitoring/THG/Dokumente/ci2027_anweis_20250829.pdf)
