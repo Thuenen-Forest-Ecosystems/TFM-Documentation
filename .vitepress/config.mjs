@@ -46,6 +46,11 @@ export default defineConfig({
         },
         {
           items: [
+            { text: 'Documents', link: '/documents' }
+          ]
+        },
+        {
+          items: [
             { text: 'Migration', link: '/migration' }
           ]
         },
