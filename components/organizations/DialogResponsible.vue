@@ -16,7 +16,8 @@
 
     const props = defineProps({
         modelValue: Boolean,
-        selected: Object
+        selected: Object,
+        organizationId: String
     });
 
     const emit = defineEmits(['close', 'confirm']);
@@ -25,13 +26,16 @@
     const savingChanges = ref(false);
     function confirmAction() {
         savingChanges.value = true;
-        emit('confirm', props.selected, losName.value);
+        emit('confirm', selectedCompany.value, selectedTroop.value, losName.value);
+        //emit('confirm', props.selected, losName.value);
         emit('update:modelValue', false); // Close the dialog
     }
 
     function updateLos(){
-        props.selected.troop_id = selectedTroop.value;
-        props.selected.responsible_organization_id = selectedCompany.value;
+        if(props.selected){
+            props.selected.troop_id = selectedTroop.value;
+            props.selected.responsible_organization_id = selectedCompany.value;
+        }
     }
 
     // Call this when user cancels
@@ -51,12 +55,12 @@
     }
 
     async function _getTroops() {
-        if (!props.selected || !props.selected.id) return [];
+        if (!props.organizationId) return [];
         try {
             const { data, error } = await supabase
                 .from('troop')
                 .select('*')
-                .eq('organization_id', props.selected.organization_id);
+                .eq('organization_id', props.organizationId);
             if (error) {
                 console.error('Error fetching troops:', error);
                 return [];
@@ -68,12 +72,12 @@
         }
     }
     async function _getCompanies(){
-        if (!props.selected || !props.selected.id) return [];
+        if (!props.organizationId) return [];
         try {
             const { data, error } = await supabase
                 .from('organizations')
                 .select('*')
-                .eq('parent_organization_id', props.selected.organization_id);
+                .eq('parent_organization_id', props.organizationId);
             if (error) {
                 console.error('Error fetching companies:', error);
                 return [];
@@ -85,11 +89,13 @@
         }
     }
 
-    watch(() => [props.selected, props.modelValue] , ([newSelected, newDialog]) => {
-        if (newDialog && newSelected && newSelected.id) {
+    watch(() => [props.selected, props.organizationId, props.modelValue] , ([newSelected, newOrgId, newDialog]) => {
+        if(newSelected && newDialog){
             selectedTroop.value = newSelected.troop_id || null;
             selectedCompany.value = newSelected.responsible_organization_id || null;
             losName.value = newSelected.name || '';
+        }
+        if (newDialog && newOrgId) {
             savingChanges.value = false;
             _getTroops();
             _getCompanies();
@@ -109,10 +115,10 @@
 <template>
     <v-dialog v-model="props.modelValue" max-width="500" @click:outside="cancelAction">
         <v-card rounded="lg">
-            <v-toolbar>
+            <v-toolbar v-if="props.selected">
                 <v-btn v-if="props.icon" :icon="props.icon"></v-btn>
 
-                <v-toolbar-title>{{ props.selected.name }}</v-toolbar-title>
+                <v-toolbar-title>{{ props.selected?.name || '' }}</v-toolbar-title>
 
                 <v-toolbar-items>
                     <v-btn
@@ -124,6 +130,7 @@
             </v-toolbar>
             <v-card-text>
                 <v-text-field
+                    v-if="props.selected"
                     label="Name ändern"
                     persistent-hint
                     type="text"
@@ -136,7 +143,7 @@
                 />
 
                 <p class="mb-6 text-body-2 text-medium-emphasis">
-                    Wähle einen Dienstleister ODER einen Trupp, welcher für das Los zuständig ist.
+                    Wählen sie einen Dienstleister ODER einen Trupp.
                 </p>
 
                 <div class="align-center">

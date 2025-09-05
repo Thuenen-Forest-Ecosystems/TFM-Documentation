@@ -437,17 +437,15 @@
         _getTroops();
     });
 
-    async function _handleConfirm (value, name) {
-
-        console.log('Confirming:', value, name);
+    async function _handleConfirm (selectedCompany, selectedTroop, losName) {
 
         // Handle the confirm action
         const { data, error } = await supabase
             .from('organizations_lose')
             .update({
-                responsible_organization_id: value.responsible_organization_id || null,
-                troop_id: value.troop_id || null,
-                name: name || value.name // Update the name if provided
+                responsible_organization_id: selectedCompany || null,
+                troop_id: selectedTroop || null,
+                name: losName || value.name // Update the name if provided
             })
             .eq('id', value.id)
             .select()
@@ -565,7 +563,8 @@
     <DialogResponsible
         v-model="responsibleDialog"
         :selected="selectedLos"
+        :organizationId=""
         @close="_handleClose"
-        @confirm="(value, name) => _handleConfirm(value, name)"
+        @confirm="_handleConfirm"
     />
 </template>

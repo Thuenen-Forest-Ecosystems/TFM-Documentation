@@ -1,5 +1,6 @@
 <script setup>
     import { onMounted, ref, watch, getCurrentInstance } from 'vue';
+import { workflowFromRecord } from '../Utils';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -84,6 +85,10 @@
             <div class="d-flex flex-column">
                 <strong v-if="index!==0" class="me-4 mb-2">{{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}</strong>
                 <strong v-else>Aktueller Status</strong>
+
+                <p>
+                    Status: {{ workflowFromRecord(item).title }}
+                </p>
 
                 <div class="text-caption" v-if="!plotData[index - 1] ||  isDifferent(item.completed_at_troop, plotData[index - 1]?.completed_at_troop)">
                     <strong>Trupp Abgeschlossen:</strong>

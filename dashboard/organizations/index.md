@@ -1,19 +1,21 @@
 ---
 title: Organizations
 description: Manage your organizations and their administrators.
-layout: page
+layout: home
 ---
 
 <script setup>
     import { onMounted, ref, getCurrentInstance } from 'vue';
     import Firewall from '../../components/Firewall.vue';
+    import { withBase } from "vitepress";
 
     import ListOfOrganizations from '../../components/organizations/ListOfOrganizations.vue';
     import OrganizationsAdmins from '../../components/organizations/OrganizationsAdmins.vue';
     import ListOfTroops from '../../components/organizations/ListOfTroops.vue';
     import ListOfCluster from '../../components/organizations/ListOfCluster.vue';
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
-    import ListOfLose from '../../components/organizations/ListOfLose.vue';
+    // import ListOfLose from '../../components/organizations/ListOfLose.vue';
+    import RecordsOverview from '../../components/RecordsOverview.vue';
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
 
     const instance = getCurrentInstance();
@@ -111,13 +113,20 @@ layout: page
             return null;
         }
     }
+
+    const toEditOrganization = (organization) => {
+        window.location.href = withBase('/dashboard/organizations/administration?organization=' + organization.id);
+    }
 </script>
 
 
 <Firewall>
 
+<v-btn density="compact" icon @click="toEditOrganization(currentOrganization)" class="position-absolute top-0 right-0">
+        <v-icon>mdi-pencil</v-icon>
+    </v-btn>
+<div class="mt-11" v-if="currentOrganization && currentOrganization.id">
 
-<div class="ma-11" v-if="currentOrganization && currentOrganization.id">
 
 <div class="text-center mt-4">
     <p class="text-h2 text-weight-bold">
@@ -127,21 +136,22 @@ layout: page
         Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
     </p>
     <VimeoPlayer :btnTitle="'Info Video abspielen'" :title="'Cluster-Verwaltung für die CI/BWI'" />
+   
 </div>
 
-
+ 
 
 <v-tabs v-model="tab" align-tabs="center" class="mt-6">
-    <v-tab value="1">Mitarbeitende</v-tab>
-    <v-tab value="3" :loading="loadingClusters">Lose</v-tab>
-    <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Landesinventurleitung' : 'Dienstleister'}}</v-tab>
+    <!--<v-tab value="1">Mitarbeitende</v-tab>-->
+    <v-tab value="3">Ecken</v-tab>
+    <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Organisationen' : 'Dienstleister'}}</v-tab>
     <v-tab value="5">Trupps</v-tab>
 </v-tabs>
 <v-tabs-window v-model="tab" class="mt-4">
     <v-tabs-window-item value="1">
         <v-card variant="tonal" class="mb-4">
             <OrganizationsAdmins title="Administratoren" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="true" key="admin" />
-            <p class="text-body-2 text-medium-emphasis px-2 my-0" style="background-color:rgba(0, 0, 0, 0.04)">
+            <p class="text-body-2 text-medium-emphasis px-2 ma-1" style="background-color:rgba(0, 0, 0, 0.04)">
                 Administratoren können Lose, Trupps und Dienstleister verwalten.
             </p>
         </v-card>
@@ -160,7 +170,13 @@ layout: page
         ></v-alert>
     </v-tabs-window-item>
     <v-tabs-window-item value="3">
-        <ListOfLose
+        <RecordsOverview
+            v-if="organizationId && cluster.length"
+            :organization_id="currentOrganization.id"
+            :organization_type="currentOrganization.type"
+            :cluster="cluster"
+        />
+        <!--<ListOfLose
             v-if="organizationId"
             :organization_id="currentOrganization.id"
             :organization_type="currentOrganization.type"
@@ -168,7 +184,7 @@ layout: page
             :is_admin="permission.is_organization_admin || false"
             :is_root="currentOrganization.is_root || false"
             :cluster="cluster"
-        />
+        />-->
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
         <ListOfOrganizations
@@ -180,17 +196,19 @@ layout: page
         />
     </v-tabs-window-item>
     <v-tabs-window-item value="5">
-        <OrganizationsAdmins title="Trupp Mitarbeitende" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
-        <p class="text-body-2 text-medium-emphasis px-2 ma-2 " style="background-color:rgba(0, 0, 0, 0.04)">
-            Trupp Mitarbeitende können Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
-        </p>
-        <ListOfTroops 
-            v-if="organizationId"
-            :organization_id="organizationId" 
-            :title="'Trupps'" 
-            :is_admin="permission.is_organization_admin || false"
-            class="mt-11"
-        />
+        <v-container max-width="1000px">
+            <OrganizationsAdmins title="Trupp Mitarbeitende" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
+            <p class="text-body-2 text-medium-emphasis px-2 ma-2 " style="background-color:rgba(0, 0, 0, 0.04)">
+                Trupp Mitarbeitende können Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
+            </p>
+            <ListOfTroops 
+                v-if="organizationId"
+                :organization_id="organizationId" 
+                :title="'Trupps'" 
+                :is_admin="permission.is_organization_admin || false"
+                class="mt-11"
+            />
+        </v-container>
     </v-tabs-window-item>
 </v-tabs-window>
 
@@ -202,3 +220,10 @@ layout: page
 </div>
 
 </Firewall>
+
+<style>
+    .vp-doc.container{
+        max-width: 5000px !important;
+        margin: 0 auto;
+    }
+</style>

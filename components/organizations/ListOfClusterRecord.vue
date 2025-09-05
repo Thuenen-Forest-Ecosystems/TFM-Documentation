@@ -1,9 +1,12 @@
 <script setup>
     import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, defineEmits} from 'vue';
-    import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-    ModuleRegistry.registerModules([AllCommunityModule]);
+    import { AllCommunityModule, ModuleRegistry, TooltipModule } from 'ag-grid-community';
+    ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
+    import ActionCellRenderer from './ActionCellRenderer.vue';
+    import DialogResponsible from './DialogResponsible.vue';
+    import GeoJsonMap from '../map/GeoJsonMap.vue';
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
 const listOfLookupTables = [
@@ -75,10 +78,13 @@ const listOfLookupTables = [
     let selectedRows = ref([]);
     let selectableLose = ref([]);
     const assigning = ref(false);
+    const mapDialog = ref(false);
 
     const snackbar = ref(false);
     const snackbarText = ref('');
     const snackbarColor = ref('info');
+
+    const responsibleDialog = ref(false);
 
     const emit = defineEmits(['confirm']);
 
@@ -126,6 +132,11 @@ const listOfLookupTables = [
     const cluster = ref([]);
     const troops = ref([]);
     const rowData = ref([]);
+    const dbData = ref([]);
+    const geojsonFeatureCollection = ref({
+        type: "FeatureCollection",
+        features: []
+    });
     const selectedLos = ref(null);
 
     // Grid Options
@@ -133,145 +144,253 @@ const listOfLookupTables = [
         //rowModelType: 'infinite', // Enable infinite scrolling
         //cacheBlockSize: 100, // Number of rows per block
         //maxBlocksInCache: 10, // Maximum number of blocks to cache
+        suppressMovableColumns: true,
+        tooltipShowDelay: 500,
         rowSelection: {
             mode: 'multiRow',
             selectAll: 'filtered',
             enableClickSelection: true
+        },
+        components: {
+            actionCellRenderer: ActionCellRenderer // Register the custom cell renderer
+        },
+        onCellValueChanged: async (event) => {
+            const columnId = event.colDef.field;
+            const data = event.data;
+
+            console.log(data)
+
+            if(event.newValue === event.oldValue || !data.plot_id) return;
+
+            
+
+            const newValue = event.newValue;
+            const newValueId = troops.value.find(troop => troop.name === newValue)?.id;
+            // confirm()
+            if(confirm(`Change Aufnahmetrupp to ${newValue}?`)) {
+                saveTroopResponsible('responsible_troop', newValueId || null, data.plot_id);
+            }else{
+                // set to old without triggering onCellValueChanged
+                console.log('revert', dbData.value)
+                rowData.value = JSON.parse(JSON.stringify(dbData.value));
+                refreshCells();
+            }
+
         }
     }
-    const colDefs = ref([
-        { 
-            field: "cluster_id",
-            headerName: "Cluster ID",
-            filter: true,
-            sortable: true,
-            //type: "number",
-            pinned: 'left',
-            hide: true // Hide by default, can be shown if needed
-        },
-        { 
-            field: "cluster_name",
-            headerName: "Cluster Name",
-            filter: true,
-            sortable: true,
-            //type: "number",
-            pinned: 'left',
-            headerTooltip: "inventory_archive.cluster.cluster_name",
-        },
-        { 
-            field: "plot_name",
-            headerName: "Plot Name",
-            filter: true,
-            sortable: true,
-            pinned: 'left',
-            headerTooltip: "inventory_archive.plot.plot_name",
-            //type: "number"
-        },
-        {
-            field: "cluster_status",
-            headerName: "Cluster Status",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.cluster.cluster_status",
-            //type: "string",
-        },
-        {
-            field: "cluster_situation",
-            headerName: "Cluster Situation",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.cluster.cluster_situation",
-            //type: "string",
-        },
-        {
-            field: "state_responsible",
-            headerName: "state_responsible",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.cluster.state_responsible",
-            //type: "string",
-        },
-        {
-            field: "forest_status_bwi2022",
-            headerName: "Wald Status (BWI 2022)",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.forest_status",
-        },
-        {
-            field: "forest_status_ci2017",
-            headerName: "Wald Status (CI 2017)",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.forest_status",
-        },
-        {
-            field: "forest_status_ci2012",
-            headerName: "Wald Status (CI 2012)",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.forest_status",
-        },
-        {
-            field: "forest_office",
-            headerName: "Forstamt",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.forest_status",
-        },
-        {
-            field: "growth_district",
-            headerName: "Wuchsbezirk",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.growth_district",
-        },
-        {
-            field: "ffh_forest_type",
-            headerName: "FFH Waldlebensraumtyp",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.ffh_forest_type",
-        },
-        {
-            field: "accessibility",
-            headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.plot.accessibility",
-        },
-        {
-            field: "federal_state",
-            headerName: "Bundesland",
-            filter: true,
-            sortable: true,
-            //type: "string",
-            headerTooltip: "inventory_archive.plot.federal_state",
-        },
-        {
-            field: "property_type",
-            headerName: "Eigentumsart",
-            filter: true,
-            sortable: true,
-            //type: "string",
-            headerTooltip: "inventory_archive.plot.property_type",
-        },
-        {
-            field: "grid_density",
-            headerName: "Rasterdichte",
-            filter: true,
-            sortable: true,
-            //type: "string",
-            headerTooltip: "inventory_archive.cluster.grid_density",
-        },
-        {
-            field: "states_affected",
-            headerName: "Affected States",
-            filter: true,
-            sortable: true,
-            headerTooltip: "inventory_archive.cluster.states_affected",
+    async function saveTroopResponsible(column, value, id){
+        const {data, error} = await supabase
+            .from('records')
+            .update({ [column]: value })
+            .eq('plot_id', id);
+
+        if (error) {
+            snackbar.value = true;
+            snackbarText.value = 'Fehler beim Aktualisieren';
+            snackbarColor.value = 'error';
+        } else {
+            snackbar.value = true;
+            snackbarText.value = 'Ecke wurde aktualisiert';
+            snackbarColor.value = 'success';
         }
-    ]);
+
+    }
+    const colDefs = ref([]);
+    function setColDefs(){
+        colDefs.value = [
+            {
+                cellRenderer: 'actionCellRenderer', // Custom cell renderer
+                pinned: 'left',
+                width: 50
+            },
+            { 
+                field: "plot_id",
+                headerName: "Plot Id",
+                filter: true,
+                sortable: true,
+                //type: "number",
+                pinned: 'left',
+                hide: true // Hide by default, can be shown if needed
+            },
+            { 
+                field: "cluster_id",
+                headerName: "Cluster ID",
+                filter: true,
+                sortable: true,
+                //type: "number",
+                pinned: 'left',
+                hide: true // Hide by default, can be shown if needed
+            },
+            { 
+                field: "cluster_name",
+                headerName: "Trakt",
+                filter: true,
+                sortable: true,
+                //type: "number",
+                pinned: 'left',
+                headerTooltip: "inventory_archive.cluster.cluster_name",
+                width: 95,
+            },
+            {
+                field: "responsible_troop",
+                headerName: "Aufnahmetrupp",
+                filter: true,
+                sortable: true,
+                pinned: 'right',
+                tooltipField: "responsible_troop",
+                editable: true,
+                cellEditor: 'agSelectCellEditor',
+                cellEditorParams: {
+                    values: [...troops.value.map(troop => troop.name), null],
+                }
+                //type: "string",
+            },
+            {
+                field: "responsible_state",
+                headerName: "Landesinventurleitung",
+                filter: true,
+                sortable: true,
+                tooltipField: "responsible_state",
+                //type: "string",
+            },
+            {
+                field: "responsible_provider",
+                headerName: "Dienstleister",
+                filter: true,
+                sortable: true,
+                tooltipField: "responsible_provider",
+                //type: "string",
+            },
+            { 
+                field: "plot_name",
+                headerName: "Ecke",
+                filter: true,
+                sortable: true,
+                pinned: 'left',
+                headerTooltip: "inventory_archive.plot.plot_name",
+                width: 90,
+                //type: "number"
+            },
+
+            {
+                field: "cluster_status",
+                headerName: "Cluster Status",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.cluster.cluster_status",
+                tooltipField: "cluster_status",
+                //type: "string",
+            },
+            {
+                field: "cluster_situation",
+                headerName: "Cluster Situation",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.cluster.cluster_situation",
+                tooltipField: "cluster_situation",
+                //type: "string",
+            },
+            {
+                field: "state_responsible",
+                headerName: "state_responsible",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.cluster.state_responsible",
+                tooltipField: "state_responsible",
+                //type: "string",
+            },
+            {
+                field: "forest_status_bwi2022",
+                headerName: "Wald Status (BWI 2022)",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.forest_status",
+                tooltipField: "forest_status_bwi2022"
+            },
+            {
+                field: "forest_status_ci2017",
+                headerName: "Wald Status (CI 2017)",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.forest_status",
+                tooltipField: "forest_status_ci2017"
+            },
+            {
+                field: "forest_status_ci2012",
+                headerName: "Wald Status (CI 2012)",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.forest_status",
+                tooltipField: "forest_status_ci2012"
+            },
+            {
+                field: "forest_office",
+                headerName: "Forstamt",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.forest_status",
+                tooltipField: "forest_office"
+            },
+            {
+                field: "growth_district",
+                headerName: "Wuchsbezirk",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.growth_district",
+                tooltipField: "growth_district"
+            },
+            {
+                field: "ffh_forest_type",
+                headerName: "FFH Waldlebensraumtyp",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.ffh_forest_type",
+                tooltipField: "ffh_forest_type"
+            },
+            {
+                field: "accessibility",
+                headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.plot.accessibility",
+                tooltipField: "accessibility"
+            },
+            {
+                field: "federal_state",
+                headerName: "Bundesland",
+                filter: true,
+                sortable: true,
+                //type: "string",
+                headerTooltip: "inventory_archive.plot.federal_state",
+                tooltipField: "federal_state"
+            },
+            {
+                field: "property_type",
+                headerName: "Eigentumsart",
+                filter: true,
+                sortable: true,
+                //type: "string",
+                headerTooltip: "inventory_archive.plot.property_type",
+                tooltipField: "property_type"
+            },
+            {
+                field: "grid_density",
+                headerName: "Rasterdichte",
+                filter: true,
+                tooltipField: "grid_density",
+                sortable: true,
+                //type: "string",
+                headerTooltip: "inventory_archive.cluster.grid_density",
+            },
+            {
+                field: "states_affected",
+                headerName: "Affected States",
+                filter: true,
+                sortable: true,
+                headerTooltip: "inventory_archive.cluster.states_affected"
+            }
+        ]
+    }
     function _renderLookup(tableName, fieldName, code) {
         if (!code) return null;
 
@@ -319,21 +438,21 @@ const listOfLookupTables = [
             );
         });
 
-        console.log('cluster length', cluster.value.length);
-    
-        // Add debugging for state lookup
-        console.log('lookup_state entries:', lookupMaps['lookup_state']?.size || 0);
-        console.log('Sample state lookup entries:', 
-            Array.from(lookupMaps['lookup_state']?.entries() || []).slice(0, 5));
-
 
         const processedRecords = records.map(record => {
             const clusterData = clusterMap.get(record.cluster_id);
+            const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
 
             return {
+                plot_id: record.plot_id,
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
+
+                responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
+                responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
+                responsible_troop: troops.value.find(troop => troop.id === record.responsible_troop)?.name || record.responsible_troop,
+
                 administration_los: record.administration_los,
                 state_los: record.state_los,
                 provider_los: record.provider_los,
@@ -430,38 +549,36 @@ const listOfLookupTables = [
             console.warn('No cluster found');
         }*/
     }
-    async function _requestOrganizations() {
+    async function _getOrganizations() {
         organizations.value = [];
-        
-        // Check if PowerSync is available
-        if (!powerSyncDB) {
-          console.warn('PowerSync not available - using fallback data');
-          return;
-        }
-
-        organizations.value = await powerSyncDB.getAll('SELECT * from organizations');
-        if (organizations.value.length > 0) {
-            //rowData.value = _groupByClusterId(records.value);
-            //rowData.value = _preRenderRecords(records);
-        } else {
-            console.warn('No organizations found');
+        try {
+            const { data, error } = await supabase
+                .from('organizations')
+                .select('id, name');
+            if (error) {
+                console.error('Error fetching organizations:', error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.error('An unexpected error occurred while fetching organizations:', e);
+            return [];
         }
     }
-    async function _requestTroops() {
-        troops.value = [];
-        
-        // Check if PowerSync is available
-        if (!powerSyncDB) {
-          console.warn('PowerSync not available - using fallback data');
-          return;
-        }
-        
-        troops.value = await powerSyncDB.getAll('SELECT * from troop');
-        if (troops.value.length > 0) {
-            //rowData.value = _groupByClusterId(records.value);
-            //rowData.value = _preRenderRecords(records);
-        } else {
-            console.warn('No troops found');
+    async function _getTroops(organizationId) {
+        try {
+            const { data, error } = await supabase
+                .from('troop')
+                .select('id, name')
+                .eq('organization_id', organizationId);
+            if (error) {
+                console.error('Error fetching troops:', error);
+                return [];
+            }
+            return data || [];
+        } catch (e) {
+            console.error('An unexpected error occurred while fetching troops:', e);
+            return [];
         }
     }
     async function fetchAllDataPaginated(tableName, organizationId, companyType, filterRow) {
@@ -497,11 +614,12 @@ const listOfLookupTables = [
                     accessibility,
                     forest_office,
                     property_type,
-                    ffh_forest_type_field
+                    ffh_forest_type_field,
+                    previous_properties->plot_coordinates
                 `)
                 .eq(companyType, organizationId)
-                .is(filterRow, null) // Ensure the filterRow is null
-                .is('troop_los', null) // Ensure troop_los is also null
+                //.is(filterRow, null) // Ensure the filterRow is null
+                //.is('troop_los', null) // Ensure troop_los is also null
                 .range(start, end) // Use range for pagination
                 .order('cluster_id', { ascending: true }); // <<-- deterministic order
 
@@ -520,9 +638,20 @@ const listOfLookupTables = [
 
         return allData;
     }
+    function createGeojsonFeatureCollection(records) {
+        console.log(records[0]);
+        geojsonFeatureCollection.value.features = records.map(record => ({
+            type: "Feature",
+            geometry: record.plot_coordinates[0].center_location,
+            properties: {
+                id: record.id,
+                name: record.name
+            }
+        }));
+    }
     async function _requestPlots() {
 
-        rowData.value = [];
+        //rowData.value = [];
 
         // Check if PowerSync is available
         if (!powerSyncDB) {
@@ -565,8 +694,9 @@ const listOfLookupTables = [
                     // Ensure lookup tables are fully loaded before processing
                     await _requestAllLookupTables();
 
-                    console.log('Mapping records:', records.length); // 117166 Immer gleich
                     rowData.value = _preRenderRecords(records);
+                    dbData.value = JSON.parse(JSON.stringify(rowData.value)); // Deep copy for reset purposes
+                    createGeojsonFeatureCollection(records);
 
                     snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
                     snackbarColor.value = 'success';
@@ -777,8 +907,11 @@ const listOfLookupTables = [
         //console.log('cluster:', cluster.value.length);
         //await _requestOrganizations();
         //console.log('Organizations:', organizations.value.length);
-        //await _requestTroops();
+        organizations.value = await _getOrganizations();
+        troops.value = await _getTroops(props.organization_id);
         //console.log('Troops:', troops.value.length);
+
+        setColDefs();
 
         //await _requestAllLookupTables();
 
@@ -795,8 +928,8 @@ const listOfLookupTables = [
         }
         filteredRows.value = currentGrid.value.api.getFilterModel();
     }
-    function updateGrid(){
-        
+    function refreshCells(){
+        currentGrid.value.api.refreshCells();
     }
     function clearFilters() {
         if (!currentGrid.value || !currentGrid.value.api) {
@@ -910,6 +1043,54 @@ const listOfLookupTables = [
         
         return value.toString();
     }
+    function _handleClose () {
+        responsibleDialog.value = false;
+    };
+    async function _handleConfirm (selectedCompany, selectedTroop) {
+
+        let updateField = null;
+
+        switch (props.organization_type) {
+            case 'root':
+                updateField = 'responsible_state';
+                break;
+            case 'country':
+                updateField = 'responsible_provider';
+                break;
+        };
+
+        const selectedLos = currentGrid.value.api.getSelectedRows();
+        const plotIds = selectedLos.map(row => row.plot_id);
+
+        const update = {
+            responsible_troop: selectedTroop || null
+        }
+        if(selectedCompany) {
+            update[updateField] = selectedCompany;
+        }
+
+        for (const plotId of plotIds) {
+            const { data, error } = await supabase
+                .from('records')
+                .update(update)
+                .eq('plot_id', plotId)
+                .select()
+                .single();
+
+            if (error) {
+                snackbarText.value = 'Error updating responsible users: ' + error.message;
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+            } else {
+                responsibleDialog.value = false; // Close the dialog
+                snackbarText.value = 'Responsible users updated successfully.';
+                snackbarColor.value = 'success';
+                snackbar.value = true;
+                //_requestData(props.organization_id); // Refresh the list
+            }
+        }
+        // _requestPlots();
+    }
 </script>
 
 <template>
@@ -917,7 +1098,7 @@ const listOfLookupTables = [
     <!-- The AG Grid component -->
     <v-file-input v-if="!loading" 
         accept=".csv, text/plain"
-        label="Mit Datei auswählen:"
+        label="Komma separierte Liste von Trakt Namen"
         @change="handleFileUpload"
         class="ma-2"
         rounded="xl"
@@ -949,6 +1130,7 @@ const listOfLookupTables = [
             </template>
         </v-toolbar>
     </v-card>
+    <!--
     <v-card class="mx-4 mt-4 mb-1">
         <v-toolbar density="compact" v-if="rowData.length" >
             <template v-slot:prepend>
@@ -960,7 +1142,7 @@ const listOfLookupTables = [
                 </v-btn>
             </template>
         </v-toolbar>
-    </v-card>
+    </v-card>-->
     <ag-grid-vue
         class="mx-4"
         ref="currentGrid"
@@ -986,6 +1168,14 @@ const listOfLookupTables = [
     </div>
     </v-card-text>
     <v-card-actions v-if="!loading">
+            <v-btn
+                variant="tonal"
+                icon="mdi-map"
+                @click="mapDialog = true"
+                :disabled="!geojsonFeatureCollection.features.length"
+                density="compact"
+            ></v-btn>
+            {{ geojsonFeatureCollection.features.length }} GeoJSON-Features
             <v-chip
                 class="ma-2"
                 color="primary"
@@ -1006,9 +1196,17 @@ const listOfLookupTables = [
                 >
                     als .csv herunterladen
                 </v-btn>
-
+                <v-btn
+                    class="mx-2"
+                    variant="tonal"
+                    prepend-icon="mdi-security"
+                    @click="responsibleDialog = true"
+                    rounded="xl"
+                >
+                    Berechtigung zuweisen
+                </v-btn>
                 
-                <v-select
+                <!--<v-select
                     v-if="!props.los"
                     :items="selectableLose" 
                     item-title="name" 
@@ -1024,7 +1222,7 @@ const listOfLookupTables = [
                     <template v-slot:selection="{ item }">
                         {{ item.raw.name }}
                     </template>
-                </v-select>
+                </v-select>-->
                 <v-btn
                     v-if="props.los"
                     class="mx-2"
@@ -1045,4 +1243,16 @@ const listOfLookupTables = [
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
+    <DialogResponsible
+        v-model="responsibleDialog"
+        :selected="selectedLos"
+        :organizationId="props.organization_id"
+        @close="_handleClose"
+        @confirm="_handleConfirm"
+    />
+    <v-dialog v-model="mapDialog" max-width="500">
+        <v-card>
+            <GeoJsonMap :geojson="geojsonFeatureCollection" />
+        </v-card>
+    </v-dialog>
 </template>

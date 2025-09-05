@@ -6,6 +6,7 @@ import DashboardButton from '../../components/DashboardButton.vue';
 import OrganizationButton from '../../components/organizations/OrganizationButton.vue';
 
 import DefaultTheme from 'vitepress/theme';
+
 import './custom.css';
 
 let url = 'https://ci.thuenen.de';
@@ -110,6 +111,7 @@ export default {
     });
   },
   enhanceApp({ app, router, siteData }) {
+
     app.use(vuetify);
 
     // Provide the single Supabase instance globally to prevent multiple client warnings

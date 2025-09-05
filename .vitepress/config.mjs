@@ -15,7 +15,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Getting Started', link: '/getting-started' },
       { text: 'API', link: '/general-api' },
-      { component: 'DashboardButton'},
+      { component: 'DashboardButton'}
     ],
 
     sidebar: {
