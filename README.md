@@ -1,11 +1,17 @@
 # TFM Documentation
 
-## Prerequisites
+## Requirements
 Before you begin, ensure you have met the following requirements:
 
 - [Node.js](https://nodejs.org/) (version 14 or later)
-- [npm](https://www.npmjs.com/) (Node package manager)
 - A code editor such as [Visual Studio Code](https://code.visualstudio.com/) (optional)
+
+### Testing Requirements
+To check your Node.js and npm versions, run the following commands in your terminal:
+```
+node -v
+npm -v
+```
 
 ## Installation
 To install TFM, follow these steps:

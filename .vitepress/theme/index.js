@@ -92,6 +92,9 @@ const globalIsDark = ref(false);
 /** @type {import('vitepress').Theme} */
 export default {
   extends: DefaultTheme,
+  ignoreDeadLinks: [
+    '/README.md'  // Ignore dead links in README.md
+  ],
   Layout: () => {
     // Get VitePress theme data
     const { isDark: vitePressDark } = useData();

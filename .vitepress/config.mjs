@@ -8,6 +8,7 @@ export default defineConfig({
   title: "BWI",
   description: "Documentation for accessing Inventory of Forest Ecosystems",
   lang: 'en',
+  ignoreDeadLinks: true,
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     logo: '/bwi_image.svg',
@@ -120,12 +121,12 @@ export default defineConfig({
         external: [],
       },
       minify: 'esbuild',
-      terserOptions: {
+      /*terserOptions: {
         compress: {
           drop_console: true,
           drop_debugger: true,
         },
-      },
+      },*/
     },
     // Special handling for PowerSync workers and WASM files
     server: {
