@@ -615,7 +615,7 @@ const listOfLookupTables = [
                     forest_office,
                     property_type,
                     ffh_forest_type_field,
-                    previous_properties->plot_coordinates
+                    center_location
                 `)
                 .eq(companyType, organizationId)
                 //.is(filterRow, null) // Ensure the filterRow is null
@@ -639,15 +639,13 @@ const listOfLookupTables = [
         return allData;
     }
     function createGeojsonFeatureCollection(records) {
-        console.log(records[0]);
+
         geojsonFeatureCollection.value.features = records.map(record => ({
             type: "Feature",
-            geometry: record.plot_coordinates[0].center_location,
-            properties: {
-                id: record.id,
-                name: record.name
-            }
+            geometry: record.center_location,
+            properties: { ...record}
         }));
+
     }
     async function _requestPlots() {
 
