@@ -71,6 +71,7 @@ const listOfLookupTables = [
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
     import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
+import { _ } from 'ajv';
 
     //const { waitForDb } = useDatabase()
     const lookupTablesValue = ref({});
@@ -1089,6 +1090,9 @@ const listOfLookupTables = [
         }
         // _requestPlots();
     }
+    function _toggleMap() {
+        mapDialog.value = !mapDialog.value;
+    }
 </script>
 
 <template>
@@ -1169,11 +1173,10 @@ const listOfLookupTables = [
             <v-btn
                 variant="tonal"
                 icon="mdi-map"
-                @click="mapDialog = true"
+                @click="_toggleMap"
                 :disabled="!geojsonFeatureCollection.features.length"
                 density="compact"
             ></v-btn>
-            {{ geojsonFeatureCollection.features.length }} GeoJSON-Features
             <v-chip
                 class="ma-2"
                 color="primary"
@@ -1235,13 +1238,28 @@ const listOfLookupTables = [
                 </v-btn>
             </div>
     </v-card-actions>
+
+    {{ selectedRows }}
+
     <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
         {{ snackbarText }}
         <template v-slot:action="{ attrs }">
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
-    <DialogResponsible
+        
+    <v-navigation-drawer
+        location="right"
+        v-model="mapDialog"
+        width="600"
+        floating
+        style="z-index: 10;"
+        class="mt-16"
+    >   
+        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" density="compact"></v-btn>
+        <GeoJsonMap :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;" :selected="selectedRows" />
+    </v-navigation-drawer>
+    <!--<DialogResponsible
         v-model="responsibleDialog"
         :selected="selectedLos"
         :organizationId="props.organization_id"
@@ -1252,5 +1270,14 @@ const listOfLookupTables = [
         <v-card>
             <GeoJsonMap :geojson="geojsonFeatureCollection" />
         </v-card>
-    </v-dialog>
+    </v-dialog>-->
 </template>
+
+<style>
+    .VPNavBar[data-v-84a11e99]:not(.has-sidebar) {
+        background-color: var(--vp-nav-bg-color);
+    }
+    .v-navigation-drawer__scrim {
+       display: none;
+    }
+</style>

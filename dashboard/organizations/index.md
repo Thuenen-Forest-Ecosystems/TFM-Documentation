@@ -121,7 +121,7 @@ layout: home
 
 
 <Firewall>
-
+<v-app style="background-color: transparent !important;">
 <v-btn density="compact" icon @click="toEditOrganization(currentOrganization)" class="position-absolute top-0 right-0">
         <v-icon>mdi-pencil</v-icon>
     </v-btn>
@@ -214,11 +214,11 @@ layout: home
 
 <div class="text-center mt-11 " >
     Organisation ID:<br/>
-    <span class="text-caption text-grey">{{ currentOrganization.id }} {{permission.organization_id}}</span>
+    <span class="text-caption text-grey">{{permission.organization_id}}</span>
 </div>
 
 </div>
-
+</v-app>
 </Firewall>
 
 <style>
