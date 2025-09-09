@@ -1,5 +1,5 @@
 <script setup>
-  import RestDocumentation from './components/RestDocumentation.vue'
+  import RestDocumentation from '../components/RestDocumentation.vue'
   import { getCurrentInstance } from 'vue'
   const apikey = getCurrentInstance().appContext.config.globalProperties.$apikey;
 </script>

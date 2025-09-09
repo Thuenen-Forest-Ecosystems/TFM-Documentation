@@ -14,47 +14,45 @@ export default defineConfig({
     logo: '/bwi_image.svg',
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Getting Started', link: '/getting-started' },
-      { text: 'API', link: '/general-api' },
+      { text: 'Verfahren', link: '/process/documents' },
+      { text: 'API', link: '/api/getting-started' },
       { component: 'DashboardButton'}
     ],
 
     sidebar: {
-      '/': [
+      '/api': [
         {
           items: [
-            { text: 'Getting Started', link: '/getting-started' },
-            { text: 'Data Structure', link: '/data-structure' }
+            { text: 'Getting Started', link: '/api/getting-started' },
+            { text: 'Data Structure', link: '/api/data-structure' }
           ]
         },
         {
           text: 'API',
           items: [
-            { text: 'General', link: '/general-api' },
-            { text: 'Lookup', link: '/lookup' }
+            { text: 'General', link: '/api/general-api' },
+            { text: 'Lookup', link: '/api/lookup' }
           ]
         },
         {
           text: 'Inventory',
           items: [
-            { text: 'By Inventory Interval', link: '/inventory_interval' },
-            { text: 'By Location', link: '/inventory_archive' },
-            { text: 'Aggregation', link: '/inventory_aggregation' },
-            { text: 'Loop for bigger datasets', link: '/inventory_loop' },
-            { text: 'Map application example', link: '/map_example' }
+            { text: 'By Inventory Interval', link: '/api/inventory_interval' },
+            { text: 'By Location', link: '/api/inventory_archive' },
+            { text: 'Aggregation', link: '/api/inventory_aggregation' },
+            { text: 'Loop for bigger datasets', link: '/api/inventory_loop' },
+            { text: 'Map application example', link: '/api/map_example' }
 
           ]
         },
         {
           items: [
-            { text: 'Documents', link: '/documents' }
+            { text: 'Migration', link: '/api/migration' }
           ]
         },
-        {
-          items: [
-            { text: 'Migration', link: '/migration' }
-          ]
-        },
+      ],
+      '/process': [
+        { text: 'Ducuments & Downloads', link: '/process/documents' },
       ],
     
       '/dashboard/': [
@@ -62,7 +60,7 @@ export default defineConfig({
           text: 'Dashboard',
           items: [
             { text: 'Profile', link: '/dashboard/profile' },
-            { text: 'Download', link: '/dashboard/download' }
+            { text: 'Inventory (Download)', link: '/dashboard/download' }
           ]
         }/*,
         {
