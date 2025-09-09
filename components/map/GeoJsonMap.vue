@@ -45,12 +45,14 @@
 
     function refreshLayer() {
         if (map && map.isStyleLoaded()) {
+                    console.log('Map refreshed with new data or selection');
+
             // Update the color property for each feature based on selection
             props.geojson.features.forEach(feature => {
                 if (props.selected.find(f => f.plot_id === feature.properties.plot_id)) {
                     feature.properties.color = '#0000ff'; // Highlight color for selected features yellow
                 } else {
-                    feature.properties.color = '#333333'; // Default color for non-selected features
+                    feature.properties.color = '#777777'; // Default color for non-selected features
                 }
             });
 
@@ -127,17 +129,18 @@
         });
     });
 
-    watch(() => props.selected, (newSelected) => {
+    watch(() => [props.selected, props.geojson], (newSelected, newGeojson) => {
         if (!map || !map.isStyleLoaded()) return;
 
         refreshLayer();
 
-    }, { immediate: true });
+    }, { immediate: false });
     watch(() => props.modelValue, (newVal) => {
         if (newVal) {
             focusMapToData();
+            refreshLayer();
         }
-    });
+    }, { immediate: true });
 </script>
 
 <template>
