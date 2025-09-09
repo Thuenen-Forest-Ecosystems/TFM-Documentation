@@ -142,6 +142,7 @@ import { _ } from 'ajv';
 
     // Grid Options
     const gridOptions = {
+        getRowId: (params) => params.data.plot_id,
         //rowModelType: 'infinite', // Enable infinite scrolling
         //cacheBlockSize: 100, // Number of rows per block
         //maxBlocksInCache: 10, // Maximum number of blocks to cache
@@ -1093,6 +1094,19 @@ import { _ } from 'ajv';
     function _toggleMap() {
         mapDialog.value = !mapDialog.value;
     }
+    function _selectedOnMap(clickedFeature) { // toggle selection on map click
+        console.log('Selected on map:', clickedFeature, selectedRows.value);
+        // Select the corresponding row in the grid
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        const rowNode = currentGrid.value.api.getRowNode(clickedFeature.plot_id);
+        if (rowNode) {
+            const isSelected = rowNode.isSelected();
+            rowNode.setSelected(!isSelected);
+        }
+    }
 </script>
 
 <template>
@@ -1255,7 +1269,12 @@ import { _ } from 'ajv';
         class="mt-16"
     >   
         <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
-        <GeoJsonMap :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;" :selected="selectedRows" />
+        <GeoJsonMap
+            :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
+            :selected="selectedRows"
+            :modelValue="mapDialog"
+            @update:selected="_selectedOnMap"
+             />
     </v-navigation-drawer>
 </template>
 
