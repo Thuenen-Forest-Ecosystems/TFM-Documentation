@@ -1239,8 +1239,6 @@ import { _ } from 'ajv';
             </div>
     </v-card-actions>
 
-    {{ selectedRows }}
-
     <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
         {{ snackbarText }}
         <template v-slot:action="{ attrs }">
@@ -1256,21 +1254,9 @@ import { _ } from 'ajv';
         style="z-index: 10;"
         class="mt-16"
     >   
-        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" density="compact"></v-btn>
+        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
         <GeoJsonMap :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;" :selected="selectedRows" />
     </v-navigation-drawer>
-    <!--<DialogResponsible
-        v-model="responsibleDialog"
-        :selected="selectedLos"
-        :organizationId="props.organization_id"
-        @close="_handleClose"
-        @confirm="_handleConfirm"
-    />
-    <v-dialog v-model="mapDialog" max-width="500">
-        <v-card>
-            <GeoJsonMap :geojson="geojsonFeatureCollection" />
-        </v-card>
-    </v-dialog>-->
 </template>
 
 <style>
