@@ -1,6 +1,6 @@
 <script setup>
 
-    import { getCurrentInstance, onMounted, ref, watch, defineEmits } from 'vue';
+    import { getCurrentInstance, onMounted, ref, watch } from 'vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;

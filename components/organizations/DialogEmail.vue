@@ -1,6 +1,6 @@
 <script setup>
 
-    import { getCurrentInstance, onMounted, ref, watch, defineEmits } from 'vue';
+    import { getCurrentInstance, onMounted, ref, watch } from 'vue';
     import { FunctionsHttpError, FunctionsRelayError, FunctionsFetchError } from '@supabase/supabase-js'
 
 
