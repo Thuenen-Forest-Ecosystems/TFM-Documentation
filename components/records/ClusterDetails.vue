@@ -4,11 +4,9 @@
     import { onMounted, ref, getCurrentInstance } from 'vue';
     import Firewall from '../../components/Firewall.vue';
     import History from '../../components/records/History.vue';
-    import JsonViewer from '../../components/records/JsonViewer.vue';
-    import GridView from '../../components/records/GridView.vue';
     import ValidateByPlot from '../../components/validation/ValidateByPlot.vue';
     import RecordToDo from '../../components/records/RecordToDo.vue';
-
+    import RecordDetail from './RecordDetail.vue';
 
     import Ajv from 'ajv';
     const ajv = new Ajv({
@@ -160,25 +158,7 @@
                         <ValidateByPlot :record="record" :validate="validate" :tfm="tfm" :version="selectedVersion" />
                     </v-card-text>
                 </v-card>
-                <v-card class="mt-11" variant="tonal">
-                    <v-toolbar color="transparent" dense>
-                        <v-toolbar-title>Data</v-toolbar-title>
-                        <template v-slot:append>
-                            <v-btn-toggle density="compact" v-model="toggle_data_view" rounded="xl" variant="outlined">
-                                <v-btn>
-                                    <v-icon>mdi-view-list</v-icon>
-                                </v-btn>
-                                <v-btn>
-                                    <v-icon>mdi-code-braces</v-icon>
-                                </v-btn>
-                            </v-btn-toggle>
-                        </template>
-                    </v-toolbar>
-                    <v-card-text v-if="toggle_data_view === 1">
-                        <JsonViewer :data="record.previous_properties" :schema="schema" />
-                    </v-card-text>
-                    <GridView  v-if="toggle_data_view === 0" :data="record.previous_properties" :schema="schema" />
-                </v-card>
+                <RecordDetail :record="record" :schema="schema" class="mt-11" />
                 <v-card class="mt-11"  variant="tonal">
                     <RecordToDo :record="record" class="mb-11" />
                     <v-card-text>

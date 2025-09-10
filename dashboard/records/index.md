@@ -24,4 +24,4 @@ layout: page
     <v-toolbar-title>Trakt</v-toolbar-title>
     
 </v-toolbar>
-<ClusterDetails :clusterId="clusterId"/>
+<ClusterDetails v-if="clusterId" :clusterId="clusterId"/>

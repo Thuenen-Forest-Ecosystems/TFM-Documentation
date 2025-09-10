@@ -80,8 +80,6 @@
         
         if (!jsonSchema || !jsonSchema.properties) return;
 
-        console.log('Creating column definitions from JSON schema', jsonSchema.properties);
-
         gridOptions.value.columnDefs = Object.keys(jsonSchema.properties).map(key => ({
             headerName: jsonSchema.properties[key].title || key,
             field: key,
@@ -96,7 +94,6 @@
 
     onMounted(() => {
         createColumnDefsFromJsonSchema(props.schema);
-        console.log('props.data', props.data);
         gridOptions.value.rowData = createRowDataFromData(props.data);
     });
 
