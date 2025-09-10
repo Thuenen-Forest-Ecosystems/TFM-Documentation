@@ -1,10 +1,11 @@
 <script setup>
-    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, defineEmits} from 'vue';
+    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch} from 'vue';
     import { AllCommunityModule, ModuleRegistry, TooltipModule } from 'ag-grid-community';
     ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
     import ActionCellRenderer from './ActionCellRenderer.vue';
+    import MoreCellRenderer from './MoreCellRenderer.vue';
     import DialogResponsible from './DialogResponsible.vue';
     import GeoJsonMap from '../map/GeoJsonMap.vue';
 
@@ -142,6 +143,7 @@ import { _ } from 'ajv';
 
     // Grid Options
     const gridOptions = {
+        getRowId: (params) => params.data.plot_id,
         //rowModelType: 'infinite', // Enable infinite scrolling
         //cacheBlockSize: 100, // Number of rows per block
         //maxBlocksInCache: 10, // Maximum number of blocks to cache
@@ -153,9 +155,10 @@ import { _ } from 'ajv';
             enableClickSelection: true
         },
         components: {
-            actionCellRenderer: ActionCellRenderer // Register the custom cell renderer
+            actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
+            moreCellRenderer: MoreCellRenderer
         },
-        onCellValueChanged: async (event) => {
+        /*onCellValueChanged: async (event) => {
             const columnId = event.colDef.field;
             const data = event.data;
 
@@ -177,7 +180,7 @@ import { _ } from 'ajv';
                 refreshCells();
             }
 
-        }
+        }*/
     }
     async function saveTroopResponsible(column, value, id){
         const {data, error} = await supabase
@@ -202,8 +205,17 @@ import { _ } from 'ajv';
             {
                 cellRenderer: 'actionCellRenderer', // Custom cell renderer
                 pinned: 'left',
-                width: 50
+                width: 50,
+                sortable: false,
+                filter: false
             },
+            /*{
+                cellRenderer: 'moreCellRenderer', // Custom cell renderer
+                pinned: 'left',
+                width: 50,
+                sortable: false,
+                filter: false
+            },*/
             { 
                 field: "plot_id",
                 headerName: "Plot Id",
@@ -239,12 +251,11 @@ import { _ } from 'ajv';
                 sortable: true,
                 pinned: 'right',
                 tooltipField: "responsible_troop",
-                editable: true,
+                /*editable: true,
                 cellEditor: 'agSelectCellEditor',
                 cellEditorParams: {
                     values: [...troops.value.map(troop => troop.name), null],
-                }
-                //type: "string",
+                }*/
             },
             {
                 field: "responsible_state",
@@ -1059,7 +1070,9 @@ import { _ } from 'ajv';
         };
 
         const selectedLos = currentGrid.value.api.getSelectedRows();
-        const plotIds = selectedLos.map(row => row.plot_id);
+        const clusterIds = selectedLos.map(row => row.cluster_id);
+        // Get unique plot IDs from selected rows
+        const uniqueClusterIds = [...new Set(clusterIds)];
 
         const update = {
             responsible_troop: selectedTroop || null
@@ -1068,13 +1081,12 @@ import { _ } from 'ajv';
             update[updateField] = selectedCompany;
         }
 
-        for (const plotId of plotIds) {
+        for (const clusterId of uniqueClusterIds) {
             const { data, error } = await supabase
                 .from('records')
                 .update(update)
-                .eq('plot_id', plotId)
-                .select()
-                .single();
+                .eq('cluster_id', clusterId)
+                .select();
 
             if (error) {
                 snackbarText.value = 'Error updating responsible users: ' + error.message;
@@ -1085,13 +1097,35 @@ import { _ } from 'ajv';
                 snackbarText.value = 'Responsible users updated successfully.';
                 snackbarColor.value = 'success';
                 snackbar.value = true;
-                //_requestData(props.organization_id); // Refresh the list
+
+                // update grid
+                currentGrid.value.api.forEachNode((node) => {
+                    if (uniqueClusterIds.includes(node.data.cluster_id)) {
+                        if(selectedCompany) {
+                            node.setDataValue(updateField, organizations.value.find(org => org.id === selectedCompany)?.name || selectedCompany);
+                        }
+                        node.setDataValue('responsible_troop', troops.value.find(troop => troop.id === selectedTroop)?.name || selectedTroop);
+                    }
+                });
             }
         }
         // _requestPlots();
     }
     function _toggleMap() {
         mapDialog.value = !mapDialog.value;
+    }
+    function _selectedOnMap(clickedFeature) { // toggle selection on map click
+        console.log('Selected on map:', clickedFeature, selectedRows.value);
+        // Select the corresponding row in the grid
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        const rowNode = currentGrid.value.api.getRowNode(clickedFeature.plot_id);
+        if (rowNode) {
+            const isSelected = rowNode.isSelected();
+            rowNode.setSelected(!isSelected);
+        }
     }
 </script>
 
@@ -1245,7 +1279,14 @@ import { _ } from 'ajv';
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
-        
+    
+    <DialogResponsible
+        v-model="responsibleDialog"
+        :organizationId="props.organization_id"
+        @close="_handleClose"
+        @confirm="_handleConfirm"
+    />
+
     <v-navigation-drawer
         location="right"
         v-model="mapDialog"
@@ -1255,7 +1296,12 @@ import { _ } from 'ajv';
         class="mt-16"
     >   
         <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
-        <GeoJsonMap :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;" :selected="selectedRows" />
+        <GeoJsonMap
+            :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
+            :selected="selectedRows"
+            :modelValue="mapDialog"
+            @update:selected="_selectedOnMap"
+             />
     </v-navigation-drawer>
 </template>
 

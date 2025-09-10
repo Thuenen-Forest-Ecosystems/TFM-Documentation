@@ -117,7 +117,6 @@
 
 
 <template>
-    {{ permission }}
     <v-card
         v-if="permission && recordState"
         color="primary" v-bind="$attrs">
