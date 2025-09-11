@@ -148,6 +148,14 @@
             center: [10, 51], // germany
             zoom: 5
         });
+
+        // Create a popup, but don't add it to the map yet.
+        const popup = new maplibregl.Popup({
+            
+            closeButton: false,
+            closeOnClick: false
+        });
+
         map.on('load', () => {
 
             refreshLayer();
@@ -155,11 +163,38 @@
             // Add click event listener
             map.on('click', handleMapClick);
         });
-        map.on('mouseover', 'geojson-layer', () => {
+        map.on('mouseover', 'geojson-layer', (e) => {
             map.getCanvasContainer().style.cursor = 'pointer';
         });
-        map.on('mouseout', 'geojson-layer', () => {
+        map.on('mouseout', 'geojson-layer', (e) => {
             map.getCanvasContainer().style.cursor = 'default';
+        });
+        
+        // Make sure to detect marker change for overlapping markers
+        // and use mousemove instead of mouseenter event
+        let currentFeatureCoordinates = undefined;
+        map.on('mousemove', 'geojson-layer', (e) => {
+            const featureCoordinates = e.features[0].geometry.coordinates.toString();
+            if (currentFeatureCoordinates !== featureCoordinates) {
+                currentFeatureCoordinates = featureCoordinates;
+                // Change the cursor style as a UI indicator.
+                map.getCanvas().style.cursor = 'pointer';
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const description = e.features[0].properties.cluster_name;
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+                // Populate the popup and set its coordinates
+                // based on the feature found.
+                popup.setLngLat(coordinates).setHTML(description).addTo(map);
+            }
+        });
+        map.on('mouseleave', 'geojson-layer', () => {
+            currentFeatureCoordinates = undefined;
+            popup.remove();
         });
     });
 
