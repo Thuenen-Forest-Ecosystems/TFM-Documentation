@@ -4,7 +4,7 @@
     import { onMounted, watch } from 'vue';
 
     let map;
-
+    
     const props = defineProps({
         geojson: {
             type: Object,
@@ -34,6 +34,7 @@
             "maxzoom": 19
             }
         },
+        "glyphs": "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
         "layers": [
             {
             "id": "osm",
@@ -61,13 +62,19 @@
                 if (map.getLayer('geojson-layer')) {
                     map.removeLayer('geojson-layer');
                 }
+                if (map.getLayer('geojson-labels')) {
+                    map.removeLayer('geojson-labels');
+                }
                 map.removeSource('geojson-data');
             }
 
             // geojson is featurecollection of points
             map.addSource('geojson-data', {
                 type: 'geojson',
-                data: props.geojson
+                data: props.geojson,
+                //cluster: true,
+                //clusterMaxZoom: 14, // Max zoom to cluster points on
+                //clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
             });
             map.addLayer({
                 id: 'geojson-layer',
@@ -83,6 +90,27 @@
                     'circle-opacity': 1 // Opacity of the circle
                 }
             });
+            // labels layer
+            map.addLayer({
+                id: 'geojson-labels',
+                type: 'symbol', // Use 'symbol' for labels
+                source: 'geojson-data',
+                filter: [">=", ["zoom"], 14], // zeige layer erst ab zoomstufe
+                layout: {
+                    'text-field': ['concat', ['get', 'cluster_name'],'|',['get', 'plot_name']],
+                    'text-allow-overlap': true,
+                    'text-size': 20,
+                    'text-font': ['Open Sans Regular'], // nötg wegen der Glyphen
+                    'text-anchor': 'bottom', // Der Text wird unten vom Punkt platziert
+                    "text-offset": [0, 2] // Verschiebt den Text um 2 Pixel nach unten
+                },
+                paint: {
+                    'text-color': '#000',
+                    'text-halo-width': 5,
+                    'text-halo-color': '#fff'
+                }
+            });
+
         }
     }
 
