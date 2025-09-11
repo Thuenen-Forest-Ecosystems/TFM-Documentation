@@ -59,8 +59,14 @@ export default defineConfig({
         {
           text: 'Dashboard',
           items: [
-            { text: 'Profile', link: '/dashboard/profile' },
-            { text: 'Inventory (Download)', link: '/dashboard/download' }
+            { text: 'Profile', link: '/dashboard/profile' }
+          ]
+        },
+        {
+          text: 'Inventory',
+          items: [
+            { text: 'Statistics', link: '/dashboard/inventory/stats' },
+            { text: 'Inventory (Download)', link: '/dashboard/inventory/download' }
           ]
         }/*,
         {

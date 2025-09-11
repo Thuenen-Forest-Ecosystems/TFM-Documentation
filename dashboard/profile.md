@@ -152,7 +152,7 @@
 
 <v-card class="my-4">
     <v-list>
-        <v-list-subheader>Organisationen</v-list-subheader>
+        <v-list-subheader>Kohlenstoffinventur 2027</v-list-subheader>
         <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
             <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
             <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>

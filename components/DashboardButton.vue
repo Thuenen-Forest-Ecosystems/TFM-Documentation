@@ -29,7 +29,7 @@
 <template>
     <a v-if="user_email" class="VPLink">
         <v-btn rounded="xl" variant="tonal" @click="_toProfile">
-            <span>{{ user_email }}</span>
+            <span>Dashboard</span>
         </v-btn>
     </a>
     <a v-else class="VPLink">
