@@ -155,6 +155,12 @@
             // Add click event listener
             map.on('click', handleMapClick);
         });
+        map.on('mouseover', 'geojson-layer', () => {
+            map.getCanvasContainer().style.cursor = 'pointer';
+        });
+        map.on('mouseout', 'geojson-layer', () => {
+            map.getCanvasContainer().style.cursor = 'default';
+        });
     });
 
     watch(() => [props.selected, props.geojson], (newSelected, newGeojson) => {
