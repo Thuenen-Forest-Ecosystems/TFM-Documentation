@@ -44,6 +44,46 @@
         ]
     };
 
+    function aggregateFeatures(featureCollection) {
+                console.log(featureCollection);
+                const aggregatedFeatures = {};
+                featureCollection.features.forEach((feature) => {
+                    const clusterName = feature.properties.cluster_name;
+                    if (!aggregatedFeatures[clusterName]) {
+                        aggregatedFeatures[clusterName] = {
+                            sumX: 0,
+                            sumY: 0,
+                            count: 0,
+                        };
+                    }
+                    const coordinates = feature.properties.center_location.coordinates;
+                    aggregatedFeatures[clusterName].sumX += coordinates[0];
+                    aggregatedFeatures[clusterName].sumY += coordinates[1];
+                    aggregatedFeatures[clusterName].count++;
+                });
+                const result = {
+                    type: "FeatureCollection",
+                    features: [],
+                };
+                Object.keys(aggregatedFeatures).forEach((clusterName) => {
+                    const aggregatedFeature = aggregatedFeatures[clusterName];
+                    const averageX = aggregatedFeature.sumX / aggregatedFeature.count;
+                    const averageY = aggregatedFeature.sumY / aggregatedFeature.count;
+                    result.features.push({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [averageX, averageY],
+                        },
+                        properties: {
+                            cluster_name: clusterName,
+                        },
+                    });
+                });
+            return result;
+        }
+
+
     function refreshLayer() {
         if (map && map.isStyleLoaded()) {
                     console.log('Map refreshed with new data or selection');
@@ -56,6 +96,8 @@
                     feature.properties.color = '#777777'; // Default color for non-selected features
                 }
             });
+            console.log(props.geojson.features,[1]);
+
 
             // Remove the existing source and layer if they already exist
             if (map.getSource('geojson-data')) {
@@ -65,7 +107,14 @@
                 if (map.getLayer('geojson-labels')) {
                     map.removeLayer('geojson-labels');
                 }
+                if (map.getLayer('geojson-agg')) {
+                    map.removeLayer('geojson-agg');
+                }
+                if (map.getLayer('geojson-agg-labels')) {
+                    map.removeLayer('geojson-agg-labels');
+                }
                 map.removeSource('geojson-data');
+                map.removeSource('geojson-agg');
             }
 
             // geojson is featurecollection of points
@@ -76,10 +125,21 @@
                 //clusterMaxZoom: 14, // Max zoom to cluster points on
                 //clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
             });
+
+            map.addSource('geojson-agg', {
+                type: 'geojson',
+                data: aggregateFeatures(props.geojson),
+                //cluster: true,
+                //clusterMaxZoom: 14, // Max zoom to cluster points on
+                //clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
+            });
+
+
             map.addLayer({
                 id: 'geojson-layer',
                 type: 'circle', // Use 'circle' for points
                 source: 'geojson-data',
+                filter: [">=", ["zoom"], 14],
                 paint: {
                     'circle-radius': [
                         'interpolate', ['linear'], ['zoom'],
@@ -97,7 +157,7 @@
                 source: 'geojson-data',
                 filter: [">=", ["zoom"], 14], // zeige layer erst ab zoomstufe
                 layout: {
-                    'text-field': ['concat', ['get', 'cluster_name'],'|',['get', 'plot_name']],
+                    'text-field': ['concat', ['get', 'plot_name']],
                     'text-allow-overlap': true,
                     'text-size': 20,
                     'text-font': ['Open Sans Regular'], // nötg wegen der Glyphen
@@ -111,6 +171,41 @@
                 }
             });
 
+            // aggregated cluster layer
+            map.addLayer({
+                id: 'geojson-agg',
+                type: 'circle', // Use 'circle' for points
+                source: 'geojson-agg',
+                filter: ["<", ["zoom"], 14],
+                paint: {
+                    'circle-radius': [
+                        'interpolate', ['linear'], ['zoom'],
+                        5, 2,    // At zoom level 0, radius is 1
+                        20, 20   // At zoom level 20, radius is 1
+                    ],
+                    'circle-color': ['get', 'color'], // Color of the circle
+                    'circle-opacity': 1 // Opacity of the circle
+                }
+            });
+            map.addLayer({
+                id: 'geojson-agg-labels',
+                type: 'symbol', // Use 'symbol' for labels
+                source: 'geojson-agg',
+                filter: [">=", ["zoom"], 14], // zeige layer erst ab zoomstufe
+                layout: {
+                    'text-field': ['concat', ['get', 'cluster_name']],
+                    'text-allow-overlap': true,
+                    'text-size': 20,
+                    'text-font': ['Open Sans Regular'], // nötg wegen der Glyphen
+                    'text-anchor': 'center', // Der Text wird unten vom Punkt platziert
+                    "text-offset": [0, 0]
+                },
+                paint: {
+                    'text-color': '#000',
+                    'text-halo-width': 5,
+                    'text-halo-color': '#fff'
+                }
+            });
         }
     }
 
@@ -137,6 +232,18 @@
                 // Add the feature to the selected array
                 emit('update:selected', clickedFeature.properties);
             }*/
+        }
+        const zoomtofeatures = map.queryRenderedFeatures(e.point, { layers: ['geojson-agg'] });
+        if (zoomtofeatures.length > 0) {
+            const clickedFeatureZ = zoomtofeatures[0];
+            map.flyTo({
+                center: clickedFeatureZ.geometry.coordinates,
+                essential: true,
+                zoom: 15, // this animation is considered essential with respect to prefers-reduced-motion
+            });
+            currentFeatureCoordinates = undefined;
+            map.getCanvas().style.cursor = '';
+            popup.remove();
         }
     }
 
@@ -167,33 +274,34 @@
             map.getCanvasContainer().style.cursor = 'pointer';
         });
         map.on('mouseout', 'geojson-layer', (e) => {
-            map.getCanvasContainer().style.cursor = 'default';
+            map.getCanvasContainer().style.cursor = '';
         });
         
         // Make sure to detect marker change for overlapping markers
         // and use mousemove instead of mouseenter event
         let currentFeatureCoordinates = undefined;
-        map.on('mousemove', 'geojson-layer', (e) => {
-            const featureCoordinates = e.features[0].geometry.coordinates.toString();
-            if (currentFeatureCoordinates !== featureCoordinates) {
-                currentFeatureCoordinates = featureCoordinates;
-                // Change the cursor style as a UI indicator.
-                map.getCanvas().style.cursor = 'pointer';
-                const coordinates = e.features[0].geometry.coordinates.slice();
-                const description = e.features[0].properties.cluster_name;
-                // Ensure that if the map is zoomed out such that multiple
-                // copies of the feature are visible, the popup appears
-                // over the copy being pointed to.
-                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        map.on('mousemove', 'geojson-agg', (e) => {
+                const featureCoordinates = e.features[0].geometry.coordinates.toString();
+                if (currentFeatureCoordinates !== featureCoordinates) {
+                    currentFeatureCoordinates = featureCoordinates;
+                    // Change the cursor style as a UI indicator.
+                    map.getCanvas().style.cursor = 'pointer';
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    const description = e.features[0].properties.cluster_name;
+                    // Ensure that if the map is zoomed out such that multiple
+                    // copies of the feature are visible, the popup appears
+                    // over the copy being pointed to.
+                    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                    }
+                    // Populate the popup and set its coordinates
+                    // based on the feature found.
+                    popup.setLngLat(coordinates).setHTML(description).addTo(map);
                 }
-                // Populate the popup and set its coordinates
-                // based on the feature found.
-                popup.setLngLat(coordinates).setHTML(description).addTo(map);
-            }
         });
-        map.on('mouseleave', 'geojson-layer', () => {
+        map.on('mouseleave', 'geojson-agg', () => {
             currentFeatureCoordinates = undefined;
+            map.getCanvas().style.cursor = '';
             popup.remove();
         });
     });
