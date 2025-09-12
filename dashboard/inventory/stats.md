@@ -2,7 +2,7 @@
 
 <script setup>
   import { ref } from 'vue'
-  import Tree from '../../components/statistics/Tree.vue'
+  import Tree from '../../components/statistics/tree.vue'
 
   const tab = ref(null)
   const items = ref([
