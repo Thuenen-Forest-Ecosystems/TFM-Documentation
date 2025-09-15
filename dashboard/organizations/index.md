@@ -46,7 +46,16 @@ layout: home
     async function _requestcluster() {
         loadingClusters.value = true;
         cluster.value = [];
-        await supabase
+        const { data, error } = await supabase.rpc('get_user_clusters');
+
+        if (error) {
+            console.error('Error fetching clusters:', error);
+        } else {
+            console.log('Fetched clusters:', data);
+            cluster.value = data;
+            loadingClusters.value = false;
+        }
+        /*await supabase
             .schema('inventory_archive')
             .from('cluster')
             .select('*')
@@ -60,7 +69,7 @@ layout: home
             .catch((e) => console.error('An unexpected error occurred while fetching clusters:', e))
             .finally(() => {
                 loadingClusters.value = false;
-            });
+            });*/
     }
 
     onMounted(async () => {

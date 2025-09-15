@@ -10,10 +10,10 @@
             type: Object,
             required: true
         },
-        selected: {
+        /*selected: {
             type: Array,
             default: () => []
-        },
+        },*/
         modelValue: {
             type: Boolean,
             default: true
@@ -43,19 +43,44 @@
             }
         ]
     };
+    function updateGeoJsonFeatures(_newGeojson = null) {
+        if (!map || !map.isStyleLoaded()) return;
 
+        // Update the color property for each feature based on selection
+        _newGeojson.features.forEach(feature => {
+            feature.properties.cluster_name = feature.properties.record.cluster_name;
+            feature.properties.plot_name = feature.properties.record.plot_name;
+
+
+            let color = '#00acff'; // Default color
+            let strokeWidth = 0; // Default border width
+            let opacity = 1.0; // Default opacity
+            
+
+            if (feature.properties.isSelected) {
+                strokeWidth = 2; // Border width for selected features
+            }
+
+            if(!feature.properties.isFiltered){
+                color = '#777'; // Grey out non-filtered features
+                opacity = 0.3;
+            }
+
+            feature.properties.color = color; // Highlight color for filtered features green
+            feature.properties.opacity = opacity;
+            feature.properties.strokeWidth = strokeWidth; // Border width for filtered features
+        });
+
+        //refreshLayer();
+
+        map.getSource('geojson-data').setData(_newGeojson);
+        console.log('GeoJSON data updated on map', _newGeojson);
+    }
     function refreshLayer() {
         if (map && map.isStyleLoaded()) {
-                    console.log('Map refreshed with new data or selection');
+            console.log('Map refreshed with new data or selection');
 
-            // Update the color property for each feature based on selection
-            props.geojson.features.forEach(feature => {
-                if (props.selected.find(f => f.plot_id === feature.properties.plot_id)) {
-                    feature.properties.color = '#0000ff'; // Highlight color for selected features yellow
-                } else {
-                    feature.properties.color = '#777777'; // Default color for non-selected features
-                }
-            });
+            
 
             // Remove the existing source and layer if they already exist
             if (map.getSource('geojson-data')) {
@@ -83,11 +108,14 @@
                 paint: {
                     'circle-radius': [
                         'interpolate', ['linear'], ['zoom'],
-                        5, 1,    // At zoom level 0, radius is 1
-                        20, 10   // At zoom level 20, radius is 1
+                        0, 1,
+                        5, 3,    // At zoom level 0, radius is 2
+                        13, 5   // At zoom level 15, radius is 20
                     ],
                     'circle-color': ['get', 'color'], // Color of the circle
-                    'circle-opacity': 1 // Opacity of the circle
+                    'circle-opacity': ['get', 'opacity'], // Use the opacity property
+                    'circle-stroke-color': '#ffff00', // Use the strokeColor property
+                    'circle-stroke-width': ['get', 'strokeWidth'], // Set the border width
                 }
             });
             // labels layer
@@ -99,7 +127,7 @@
                 layout: {
                     'text-field': ['concat', ['get', 'cluster_name'],'|',['get', 'plot_name']],
                     'text-allow-overlap': true,
-                    'text-size': 20,
+                    'text-size': 15,
                     'text-font': ['Open Sans Regular'], // nötg wegen der Glyphen
                     'text-anchor': 'bottom', // Der Text wird unten vom Punkt platziert
                     "text-offset": [0, 2] // Verschiebt den Text um 2 Pixel nach unten
@@ -155,10 +183,10 @@
             closeButton: false,
             closeOnClick: false
         });
-
+        
         map.on('load', () => {
-
             refreshLayer();
+            updateGeoJsonFeatures( props.geojson );
 
             // Add click event listener
             map.on('click', handleMapClick);
@@ -172,7 +200,7 @@
         
         // Make sure to detect marker change for overlapping markers
         // and use mousemove instead of mouseenter event
-        let currentFeatureCoordinates = undefined;
+        /*let currentFeatureCoordinates = undefined;
         map.on('mousemove', 'geojson-layer', (e) => {
             const featureCoordinates = e.features[0].geometry.coordinates.toString();
             if (currentFeatureCoordinates !== featureCoordinates) {
@@ -180,7 +208,7 @@
                 // Change the cursor style as a UI indicator.
                 map.getCanvas().style.cursor = 'pointer';
                 const coordinates = e.features[0].geometry.coordinates.slice();
-                const description = e.features[0].properties.cluster_name;
+                const description = e.features[0].properties.record.cluster_name;
                 // Ensure that if the map is zoomed out such that multiple
                 // copies of the feature are visible, the popup appears
                 // over the copy being pointed to.
@@ -195,21 +223,18 @@
         map.on('mouseleave', 'geojson-layer', () => {
             currentFeatureCoordinates = undefined;
             popup.remove();
-        });
+        });*/
     });
 
-    watch(() => [props.selected, props.geojson], (newSelected, newGeojson) => {
+    watch(() => [props.geojson], (newGeojson) => {
+        console.log('GeoJSON prop changed, updating map');
         if (!map || !map.isStyleLoaded()) return;
-
-        refreshLayer();
-
-    }, { immediate: false });
+        console.log('New GeoJSON:', newGeojson);
+        updateGeoJsonFeatures( newGeojson[0] );
+    }, { deep: true });
     watch(() => props.modelValue, (newVal) => {
-        if (newVal) {
-            focusMapToData();
-            refreshLayer();
-        }
-    }, { immediate: true });
+        if (newVal) focusMapToData();
+    });
 </script>
 
 <template>

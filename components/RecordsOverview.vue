@@ -1,5 +1,5 @@
 <script setup>
-    import { defineProps, onMounted } from 'vue';
+    import { onMounted } from 'vue';
     import ListOfClusterRecord from './organizations/ListOfClusterRecord.vue';
 
     const props = defineProps({
@@ -8,6 +8,10 @@
         los: Array,
         cluster: Object
     });
+    const emit = defineEmits(['confirm']);
+    function cancelUpdate() {
+        emit('confirm');
+    }
 </script>
 
 

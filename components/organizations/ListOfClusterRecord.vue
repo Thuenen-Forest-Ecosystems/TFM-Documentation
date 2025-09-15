@@ -8,6 +8,8 @@
     import MoreCellRenderer from './MoreCellRenderer.vue';
     import DialogResponsible from './DialogResponsible.vue';
     import GeoJsonMap from '../map/GeoJsonMap.vue';
+    import ClusterDetails from '../records/ClusterDetails.vue';
+
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
 const listOfLookupTables = [
@@ -72,15 +74,18 @@ const listOfLookupTables = [
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
     import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
-import { _ } from 'ajv';
+    import { _ } from 'ajv';
 
     //const { waitForDb } = useDatabase()
     const lookupTablesValue = ref({});
     let currentGrid = ref(null);
     let selectedRows = ref([]);
+    let filteredRows = ref({}); // Active Filter
+    let displayedRows = ref([]); // Rows after filter and sort
     let selectableLose = ref([]);
     const assigning = ref(false);
     const mapDialog = ref(false);
+    const recordsDialog = ref(false);
 
     const snackbar = ref(false);
     const snackbarText = ref('');
@@ -251,11 +256,11 @@ import { _ } from 'ajv';
                 sortable: true,
                 pinned: 'right',
                 tooltipField: "responsible_troop",
-                /*editable: true,
+                editable: true,
                 cellEditor: 'agSelectCellEditor',
                 cellEditorParams: {
                     values: [...troops.value.map(troop => troop.name), null],
-                }*/
+                }
             },
             {
                 field: "responsible_state",
@@ -498,9 +503,6 @@ import { _ } from 'ajv';
             return v && v.toString().toLowerCase().startsWith('nordrhein');
         });
         
-        console.log(`Nordrhein count: ${nordrheinRows.length}`);
-        console.log('Sample nordrhein entries:', nordrheinRows.slice(0, 3));
-
         return processedRecords;
     }
    
@@ -529,6 +531,47 @@ import { _ } from 'ajv';
         results.forEach(({ table, data }) => {
             lookupTablesValue.value[table] = data;
         });
+    }
+    async function _requestclusterByPlots(records) {
+        if (!records || !Array.isArray(records) || records.length === 0) {
+            console.warn('No plots provided for cluster fetch', records);
+            return;
+        }
+
+        const uniqueClusterIds = [...new Set(records.map(r => r.cluster_id).filter(id => id !== null && id !== undefined))];
+        if (uniqueClusterIds.length === 0) {
+            console.warn('No valid cluster IDs found in records');
+            return;
+        }
+
+        console.log('Fetching clusters for provided plots', uniqueClusterIds);
+
+        cluster.value = [];
+        const batchSize = 100; // Adjust batch size based on Supabase limits
+        const totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
+
+        for (let i = 0; i < uniqueClusterIds.length; i += batchSize) {
+            const batch = uniqueClusterIds.slice(i, i + batchSize);
+            console.log(`Fetching batch ${Math.floor(i / batchSize) + 1} of ${totalBatches}`);
+
+            try {
+                const { data, error } = await supabase
+                    .schema('inventory_archive')
+                    .from('cluster')
+                    .select('*')
+                    .in('id', batch);
+
+                if (error) {
+                    console.error('Error fetching clusters by plots:', error);
+                } else {
+                    cluster.value = cluster.value.concat(data);
+                }
+            } catch (e) {
+                console.error('An unexpected error occurred while fetching clusters by plots:', e);
+            }
+        }
+
+        console.log('Finished fetching all clusters:', cluster.value.length);
     }
     async function _requestcluster() {
         cluster.value = [];
@@ -655,7 +698,11 @@ import { _ } from 'ajv';
         geojsonFeatureCollection.value.features = records.map(record => ({
             type: "Feature",
             geometry: record.center_location,
-            properties: { ...record}
+            properties: {
+                isSelected: false,
+                isFiltered: false,
+                record: record
+            }
         }));
 
     }
@@ -698,6 +745,8 @@ import { _ } from 'ajv';
                 if (records && records.length > 0) {
                     loading.value = true;
 
+                    await _requestclusterByPlots(records);
+
                     // show last record
                     const lastRecord = records[records.length - 1];
 
@@ -720,18 +769,20 @@ import { _ } from 'ajv';
             })
             .catch((error) => {
                 console.error('Error fetching records:', error);
-            }).finally(() => {
+            }).finally(async () => {
                 loading.value = false;
             });
     }
 
     function onSelectionChanged(event) {
         selectedRows.value = event.api.getSelectedRows();
+        geojsonFeatureCollection.value.features.forEach(feature => {
+            feature.properties.isSelected = selectedRows.value.some(row => row.plot_id === feature.properties.record.plot_id);
+        });
         // Perform actions based on the selected rows
     }
 
     async function addToLos(){
-        console.log(selectedRows.value.length);
         assignTo(props.los.id);
     }
     async function assignTo(losId){
@@ -909,11 +960,12 @@ import { _ } from 'ajv';
         loading.value = true;
 
         //await _requestLose(props.organization_id);
-        if(props.cluster && props.cluster.length){
+        /*if(props.cluster && props.cluster.length){
             cluster.value = props.cluster;
         }else{
              await _requestcluster();
-        }
+        }*/
+
         //console.log('cluster:', cluster.value.length);
         //await _requestOrganizations();
         //console.log('Organizations:', organizations.value.length);
@@ -927,19 +979,52 @@ import { _ } from 'ajv';
 
         //console.log('Lookup tables loaded');
         await _requestPlots();
-        console.log('Plots:', rowData.value.length);
         
+
     });
-    let filteredRows = ref({});
+
+    function onGridReady(params) {
+        nextTick(() => {
+            setTimeout(() => {
+                updateDisplayedRows(); // Initial update of displayed rows
+            }, 100);
+        });
+    }
     function onFilterChanged(filter) {
         if (!currentGrid.value || !currentGrid.value.api) {
             console.error('Grid API not available');
             return;
         }
         filteredRows.value = currentGrid.value.api.getFilterModel();
+        
+        updateDisplayedRows();
+        
     }
-    function refreshCells(){
-        currentGrid.value.api.refreshCells();
+    function updateDisplayedRows() {
+        console.log('Updating displayed rows');
+
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+
+        // Clear displayedRows
+        displayedRows.value = [];
+
+        // Step 1: Collect all displayed rows
+        currentGrid.value.api.forEachNodeAfterFilter((node) => {
+            displayedRows.value.push(node.data);
+        });
+
+        // Step 2: Create a Set of plot_ids for faster lookup
+        const displayedPlotIds = new Set(displayedRows.value.map(row => row.plot_id));
+
+        // Step 3: Update geojsonFeatureCollection features
+        geojsonFeatureCollection.value.features.forEach(feature => {
+            feature.properties.isFiltered = displayedPlotIds.has(feature.properties.record.plot_id);
+        });
+
+        console.log('Displayed rows updated:', displayedRows.value.length);
     }
     function clearFilters() {
         if (!currentGrid.value || !currentGrid.value.api) {
@@ -1042,10 +1127,14 @@ import { _ } from 'ajv';
     }
 
     function _renderClusterOptimized(clusterData, fieldName, lookupMaps, lookupTableName = null) {
+
         if (!clusterData) return 'not defined';
         
         const value = clusterData[fieldName];
-        if (!value) return 'not defined';
+
+        if (!value){
+            return 'not defined';
+        }
         
         if (lookupTableName) {
             return _renderLookupOptimized(lookupMaps, lookupTableName, value);
@@ -1114,10 +1203,19 @@ import { _ } from 'ajv';
     function _toggleMap() {
         mapDialog.value = !mapDialog.value;
     }
+    const selectedCluster = ref(null);
     function _selectedOnMap(clickedFeature) { // toggle selection on map click
-        console.log('Selected on map:', clickedFeature, selectedRows.value);
+
+        const jsonObject = JSON.parse(clickedFeature.record);
+        console.log('Selected on map parsed:', jsonObject.cluster_id);
+        selectedCluster.value = jsonObject;
+        console.log('selectedCluster:', selectedCluster.value);
+        recordsDialog.value = true;
+        return;
+        recordsDialog.value = true;
+        selectedCluster.value = clickedFeature.properties.record;
         // Select the corresponding row in the grid
-        if (!currentGrid.value || !currentGrid.value.api) {
+        /*if (!currentGrid.value || !currentGrid.value.api) {
             console.error('Grid API not available');
             return;
         }
@@ -1125,7 +1223,7 @@ import { _ } from 'ajv';
         if (rowNode) {
             const isSelected = rowNode.isSelected();
             rowNode.setSelected(!isSelected);
-        }
+        }*/
     }
 </script>
 
@@ -1185,6 +1283,7 @@ import { _ } from 'ajv';
         v-if="!loading"
         @selection-changed="onSelectionChanged"
         @filter-changed="onFilterChanged"
+        @grid-ready="onGridReady"
         :gridOptions="gridOptions"
         :theme="currentTheme"
         :pagination="true"
@@ -1219,6 +1318,15 @@ import { _ } from 'ajv';
                 rounded="xl"
             >
                 {{ selectedRows.length }} ausgewählte Ecken
+            </v-chip>
+            <v-chip
+                class="ma-2"
+                color="primary"
+                text-color="white"
+                variant="tonal"
+                rounded="xl"
+            >
+                {{ displayedRows.length }} gefilterte Ecken
             </v-chip>
             <v-toolbar-title></v-toolbar-title>
             <div v-if="selectedRows.length > 0">
@@ -1298,11 +1406,32 @@ import { _ } from 'ajv';
         <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
         <GeoJsonMap
             :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
-            :selected="selectedRows"
             :modelValue="mapDialog"
             @update:selected="_selectedOnMap"
              />
     </v-navigation-drawer>
+
+    <div v-if="selectedCluster">
+        <v-dialog
+        v-model="recordsDialog"
+        fullscreen
+        
+        >
+            <v-card>
+                <v-toolbar>
+                    <v-btn
+                        icon="mdi-close"
+                        @click="recordsDialog = false"
+                    ></v-btn>
+
+                    <v-toolbar-title>Trakt: {{ selectedCluster.cluster_name.toString() }}</v-toolbar-title>
+
+                    
+                </v-toolbar>
+                <ClusterDetails :clusterId="selectedCluster.cluster_id"/>
+            </v-card>
+        </v-dialog>
+    </div>
 </template>
 
 <style>
