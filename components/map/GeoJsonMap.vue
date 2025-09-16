@@ -44,8 +44,30 @@
         ]
     };
 
+/*     function colorcluster(countPlots) {
+        const expr = countPlots;
+        switch (expr) {
+            case "1":
+                console.log("1");
+                return "#4287f5";
+                break;
+            case "2":
+                console.log("2");
+                return "#e9ed02";
+                break;
+            case "3":
+                console.log("3");
+                return "#16f50a";
+                break;
+            default:
+                console.log("4");
+                return "#f50a16";
+                
+        }
+    } */
+
     function aggregateFeatures(featureCollection) {
-                console.log(featureCollection);
+                console.log('featureCollection', featureCollection);
                 const aggregatedFeatures = {};
                 featureCollection.features.forEach((feature) => {
                     const clusterName = feature.properties.cluster_name;
@@ -54,12 +76,16 @@
                             sumX: 0,
                             sumY: 0,
                             count: 0,
+                            color: "#777777",
                         };
                     }
                     const coordinates = feature.properties.center_location.coordinates;
                     aggregatedFeatures[clusterName].sumX += coordinates[0];
                     aggregatedFeatures[clusterName].sumY += coordinates[1];
                     aggregatedFeatures[clusterName].count++;
+                    if (feature.properties.color  != "#777777") {
+                        aggregatedFeatures[clusterName].color = "#0000ff"
+                    }
                 });
                 const result = {
                     type: "FeatureCollection",
@@ -69,6 +95,7 @@
                     const aggregatedFeature = aggregatedFeatures[clusterName];
                     const averageX = aggregatedFeature.sumX / aggregatedFeature.count;
                     const averageY = aggregatedFeature.sumY / aggregatedFeature.count;
+                          //const color = aggregatedFeature.count;
                     result.features.push({
                         type: "Feature",
                         geometry: {
@@ -77,6 +104,8 @@
                         },
                         properties: {
                             cluster_name: clusterName,
+                            color: aggregatedFeature.color,
+                            //color: colorcluster(color),
                         },
                     });
                 });
@@ -233,7 +262,21 @@
                 emit('update:selected', clickedFeature.properties);
             }*/
         }
-        const zoomtofeatures = map.queryRenderedFeatures(e.point, { layers: ['geojson-agg'] });
+        const features_agg = map.queryRenderedFeatures(e.point, { layers: ['geojson-agg'] });
+        if (features_agg.length > 0) {
+            const clickedFeature = features_agg[0];
+            console.log('clickedFeature', clickedFeature);
+            const test = clickedFeature.properties.cluster_name;
+            const plots_to_update = props.geojson.features.filter(f => f.properties.cluster_name === Number(clickedFeature.properties.cluster_name));
+            console.log(plots_to_update);
+            emit('update:selected', plots_to_update[0].properties);
+            emit('update:selected', plots_to_update[1].properties);
+            emit('update:selected', plots_to_update[2].properties);
+            emit('update:selected', plots_to_update[3].properties);
+            //const plotId = clickedFeature.properties.plot_id;
+            //emit('update:selected', clickedFeature.properties);
+        }
+/*         const zoomtofeatures = map.queryRenderedFeatures(e.point, { layers: ['geojson-agg'] });
         if (zoomtofeatures.length > 0) {
             const clickedFeatureZ = zoomtofeatures[0];
             map.flyTo({
@@ -244,7 +287,7 @@
             currentFeatureCoordinates = undefined;
             map.getCanvas().style.cursor = '';
             popup.remove();
-        }
+        } */
     }
 
     onMounted(() => {
