@@ -1,6 +1,6 @@
 <script setup>
     import { onMounted, ref, watch, getCurrentInstance } from 'vue';
-import { workflowFromRecord } from '../Utils';
+    import { getOrganizationById, getTroopById, workflowFromRecord } from '../Utils';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -14,7 +14,10 @@ import { workflowFromRecord } from '../Utils';
     });
 
     const latestPlot = ref(null);
-    const plotData = ref([]);
+    let plotData = ref([]);
+    const activeItem = ref(null);
+
+    const emit = defineEmits(['select:record']);
 
 
     function sortPlotData() {
@@ -32,10 +35,35 @@ import { workflowFromRecord } from '../Utils';
             console.error('Error fetching history:', error);
             return [];
         }
-        data.map(item => {
-            item.sortByDate = item.created_at;
-        });
-        plotData.value.push(...data);
+        
+        
+
+        const updatedData = await Promise.all(
+            data.map(async (item) => {
+                item.sortByDate = item.created_at;
+                if (item.responsible_troop) {
+                    item.troopData = await getTroopById(supabase, item.responsible_troop);
+                }
+
+                if (item.responsible_provider) {
+                    // If troopData is still null but responsible_troop exists, fetch it
+                    item.providerData = await getOrganizationById(supabase, item.responsible_provider);
+                }
+                if (item.responsible_state) {
+                    // If troopData is still null but responsible_troop exists, fetch it
+                    item.stateData = await getOrganizationById(supabase, item.responsible_state);
+                }
+                if (item.responsible_administration) {
+                    // If troopData is still null but responsible_troop exists, fetch it
+                    item.administrationData = await getOrganizationById(supabase, item.responsible_administration);
+                }
+
+                return item;
+            })
+        );
+
+
+        plotData.value = updatedData; // Replace the old data with the updated data
     };
 
     const getLatest = async (plotId) => {
@@ -69,60 +97,105 @@ import { workflowFromRecord } from '../Utils';
         return JSON.stringify(item1) !== JSON.stringify(item2);
     }
 
+    function emitActiveItem(item) {
+        activeItem.value = item;
+        emit('select:record', item);
+    }
+
 </script>
 
 
 
 <template>
-    <div class="font-weight-bold ms-1 mb-2">Today</div>
-    <v-timeline align="start" density="compact">
+    <v-timeline
+        v-bind="$attrs"
+        align="start" density="compact" class="ma-2" style="width: 400px;">
         <v-timeline-item
             size="small"
             v-for="(item, index) in plotData"
             :key="index"
             :dot-color="item.is_valid ? 'primary' : 'red'"
+            @click="emitActiveItem(item)"
+            class="clickable-timeline-item"
+            :fill-dot="activeItem === item"
         >
             <div class="d-flex flex-column">
-                <strong v-if="index!==0" class="me-4 mb-2">{{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}</strong>
+                <strong v-if="index!==0" class="me-4">{{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}</strong>
                 <strong v-else>Aktueller Status</strong>
 
-                <p>
-                    Status: {{ workflowFromRecord(item).title }}
-                </p>
-
-                <div class="text-caption" v-if="!plotData[index - 1] ||  isDifferent(item.completed_at_troop, plotData[index - 1]?.completed_at_troop)">
-                    <strong>Trupp Abgeschlossen:</strong>
-                    {{ item.completed_at_troop ? new Date(item.completed_at_troop).toLocaleDateString() : '' }}
-                    {{ item.completed_at_troop ? new Date(item.completed_at_troop).toLocaleTimeString() : '' }}
-                </div>
-                <div class="text-caption" v-if="!plotData[index - 1] || isDifferent(item.completed_at_state, plotData[index - 1]?.completed_at_state)">
-                    <strong>Landesinventurleitung abgeschlossen:</strong>
-                    {{ item.completed_at_state ? new Date(item.completed_at_state).toLocaleDateString() : '' }}
-                    {{ item.completed_at_state ? new Date(item.completed_at_state).toLocaleTimeString() : '' }}
-                </div>
-                <div class="text-caption" v-if="!plotData[index - 1] || isDifferent(item.completed_at_administration, plotData[index - 1]?.completed_at_administration)">
-                    <strong>Bundesinventurleitung abgeschlossen:</strong>
-                    {{ item.completed_at_administration ? new Date(item.completed_at_administration).toLocaleDateString() : '' }}
-                    {{ item.completed_at_administration ? new Date(item.completed_at_administration).toLocaleTimeString() : '' }}
+                <div class="mb-2 text-caption">
+                    {{ workflowFromRecord(item).title }}
                 </div>
 
-                <div class="text-caption" v-if="!plotData[index - 1] || isDifferent(item.responsible_troop, plotData[index - 1]?.responsible_troop)">
-                    <strong>Trupp verantwortlich:</strong>
-                    {{ item.responsible_troop ? item.responsible_troop : '' }}
-                </div>
-                <div class="text-caption" v-if="!plotData[index - 1] || isDifferent(item.responsible_provider, plotData[index - 1]?.responsible_provider)">
-                    <strong>Dienstleister verantwortlich:</strong>
-                    {{ item.responsible_provider ? item.responsible_provider : '' }}
-                </div>
-                <div class="text-caption" v-if="!plotData[index - 1] || isDifferent(item.responsible_state, plotData[index - 1]?.responsible_state)">
-                    <strong>Landesinventurleitung verantwortlich:</strong>
-                    {{ item.responsible_state ? item.responsible_state : '' }}
-                </div>
-                <div class="text-caption" v-if="!plotData[index - 1] || isDifferent(item.responsible_administration, plotData[index - 1]?.responsible_administration)">
-                    <strong>Bundesinventurleitung verantwortlich:</strong>
-                    {{ item.responsible_administration ? item.responsible_administration : '' }}
-                </div>
-                
+                    
+                    <v-card variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_troop, plotData[index - 1]?.responsible_troop) ||  isDifferent(item.completed_at_troop, plotData[index - 1]?.completed_at_troop)">
+                        <template v-slot:title>
+                            {{item.troopData ? item.troopData.name : item.responsible_troop }}
+                        </template>
+                        <template v-slot:subtitle>
+                            Trupp
+                        </template>
+
+                        <v-card-text>
+                            <v-chip :color="item.completed_at_troop ? 'green' : 'yellow'">
+                                <span v-if="item.completed_at_troop">
+                                    {{ new Date(item.completed_at_troop).toLocaleDateString() }}
+                                    {{ new Date(item.completed_at_troop).toLocaleTimeString() }}
+                                </span>
+                                <span v-else>
+                                    offen
+                                </span>
+                            </v-chip>
+                        </v-card-text>
+                        <template v-slot:append>
+                            <v-chip v-if="item.troopData">
+                                {{ item.troopData.is_control_troop ? 'KT' : `AT` }}
+                            </v-chip>
+                        </template>
+                    </v-card>
+                    
+
+                    <v-card title="Dienstleister" variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_provider, plotData[index - 1]?.responsible_provider)">
+                        <template v-slot:title>
+                            {{ item.providerData ? item.providerData.name : `${item.responsible_provider}` }}
+                        </template>
+                        <template v-slot:subtitle>
+                            Dienstleister
+                        </template>
+                    </v-card>
+
+
+                    <v-card title="Landesinventurleitung" variant="tonal" class="pa-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_state, plotData[index - 1]?.responsible_state) ||  isDifferent(item.completed_at_state, plotData[index - 1]?.completed_at_state)">
+                        <template v-slot:title>
+                            {{ item.stateData ? item.stateData.name : `${item.responsible_state}` }}
+                        </template>
+                        <template v-slot:subtitle>
+                            Landesinventurleitung
+                        </template>
+                        <v-card-text>
+                            <v-chip :color="item.completed_at_state ? 'green' : 'yellow'">
+                                <span v-if="item.completed_at_state">
+                                    {{ new Date(item.completed_at_state).toLocaleDateString() }}
+                                    {{ new Date(item.completed_at_state).toLocaleTimeString() }}
+                                </span>
+                                <span v-else>
+                                    offen
+                                </span>
+                            </v-chip>
+                        </v-card-text>
+                    </v-card>
+                    <!--
+                    <v-card class="my-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_administration, plotData[index - 1]?.responsible_administration)">
+                        <p class="text-caption">Bundesinventurleitung:</p>
+                        {{ item.administrationData ? item.administrationData.name : '' }}
+
+                        <div class="my-2" v-if="!plotData[index - 1] || isDifferent(item.completed_at_administration, plotData[index - 1]?.completed_at_administration)">
+                            <p class="text-caption">Bundesinventurleitung abgeschlossen:</p>
+                            {{ item.completed_at_administration ? new Date(item.completed_at_administration).toLocaleDateString() : '' }}
+                            {{ item.completed_at_administration ? new Date(item.completed_at_administration).toLocaleTimeString() : '' }}
+                        </div>
+                    </v-card>
+                    -->
             </div>
         </v-timeline-item>
         <v-timeline-item
@@ -137,3 +210,19 @@ import { workflowFromRecord } from '../Utils';
         </v-timeline-item>
     </v-timeline>
 </template>
+
+<style scoped>
+    .clickable-timeline-item {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .clickable-timeline-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+        border-radius: 4px;
+    }
+
+    .creation-timeline-item {
+        opacity: 0.7;
+    }
+</style>

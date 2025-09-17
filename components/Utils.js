@@ -183,3 +183,43 @@ export function getClustersAvailable(supabase, organization_id){
                 });
         });
 }
+let troopSave = [];
+export async function getTroopById(supabase, troopId) {
+    if(!troopId || !supabase) return null;
+    if(troopSave[troopId]) {
+        return Promise.resolve(troopSave[troopId]);
+    }
+    return supabase
+        .from('troop')
+        .select('*')
+        .eq('id', troopId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('Error fetching troop:', error);
+                return null;
+            }
+            troopSave[troopId] = data;
+            return data;
+        });
+}
+let companySave = [];
+export async function getOrganizationById(supabase, organizationId) {
+    if(!organizationId || !supabase) return null;
+    if(companySave[organizationId]) {
+        return Promise.resolve(companySave[organizationId]);
+    }
+    return supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', organizationId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('Error fetching organization:', error);
+                return null;
+            }
+            companySave[organizationId] = data;
+            return data;
+        });
+}

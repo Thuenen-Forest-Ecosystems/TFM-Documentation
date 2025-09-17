@@ -15,7 +15,8 @@ console.log('OrganizationButton component loaded');
         access_token.value = session?.access_token;
         user_email.value = session?.user?.email;
         if (session?.user) {
-            fetchUserOrganizations(session.user.id);
+            //fetchUserOrganizations(session.user.id);
+            fetchUsersPermissions(session.user.id);
         }
     });
 
@@ -32,6 +33,19 @@ console.log('OrganizationButton component loaded');
             console.error('Error fetching organizations:', error);
         }
     };
+    const fetchUsersPermissions = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from('users_permissions')
+                .select('*')
+                .eq('user_id', userId);
+            
+            if (error) throw error;
+            console.log('User permissions:', data);
+        } catch (error) {
+            console.error('Error fetching permissions:', error);
+        }
+    };
 
     const _toOrganizations = () => {
         if (typeof window !== 'undefined') {
@@ -40,32 +54,29 @@ console.log('OrganizationButton component loaded');
     };
 </script>
 
-   <template>
-      <div>
-        <h2>Custom Component in Sidebar</h2>
-        <p>This is a custom component rendered in the sidebar.</p>
-      </div>
-    </template>
+<template>
+    <a class="VPLink">
+        <v-select
+            rounded="xl"
+            variant="outlined"
+            density="compact"
+            :items="['California', 'Colorado', 'Florida', 'Georgia', 'Texas', 'Wyoming']">
+        </v-select>
+    </a>
+</template>
 
-<style scoped>
-    .organization-button .VPLink {
-        display: block;
-        padding: 8px 12px;
+<style>
+    .VPLink {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        line-height: var(--vp-nav-height);
+        font-size: 14px;
+        font-weight: 500;
         color: var(--vp-c-text-1);
-        text-decoration: none;
-        cursor: pointer;
-        border-radius: 4px;
-        transition: background-color 0.2s;
+        transition: color 0.25s;
     }
-
-    .organization-button .VPLink:hover {
-        background-color: var(--vp-c-bg-soft);
-    }
-
-    .organization-button .disabled {
-        display: block;
-        padding: 8px 12px;
-        color: var(--vp-c-text-2);
-        opacity: 0.6;
+    .v-input__details{
+        display: none;
     }
 </style>

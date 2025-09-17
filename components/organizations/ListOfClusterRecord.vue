@@ -4,8 +4,10 @@
     ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
+
     import ActionCellRenderer from './ActionCellRenderer.vue';
     import MoreCellRenderer from './MoreCellRenderer.vue';
+
     import DialogResponsible from './DialogResponsible.vue';
     import GeoJsonMap from '../map/GeoJsonMap.vue';
     import ClusterDetails from '../records/ClusterDetails.vue';
@@ -73,7 +75,6 @@ const listOfLookupTables = [
     const globalIsDark = inject('globalIsDark');
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
-    import { useDatabase } from '../../.vitepress/theme/composables/useDatabase'
     import { _ } from 'ajv';
 
     //const { waitForDb } = useDatabase()
@@ -149,16 +150,13 @@ const listOfLookupTables = [
     // Grid Options
     const gridOptions = {
         getRowId: (params) => params.data.plot_id,
-        //rowModelType: 'infinite', // Enable infinite scrolling
-        //cacheBlockSize: 100, // Number of rows per block
-        //maxBlocksInCache: 10, // Maximum number of blocks to cache
+        suppressRowHoverHighlight: false,
+        suppressCellFocus: true,
+        columnHoverHighlight: true,
         suppressMovableColumns: true,
         tooltipShowDelay: 500,
-        rowSelection: {
-            mode: 'multiRow',
-            selectAll: 'filtered',
-            enableClickSelection: true
-        },
+        rowSelection: 'multiple', // Enable multiple row selection
+
         components: {
             actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
             moreCellRenderer: MoreCellRenderer
@@ -208,6 +206,14 @@ const listOfLookupTables = [
     function setColDefs(){
         colDefs.value = [
             {
+                headerCheckboxSelection: true, // Enables checkbox selection in the header
+                checkboxSelection: true, // Enables checkbox selection for rows
+                pinned: 'left', // Pins the column to the left
+                width: 50, // Adjust the width as needed
+                sortable: false,
+                filter: false
+            },
+            {
                 cellRenderer: 'actionCellRenderer', // Custom cell renderer
                 pinned: 'left',
                 width: 50,
@@ -221,6 +227,15 @@ const listOfLookupTables = [
                 sortable: false,
                 filter: false
             },*/
+            {
+                field: 'state_by_user', // Custom cell renderer
+                headerName: 'Status',
+                pinned: 'left',
+                width: 75,
+                sortable: true,
+                filter: true,
+                cellStyle: params => params.value == 'ToDo' ? { color: 'red' } : (params.value == 'Done' ? { color: 'green' } : {})
+            },
             { 
                 field: "plot_id",
                 headerName: "Plot Id",
@@ -462,6 +477,8 @@ const listOfLookupTables = [
 
             return {
                 plot_id: record.plot_id,
+
+                state_by_user: 'ToDo',
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
@@ -544,15 +561,12 @@ const listOfLookupTables = [
             return;
         }
 
-        console.log('Fetching clusters for provided plots', uniqueClusterIds);
-
         cluster.value = [];
         const batchSize = 100; // Adjust batch size based on Supabase limits
         const totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
 
         for (let i = 0; i < uniqueClusterIds.length; i += batchSize) {
             const batch = uniqueClusterIds.slice(i, i + batchSize);
-            console.log(`Fetching batch ${Math.floor(i / batchSize) + 1} of ${totalBatches}`);
 
             try {
                 const { data, error } = await supabase
@@ -1319,7 +1333,7 @@ const listOfLookupTables = [
             >
                 {{ selectedRows.length }} ausgewählte Ecken
             </v-chip>
-            <v-chip
+            <!--<v-chip
                 class="ma-2"
                 color="primary"
                 text-color="white"
@@ -1327,7 +1341,7 @@ const listOfLookupTables = [
                 rounded="xl"
             >
                 {{ displayedRows.length }} gefilterte Ecken
-            </v-chip>
+            </v-chip>-->
             <v-toolbar-title></v-toolbar-title>
             <div v-if="selectedRows.length > 0">
                 <v-btn

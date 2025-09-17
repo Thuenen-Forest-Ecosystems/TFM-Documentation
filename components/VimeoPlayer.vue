@@ -14,6 +14,10 @@
         btnTitle: {
             type: String,
             default: ''
+        },
+        iconOnly: {
+            type: Boolean,
+            default: false
         }
     });
 
@@ -29,11 +33,18 @@
     <v-dialog max-width="800">
         <template v-slot:activator="{ props: activatorProps }">
             <v-btn
+            v-if="!props.iconOnly"
             v-bind="activatorProps"
             color="surface-variant"
             :text="props.btnTitle"
             variant="outlined"
             prepend-icon="mdi-play"
+            rounded="xl"
+            ></v-btn>
+            <v-btn
+            v-else
+            v-bind="activatorProps"
+            icon="mdi-play"
             rounded="xl"
             ></v-btn>
         </template>

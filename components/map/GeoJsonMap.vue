@@ -1,19 +1,16 @@
 <script setup>
     import maplibregl from 'maplibre-gl';
     import 'maplibre-gl/dist/maplibre-gl.css';
-    import { onMounted, watch } from 'vue';
+    import { onMounted, watch, ref } from 'vue';
 
     let map;
+    const basemapToggle = ref(true);
     
     const props = defineProps({
         geojson: {
             type: Object,
             required: true
         },
-        /*selected: {
-            type: Array,
-            default: () => []
-        },*/
         modelValue: {
             type: Boolean,
             default: true
@@ -23,26 +20,70 @@
     const emit = defineEmits(['update:selected']);
 
     // Define the map syle (OpenStreetMap raster tiles)
-    const style = {
-        "version": 8,
-            "sources": {
-            "osm": {
-                    "type": "raster",
-                    "tiles": ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                    "tileSize": 256,
-            "attribution": "&copy; OpenStreetMap Contributors",
-            "maxzoom": 19
+    const styleOSM = {
+        version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        sources: {
+            osm: {
+                type: 'raster',
+                tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: '&copy; OpenStreetMap Contributors',
+                maxzoom: 19
             }
         },
-        "glyphs": "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-        "layers": [
+        layers: [
             {
-            "id": "osm",
-            "type": "raster",
-            "source": "osm" // This must match the source key above
+                id: 'osm',
+                type: 'raster',
+                source: 'osm'
             }
         ]
     };
+
+    const styleSatellite = {
+        version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        sources: {
+            satellite: {
+                type: 'raster',
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+                maxzoom: 19
+            }
+        },
+        layers: [
+            {
+                id: 'satellite',
+                type: 'raster',
+                source: 'satellite'
+            }
+        ]
+    };
+
+    // Function to toggle the basemap style
+    function toggleBasemap() {
+        if (!map) return;
+
+        const newStyle = basemapToggle.value ? styleOSM : styleSatellite;
+
+        // Use 'styledata' event instead of 'style.load'
+        const handleStyleData = (e) => {
+            // Only proceed if this is the final style load (not partial)
+            if (e.dataType === 'style') {
+                refreshLayer(); // Re-add the GeoJSON layer after the style changes
+                updateGeoJsonFeatures(props.geojson); // Pass the actual geojson data
+                
+                // Remove the event listener to prevent memory leaks
+                map.off('styledata', handleStyleData);
+            }
+        };
+        
+        map.on('styledata', handleStyleData);
+        map.setStyle(newStyle); // Dynamically update the map style
+    }
+
     function updateGeoJsonFeatures(_newGeojson = null) {
         if (!map || !map.isStyleLoaded()) return;
 
@@ -76,11 +117,9 @@
         map.getSource('geojson-data').setData(_newGeojson);
         console.log('GeoJSON data updated on map', _newGeojson);
     }
-    function refreshLayer() {
-        if (map && map.isStyleLoaded()) {
-            console.log('Map refreshed with new data or selection');
 
-            
+    function refreshLayer() {
+        if (map) {
 
             // Remove the existing source and layer if they already exist
             if (map.getSource('geojson-data')) {
@@ -96,49 +135,56 @@
             // geojson is featurecollection of points
             map.addSource('geojson-data', {
                 type: 'geojson',
-                data: props.geojson,
-                //cluster: true,
-                //clusterMaxZoom: 14, // Max zoom to cluster points on
-                //clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
+                data: props.geojson
             });
+
             map.addLayer({
                 id: 'geojson-layer',
-                type: 'circle', // Use 'circle' for points
+                type: 'circle',
                 source: 'geojson-data',
                 paint: {
                     'circle-radius': [
                         'interpolate', ['linear'], ['zoom'],
                         0, 1,
-                        5, 3,    // At zoom level 0, radius is 2
-                        13, 5   // At zoom level 15, radius is 20
+                        5, 3,
+                        13, 5
                     ],
-                    'circle-color': ['get', 'color'], // Color of the circle
-                    'circle-opacity': ['get', 'opacity'], // Use the opacity property
-                    'circle-stroke-color': '#ffff00', // Use the strokeColor property
-                    'circle-stroke-width': ['get', 'strokeWidth'], // Set the border width
-                }
-            });
-            // labels layer
-            map.addLayer({
-                id: 'geojson-labels',
-                type: 'symbol', // Use 'symbol' for labels
-                source: 'geojson-data',
-                filter: [">=", ["zoom"], 14], // zeige layer erst ab zoomstufe
-                layout: {
-                    'text-field': ['concat', ['get', 'cluster_name'],'|',['get', 'plot_name']],
-                    'text-allow-overlap': true,
-                    'text-size': 15,
-                    'text-font': ['Open Sans Regular'], // nötg wegen der Glyphen
-                    'text-anchor': 'bottom', // Der Text wird unten vom Punkt platziert
-                    "text-offset": [0, 2] // Verschiebt den Text um 2 Pixel nach unten
-                },
-                paint: {
-                    'text-color': '#000',
-                    'text-halo-width': 5,
-                    'text-halo-color': '#fff'
+                    'circle-color': ['get', 'color'],
+                    'circle-opacity': ['get', 'opacity'],
+                    'circle-stroke-color': '#ffff00',
+                    'circle-stroke-width': ['get', 'strokeWidth'],
                 }
             });
 
+            // Add labels layer with error handling
+            try {
+                // Wait a bit to ensure glyphs are loaded
+                setTimeout(() => {
+                    if (map && map.isStyleLoaded() && map.getSource('geojson-data')) {
+                        map.addLayer({
+                            id: 'geojson-labels',
+                            type: 'symbol',
+                            source: 'geojson-data',
+                            filter: [">=", ["zoom"], 14],
+                            layout: {
+                                'text-field': ['concat', ['get', 'cluster_name'], '|', ['get', 'plot_name']],
+                                'text-allow-overlap': true,
+                                'text-size': 15,
+                                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                                'text-anchor': 'bottom',
+                                'text-offset': [0, 2]
+                            },
+                            paint: {
+                                'text-color': '#000',
+                                'text-halo-width': 5,
+                                'text-halo-color': '#fff'
+                            }
+                        });
+                    }
+                }, 100);
+            } catch (error) {
+                console.warn('Could not add labels layer:', error);
+            }
         }
     }
 
@@ -159,12 +205,6 @@
             const plotId = clickedFeature.properties.plot_id;
 
             emit('update:selected', clickedFeature.properties);
-            /* Check if the feature is already selected
-            const isSelected = props.selected.find(f => f.plot_id === plotId);
-            if (!isSelected) {
-                // Add the feature to the selected array
-                emit('update:selected', clickedFeature.properties);
-            }*/
         }
     }
 
@@ -172,16 +212,9 @@
         // OSM
         map = new maplibregl.Map({
             container: 'map',
-            style: style,
+            style: styleOSM,
             center: [10, 51], // germany
             zoom: 5
-        });
-
-        // Create a popup, but don't add it to the map yet.
-        const popup = new maplibregl.Popup({
-            
-            closeButton: false,
-            closeOnClick: false
         });
         
         map.on('load', () => {
@@ -227,16 +260,45 @@
     });
 
     watch(() => [props.geojson], (newGeojson) => {
-        console.log('GeoJSON prop changed, updating map');
+
         if (!map || !map.isStyleLoaded()) return;
-        console.log('New GeoJSON:', newGeojson);
+
         updateGeoJsonFeatures( newGeojson[0] );
     }, { deep: true });
     watch(() => props.modelValue, (newVal) => {
         if (newVal) focusMapToData();
     });
+
+    // Watch for changes in the basemap toggle
+    watch(basemapToggle, () => {
+        toggleBasemap();
+    });
 </script>
 
 <template>
-    <div id="map" style="width: 100%; height: 100%;"></div>
+    <div class="geojson-map-container" :style="$attrs.style">
+        <v-switch
+            v-model="basemapToggle"
+            class="basemap-switch"
+            color="primary"
+            hide-details
+            inset
+        ></v-switch>
+        <div id="map" style="width: 100%; height: 100%;"></div>
+    </div>
 </template>
+
+<style scoped>
+    .geojson-map-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .basemap-switch {
+        position: absolute;
+        top: 0px;
+        right: 10px;
+        z-index: 1;
+    }
+</style>

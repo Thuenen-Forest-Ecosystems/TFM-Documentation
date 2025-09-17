@@ -17,6 +17,7 @@ layout: home
     // import ListOfLose from '../../components/organizations/ListOfLose.vue';
     import RecordsOverview from '../../components/RecordsOverview.vue';
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
+    import OrganizationsStatistics from '../../components/OrganizationsStatistics.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -33,7 +34,7 @@ layout: home
     const cluster = ref([]);
     const loadingClusters = ref(false);
 
-    const tab = ref('3'); // Default tab
+    const tab = ref('0'); // Default tab
 
     const _getOrganizationById = async (organizationId) => {
         const { data, error } = await supabase.from('organizations').select('*').eq('id', organizationId).single();
@@ -84,7 +85,7 @@ layout: home
         }
         if (sessionData && sessionData.session) {
 
-            _requestcluster();
+            //_requestcluster();
 
             user.value = sessionData.session.user;
 
@@ -128,36 +129,35 @@ layout: home
     }
 </script>
 
-
 <Firewall>
 <v-app style="background-color: transparent !important;">
-<v-btn density="compact" icon @click="toEditOrganization(currentOrganization)" class="position-absolute top-0 right-0">
+<!--<v-btn density="compact" icon @click="toEditOrganization(currentOrganization)" class="position-absolute top-0 right-0">
         <v-icon>mdi-pencil</v-icon>
-    </v-btn>
-<div class="mt-11" v-if="currentOrganization && currentOrganization.id">
+    </v-btn>-->
+<div v-if="currentOrganization && currentOrganization.id">
 
+<v-toolbar color="transparent" flat>
+    <v-toolbar-title>{{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}</v-toolbar-title>
+        <VimeoPlayer :btnTitle="'Tutorial'" :title="'Cluster-Verwaltung für die CI/BWI'" :iconOnly="false" />
+        <v-btn icon @click="toEditOrganization(currentOrganization)">
+            <v-icon>mdi-pencil</v-icon>
+        </v-btn>
+        <template v-slot:extension>
+            <v-tabs v-model="tab" align-tabs="center" class="mt-6">
+                <!--<v-tab value="1">Mitarbeitende</v-tab>-->
+                <v-tab value="0">Statistics</v-tab>
+                <v-tab value="3">Ecken</v-tab>
+                <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Organisationen' : 'Dienstleister'}}</v-tab>
+                <v-tab value="5">Trupps</v-tab>
+            </v-tabs>
+        </template>
+</v-toolbar>
 
-<div class="text-center mt-4">
-    <p class="text-h2 text-weight-bold">
-        {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
-    </p>
-    <p class="mb-4">
-        Verwalten Sie Mitarbeitende, Cluster, Lose und Dienstleister.
-    </p>
-    <VimeoPlayer :btnTitle="'Info Video abspielen'" :title="'Cluster-Verwaltung für die CI/BWI'" />
-   
-</div>
-
- 
-
-<v-tabs v-model="tab" align-tabs="center" class="mt-6">
-    <!--<v-tab value="1">Mitarbeitende</v-tab>-->
-    <v-tab value="3">Ecken</v-tab>
-    <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Organisationen' : 'Dienstleister'}}</v-tab>
-    <v-tab value="5">Trupps</v-tab>
-</v-tabs>
 <v-tabs-window v-model="tab" class="mt-4">
-    <v-tabs-window-item value="1">
+    <v-tabs-window-item value="0">
+        <OrganizationsStatistics :organization_id="permission.organization_id" />
+    </v-tabs-window-item>
+    <!--<v-tabs-window-item value="1">
         <v-card variant="tonal" class="mb-4">
             <OrganizationsAdmins title="Administratoren" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="true" key="admin" />
             <p class="text-body-2 text-medium-emphasis px-2 ma-1" style="background-color:rgba(0, 0, 0, 0.04)">
@@ -177,10 +177,10 @@ layout: home
             title="Synchronisation läuft"
             type="warning"
         ></v-alert>
-    </v-tabs-window-item>
+    </v-tabs-window-item>-->
     <v-tabs-window-item value="3">
         <RecordsOverview
-            v-if="organizationId && cluster.length"
+            v-if="organizationId"
             :organization_id="currentOrganization.id"
             :organization_type="currentOrganization.type"
             :cluster="cluster"

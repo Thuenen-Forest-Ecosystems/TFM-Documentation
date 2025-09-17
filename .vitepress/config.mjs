@@ -16,7 +16,8 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Verfahren', link: '/process/documents' },
       { text: 'API', link: '/api/getting-started' },
-      { component: 'DashboardButton'}
+      { component: 'DashboardButton'},
+      { component: 'OrganizationButton'}
     ],
 
     sidebar: {
@@ -65,7 +66,7 @@ export default defineConfig({
         {
           text: 'Inventory',
           items: [
-            //{ text: 'Statistics', link: '/dashboard/inventory/stats' },
+            { text: 'Statistics', link: '/dashboard/inventory/stats' },
             { text: 'Inventory (Download)', link: '/dashboard/inventory/download' }
           ]
         }/*,

@@ -41,6 +41,8 @@
     const validate = ref(null);
     const initialLoading = ref(false);
 
+    const selectedHistoricalRecord = ref(null);
+
     const toggle_data_view = ref(0);
 
     async function fetchRecordsByCluster(_clusterId) {
@@ -119,6 +121,11 @@
         }
     });
 
+    function onHistorySelect(record, event) {
+        console.log('Selected record from history:', record, event);
+        selectedHistoricalRecord.value = record;
+    }
+
 </script>
 
 <template>
@@ -134,40 +141,77 @@
                 </v-tab>
             </v-tabs>
         </v-card>
-        <v-tabs-window v-model="tab" class="ma-11">
+        <v-tabs-window v-model="tab">
             <v-tabs-window-item
                 v-for="record in records"
                 :key="record.id"
                 :value="record.id"
             >
-                <v-card variant="tonal">
-                    <v-toolbar color="transparent">
-                        <v-toolbar-title>Validation</v-toolbar-title>
-                        <template v-slot:append>
-                            <v-select
-                                rounded="xl"
-                                variant="outlined"
-                                density="compact"
-                                :items="versions"
-                                v-model="selectedVersion"
-                                item-title="name"
-                            ></v-select>
-                        </template>
-                    </v-toolbar>
-                    <v-card-text>
-                        <ValidateByPlot :record="record" :validate="validate" :tfm="tfm" :version="selectedVersion" />
-                    </v-card-text>
-                </v-card>
-                <RecordDetail :record="record" :schema="schema" class="mt-11" />
-                <v-card class="mt-11"  variant="tonal">
-                    <RecordToDo :record="record" class="mb-11" />
-                    <v-card-text>
-                        <History :plot_id="record.plot_id" />
-                    </v-card-text>
-                </v-card>
-                <div class="text-caption ma-11 text-center">
-                    {{ record.id }}
+            <v-app>
+                <div class="full-height d-flex">
+                    <v-navigation-drawer  :width="400" expand-on-hover
+                        permanent
+                        rail>
+                        <History :plot_id="record.plot_id" @select:record="onHistorySelect" />
+                    </v-navigation-drawer>
                 </div>
+
+                <div style="margin-left:70px !important;" class="ma-3">
+                    <!--<v-card variant="tonal">
+                        <RecordToDo :record="record" class="mb-11" />
+
+                        <v-toolbar color="transparent">
+                            <v-toolbar-title>Validation</v-toolbar-title>
+                            <template v-slot:append>
+                                <v-select
+                                    rounded="xl"
+                                    variant="outlined"
+                                    density="compact"
+                                    :items="versions"
+                                    v-model="selectedVersion"
+                                    item-title="name"
+                                ></v-select>
+                            </template>
+                        </v-toolbar>
+                        <v-card-text>
+                            <ValidateByPlot :record="record" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                        </v-card-text>
+                    </v-card>-->
+
+                    
+                    <v-card variant="tonal" v-if="selectedHistoricalRecord">
+                        <RecordToDo :record="selectedHistoricalRecord" class="mb-11" />
+
+                        <v-toolbar color="transparent">
+                            <v-toolbar-title>Validation</v-toolbar-title>
+                            <template v-slot:append>
+                                <v-select
+                                    rounded="xl"
+                                    variant="outlined"
+                                    density="compact"
+                                    :items="versions"
+                                    v-model="selectedVersion"
+                                    item-title="name"
+                                ></v-select>
+                            </template>
+                        </v-toolbar>
+                        <v-card-text>
+                            <ValidateByPlot :record="selectedHistoricalRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                        </v-card-text>
+
+                        <RecordDetail :record="selectedHistoricalRecord" :schema="schema" class="mt-11" />
+                    </v-card>
+
+                    <!--<v-card class="mt-11"  variant="tonal">
+                        <v-card-text>
+                            <History :plot_id="record.plot_id" />
+                        </v-card-text>
+                    </v-card>-->
+                    <div class="text-caption ma-11 text-center">
+                        {{ record.id }}
+                    </div>
+                </div>
+                </v-app>
             </v-tabs-window-item>
         </v-tabs-window>
         <!--Loader-->

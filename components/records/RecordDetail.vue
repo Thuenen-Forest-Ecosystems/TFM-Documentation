@@ -29,9 +29,11 @@
 </script>
 
 <template>
-    <v-card class="mt-11" variant="tonal">
+    
         <v-toolbar color="transparent">
-            <v-toolbar-title>Aktuelle Daten</v-toolbar-title>
+            <v-toolbar-title v-if="props.record.record_id">{{ new Date(props.record.created_at).toLocaleDateString() }} {{ new Date(props.record.created_at).toLocaleTimeString() }}</v-toolbar-title>
+            <v-toolbar-title v-else>{{ new Date(props.record.updated_at).toLocaleDateString() }} {{ new Date(props.record.updated_at).toLocaleTimeString() }}</v-toolbar-title>
+            
             <template v-slot:append>
                 <v-btn-toggle density="compact" v-model="toggle_data_view" rounded="xl" variant="outlined">
                     <v-btn>
@@ -70,5 +72,5 @@
                 <GridView v-if="toggle_data_view === 0" :data="props.record.previous_properties" :schema="props.schema" />
             </v-tabs-window-item>
         </v-tabs-window>
-    </v-card>
+   
 </template>
