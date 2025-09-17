@@ -17,7 +17,7 @@ export default defineConfig({
       { text: 'Verfahren', link: '/process/documents' },
       { text: 'API', link: '/api/getting-started' },
       { component: 'DashboardButton'},
-      { component: 'OrganizationButton'}
+      
     ],
 
     sidebar: {
