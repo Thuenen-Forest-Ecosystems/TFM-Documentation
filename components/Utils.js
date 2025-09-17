@@ -223,3 +223,89 @@ export async function getOrganizationById(supabase, organizationId) {
             return data;
         });
 }
+
+export async function apiRecords(supabase, tableName, organizationId, organizationType) {
+    if(!supabase || !tableName || !organizationId || !organizationType) {   
+        console.warn('Missing parameters for apiRecords:', { supabase, tableName, organizationId, organizationType });
+        return [];
+    }
+    let companyType = null; //'responsible_state'; // responsible_administration
+    let filterRow = null; //'provider_los'; 
+
+    switch (organizationType) {
+        case 'root':
+            companyType = 'responsible_administration';
+            filterRow = 'administration_los';
+            break;
+        case 'country':
+            companyType = 'responsible_state';
+            filterRow = 'state_los';
+            break;
+        case 'provider':
+            companyType = 'responsible_provider';
+            filterRow = 'provider_los';
+            break;
+    }
+
+    if (!companyType || !filterRow) {
+        console.warn('No company type or filter row defined for organization type:', organizationType);
+        return [];
+    }
+
+    let allData = [];
+    let currentPage = 0;
+    const pageSize = 10000; // Choose an appropriate page size
+
+    while (true) {
+        const start = currentPage * pageSize;
+        const end = start + pageSize - 1;
+
+        const { data, error } = await supabase
+            .from(tableName)
+            .select(`
+                cluster_id,
+                cluster_name,
+                plot_name,
+                plot_id,
+                responsible_state,
+                responsible_provider,
+                responsible_administration,
+                responsible_troop,
+                is_valid,
+                administration_los,
+                state_los,
+                provider_los,
+                troop_los,
+                federal_state,
+                growth_district,
+                forest_status_bwi2022,
+                forest_status_ci2017,
+                forest_status_ci2012,
+                accessibility,
+                forest_office,
+                property_type,
+                ffh_forest_type_field,
+                center_location
+            `)
+            .eq(companyType, organizationId)
+            //.is(filterRow, null) // Ensure the filterRow is null
+            //.is('troop_los', null) // Ensure troop_los is also null
+            .range(start, end) // Use range for pagination
+            .order('cluster_id', { ascending: true }); // <<-- deterministic order
+
+        if (error) {
+            console.error('Error fetching data:', error);
+        return null;
+        }
+
+        if (data.length === 0) {
+            break; // No more data
+        }
+
+        allData = allData.concat(data);
+        currentPage++;
+    }
+
+    return allData;
+    
+}
