@@ -87,6 +87,7 @@
                     return [];
                 }
                 users.value = data || [];
+                console.log('Fetched users:', users.value);
             });
     }
     
@@ -281,7 +282,9 @@
         </v-card-item>
         <v-card-text>
             <v-list-item v-for="userId in troop.user_ids" :key="userId">
-                <v-list-item-title>{{ users.find(user => user.id === userId)?.email || 'Unknown User' }}</v-list-item-title>
+                <v-list-item-title>{{ users.find(user => user.users_profile.id === userId)?.users_profile?.email || 'E-Mail noch nicht definiert' }}</v-list-item-title>
+                <v-list-item-subtitle v-if="!users.find(user => user.users_profile.id === userId)?.users_profile?.email">{{ userId }}</v-list-item-subtitle>
+
                 <template v-slot:append>
                     <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserFromTroop(e, userId, troop.id)"></v-btn>
                 </template>

@@ -295,7 +295,7 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
 
         if (error) {
             console.error('Error fetching data:', error);
-        return null;
+            return null;
         }
 
         if (data.length === 0) {

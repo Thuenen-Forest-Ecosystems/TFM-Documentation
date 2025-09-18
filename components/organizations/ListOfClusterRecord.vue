@@ -155,13 +155,12 @@ const listOfLookupTables = [
         columnHoverHighlight: true,
         suppressMovableColumns: true,
         tooltipShowDelay: 500,
-        rowSelection: {
+        /*rowSelection: {
             mode: 'multiRow',
             headerCheckbox: true,
             selectAll: 'filtered',
-            enableClickSelection: true,
-            headerCheckbox: true
-        },
+            enableClickSelection: true
+        },*/
         rowSelection: 'multiple', // Use legacy string value for compatibility
 
 
