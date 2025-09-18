@@ -1,15 +1,15 @@
 <script setup>
-console.log('OrganizationButton component loaded');
+
     import { ref, onMounted, getCurrentInstance, inject } from 'vue'
     import { withBase } from 'vitepress'
 
     const access_token = ref(null);
     const user_email = ref(null);
     const user_organizations = ref([]);
+    const permissions = ref([]);
     
     const instance = getCurrentInstance();
-    // Use the injected Supabase client instead of global properties
-    const supabase = inject('supabase');
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     supabase.auth.onAuthStateChange((event, session) => {
         access_token.value = session?.access_token;
@@ -41,7 +41,8 @@ console.log('OrganizationButton component loaded');
                 .eq('user_id', userId);
             
             if (error) throw error;
-            console.log('User permissions:', data);
+            permissions.value = data || [];
+            console.log('User permissions:', permissions.value);
         } catch (error) {
             console.error('Error fetching permissions:', error);
         }
@@ -55,7 +56,7 @@ console.log('OrganizationButton component loaded');
 </script>
 
 <template>
-    <a class="VPLink">
+    <a class="VPLink" v-if="access_token && permissions.length > 1">
         <v-select
             rounded="xl"
             variant="outlined"

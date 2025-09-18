@@ -155,7 +155,15 @@ const listOfLookupTables = [
         columnHoverHighlight: true,
         suppressMovableColumns: true,
         tooltipShowDelay: 500,
-        rowSelection: 'multiple', // Enable multiple row selection
+        rowSelection: {
+            mode: 'multiRow',
+            headerCheckbox: true,
+            selectAll: 'filtered',
+            enableClickSelection: true,
+            headerCheckbox: true
+        },
+        rowSelection: 'multiple', // Use legacy string value for compatibility
+
 
         components: {
             actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
@@ -206,12 +214,17 @@ const listOfLookupTables = [
     function setColDefs(){
         colDefs.value = [
             {
-                headerCheckboxSelection: true, // Enables checkbox selection in the header
+                headerCheckboxSelection: true, // Enables "select all" checkbox in header
                 checkboxSelection: true, // Enables checkbox selection for rows
+                headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
+                //checkboxSelectionFilteredOnly: true, // This ensures only filtered rows are selectable
                 pinned: 'left', // Pins the column to the left
-                width: 50, // Adjust the width as needed
+                width: 50,
                 sortable: false,
-                filter: false
+                filter: false,
+                suppressHeaderMenuButton: true,
+                lockPosition: 'left',
+                suppressMovable: true
             },
             {
                 cellRenderer: 'actionCellRenderer', // Custom cell renderer
@@ -654,7 +667,7 @@ const listOfLookupTables = [
         let allData = [];
         let currentPage = 0;
         const pageSize = 10000; // Choose an appropriate page size
-        console.log('companyType', companyType, organizationId);
+
         while (true) {
             const start = currentPage * pageSize;
             const end = start + pageSize - 1;
@@ -751,7 +764,6 @@ const listOfLookupTables = [
             console.warn('No company type or filter row defined for organization type:', props.organization_type);
             return;
         }
-        console.log(companyType, filterRow);
         
         fetchAllDataPaginated('view_records_details', props.organization_id, companyType, filterRow)
             .then(async (records) => {
@@ -789,7 +801,9 @@ const listOfLookupTables = [
     }
 
     function onSelectionChanged(event) {
-        selectedRows.value = event.api.getSelectedRows();
+        selectedRows.value = currentGrid.value.api.getSelectedRows();
+        console.log('Selected Rows:', selectedRows.value);
+        //selectedRows.value = event.api.getSelectedRows();
         geojsonFeatureCollection.value.features.forEach(feature => {
             feature.properties.isSelected = selectedRows.value.some(row => row.plot_id === feature.properties.record.plot_id);
         });
@@ -1307,13 +1321,15 @@ const listOfLookupTables = [
     >
     </ag-grid-vue>
     <div v-else-if="loading" class="text-center ma-11">
-        <v-progress-circular
+        <v-skeleton-loader  type="table" />
+        <!--<v-progress-circular
             indeterminate
             color="primary"
             size="30"
             width="2"
         ></v-progress-circular>
-        <p class="mt-2">Cluster laden...</p>
+        
+        <p class="mt-2">Cluster laden...</p>-->
     </div>
     </v-card-text>
     <v-card-actions v-if="!loading">

@@ -155,7 +155,7 @@ layout: home
 
 <v-tabs-window v-model="tab" class="mt-4">
     <v-tabs-window-item value="0">
-        <OrganizationsStatistics :organization_id="permission.organization_id" />
+        <OrganizationsStatistics :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" />
     </v-tabs-window-item>
     <!--<v-tabs-window-item value="1">
         <v-card variant="tonal" class="mb-4">

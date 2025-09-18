@@ -21,7 +21,7 @@ layout: page
 </script>
 
 <Firewall>
-    <v-toolbar>
+    <v-toolbar color="transparent" flat>
         <v-toolbar-title>Unternehmen verwalten</v-toolbar-title>
         <template v-slot:prepend>
             <v-btn icon @click="goBack">
@@ -29,7 +29,7 @@ layout: page
             </v-btn>
         </template>
     </v-toolbar>
-    <v-card variant="tonal">
+    <v-card variant="tonal" class="ma-4">
         <OrganizationsAdmins title="Administratoren" :organization_id="organizationId" :is_admin="true" :showAdmins="true" key="admin" />
         <p class="text-body-2 text-medium-emphasis px-2 ma-1" style="background-color:rgba(0, 0, 0, 0.04)">
             Administratoren können Berechtigungen verwalten.

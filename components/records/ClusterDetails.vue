@@ -1,7 +1,7 @@
 
 <script setup>
 
-    import { onMounted, ref, getCurrentInstance } from 'vue';
+    import { onMounted, ref, getCurrentInstance, watch } from 'vue';
     import Firewall from '../../components/Firewall.vue';
     import History from '../../components/records/History.vue';
     import ValidateByPlot from '../../components/validation/ValidateByPlot.vue';
@@ -9,18 +9,22 @@
     import RecordDetail from './RecordDetail.vue';
 
     import Ajv from 'ajv';
+    import VersionSelection from '../validation/VersionSelection.vue';
+    
+
     const ajv = new Ajv({
         allErrors: true,
         strict: false
     });
-    const versions = [{
-        id: 'v27',
-        name: 'Version 27'
-    }, {
-        id: 'v28',
-        name: 'Version 28'
-    }]
-    const selectedVersion = ref(versions[0]);
+    
+    const selectedVersion = ref(null);
+
+    // Optional: Watch for changes
+    watch(selectedVersion, (newVersion) => {
+        console.log('Selected version changed:', newVersion);
+        fetchSchemaFromSupabaseStorage();
+        // Trigger any additional logic here
+    });
 
     const props = defineProps({
         clusterId: {
@@ -66,7 +70,7 @@
         const { data, error } = await supabase
             .storage
             .from('validation')
-            .download('v27/bundle.umd.js');
+            .download('v31/bundle.umd.js');
 
         if (error) {
             console.error('Error fetching plausibility:', error);
@@ -84,10 +88,16 @@
         }
     }
     async function fetchSchemaFromSupabaseStorage() {
+        if (!selectedVersion.value || !selectedVersion.value.directory) {
+            console.warn('No version selected, skipping schema fetch.', selectedVersion.value);
+            schema.value = null;
+            validate.value = null;
+            return;
+        }
         const { data, error } = await supabase
             .storage
             .from('validation')
-            .download(`${selectedVersion.value.id}/validation.json`);
+            .download(`${selectedVersion.value.directory}/validation.json`);
 
         if (error) {
             console.error('Error fetching schema:', error);
@@ -100,6 +110,8 @@
             schema.value = schemaJson.properties?.plot?.items || null;
 
             validate.value = ajv.compile(schema.value);
+
+            console.log('Loaded schema and compiled validator:', schema.value, validate.value);
 
         } catch (error) {
             console.error('Error parsing schema:', error);
@@ -122,7 +134,6 @@
     });
 
     function onHistorySelect(record, event) {
-        console.log('Selected record from history:', record, event);
         selectedHistoricalRecord.value = record;
     }
 
@@ -149,7 +160,7 @@
             >
             <v-app>
                 <div class="full-height d-flex">
-                    <v-navigation-drawer  :width="400" expand-on-hover
+                    <v-navigation-drawer  :width="420" expand-on-hover
                         permanent
                         rail>
                         <History :plot_id="record.plot_id" @select:record="onHistorySelect" />
@@ -185,17 +196,10 @@
                         <v-toolbar color="transparent">
                             <v-toolbar-title>Validation</v-toolbar-title>
                             <template v-slot:append>
-                                <v-select
-                                    rounded="xl"
-                                    variant="outlined"
-                                    density="compact"
-                                    :items="versions"
-                                    v-model="selectedVersion"
-                                    item-title="name"
-                                ></v-select>
+                                <VersionSelection v-model="selectedVersion" />
                             </template>
                         </v-toolbar>
-                        <v-card-text>
+                        <v-card-text v-if="selectedHistoricalRecord && validate && tfm">
                             <ValidateByPlot :record="selectedHistoricalRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" />
                         </v-card-text>
 
