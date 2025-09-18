@@ -1428,7 +1428,7 @@ const listOfLookupTables = [
             <v-toolbar-title></v-toolbar-title>
             <div v-if="selectedRows.length > 0">
                 <v-btn
-                    v-if="props.organization_type !== 'troop'"
+                    v-if="props.organization_type !== 'provider'"
                     class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-file-download"

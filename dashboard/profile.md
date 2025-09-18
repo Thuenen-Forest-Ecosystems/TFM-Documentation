@@ -105,54 +105,37 @@
                 </v-avatar>
             </template>
             <v-list-item-title>{{user['email']}}</v-list-item-title>
-
-<template v-slot:append>
-<v-tooltip text="Organization Admin">
-    <template v-slot:activator="{ props }">
-        <v-icon
-            v-if="users_profile['is_organization_admin']"
-            icon="mdi-shield-crown"
-            variant="text"
-            v-bind="props"
-        ></v-icon>
-    </template>
-</v-tooltip>
-</template>
-
-</v-list-item>
-</v-list>
+            <v-list-item-subtitle>{{users_profile['id']}}</v-list-item-subtitle>
+        </v-list-item>
+    </v-list>
+    <v-list>
+        <v-list-item @click="_toChangeEmail">
+            <v-list-item-title>E-Mailadresse ändern</v-list-item-title>
+            <v-list-item-subtitle></v-list-item-subtitle>
+            <template v-slot:append>
+                <v-btn
+                    v-if="users_profile['is_organization_admin']"
+                    icon="mdi-chevron-right"
+                    variant="text"
+                ></v-btn>
+            </template>
+        </v-list-item>
+        <v-list-item  @click="_toChangePassword">
+            <v-list-item-title>Passwort ändern</v-list-item-title>
+            <v-list-item-subtitle></v-list-item-subtitle>
+            <template v-slot:append>
+                <v-btn
+                    v-if="users_profile['is_organization_admin']"
+                    icon="mdi-chevron-right"
+                    variant="text"
+                ></v-btn>
+            </template>
+        </v-list-item>
+    </v-list>
 </v-card>
 
-
-<v-list>
-    <v-list-subheader>Account</v-list-subheader>
-    <v-list-item @click="_toChangeEmail">
-        <v-list-item-title>E-Mailadresse ändern</v-list-item-title>
-        <v-list-item-subtitle></v-list-item-subtitle>
-        <template v-slot:append>
-            <v-btn
-                v-if="users_profile['is_organization_admin']"
-                icon="mdi-chevron-right"
-                variant="text"
-            ></v-btn>
-        </template>
-    </v-list-item>
-    <v-list-item  @click="_toChangePassword">
-        <v-list-item-title>Passwort ändern</v-list-item-title>
-        <v-list-item-subtitle></v-list-item-subtitle>
-        <template v-slot:append>
-            <v-btn
-                v-if="users_profile['is_organization_admin']"
-                icon="mdi-chevron-right"
-                variant="text"
-            ></v-btn>
-        </template>
-    </v-list-item>
-</v-list>
-
-<v-card class="my-4">
+<v-card class="my-4" title="Kohlenstoffinventur 2027">
     <v-list>
-        <v-list-subheader>Kohlenstoffinventur 2027</v-list-subheader>
         <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
             <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
             <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
