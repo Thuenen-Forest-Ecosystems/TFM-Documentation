@@ -4,6 +4,8 @@
     ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
     import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
+    import { AG_GRID_LOCALE_DE } from '@ag-grid-community/locale';
+
 
     import ActionCellRenderer from './ActionCellRenderer.vue';
     import MoreCellRenderer from './MoreCellRenderer.vue';
@@ -149,6 +151,7 @@ const listOfLookupTables = [
 
     // Grid Options
     const gridOptions = {
+        localeText: AG_GRID_LOCALE_DE,
         getRowId: (params) => params.data.plot_id,
         suppressRowHoverHighlight: false,
         suppressCellFocus: true,
@@ -288,6 +291,16 @@ const listOfLookupTables = [
                 cellEditorParams: {
                     values: [...troops.value.map(troop => troop.name), null],
                 }
+            },
+            {
+                field: "updated_at",
+                headerName: "letzte Änderung",
+                filter: true,
+                sortable: true,
+                tooltipField: "updated_at",
+                cellDataType: "dateTime",
+                filter: "agDateColumnFilter",
+                valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
             },
             {
                 field: "responsible_state",
@@ -495,6 +508,8 @@ const listOfLookupTables = [
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
 
+                updated_at: record.updated_at,
+
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
                 responsible_troop: troops.value.find(troop => troop.id === record.responsible_troop)?.name || record.responsible_troop,
@@ -678,6 +693,7 @@ const listOfLookupTables = [
                     cluster_name,
                     plot_name,
                     plot_id,
+                    updated_at,
                     responsible_state,
                     responsible_provider,
                     responsible_administration,

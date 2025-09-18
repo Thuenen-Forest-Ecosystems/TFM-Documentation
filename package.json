@@ -21,6 +21,7 @@
     "wkt": "^0.1.1"
   },
   "dependencies": {
+    "@ag-grid-community/locale": "^34.2.0",
     "@handsontable/vue3": "^16.0.1",
     "@powersync/vue": "^0.2.4",
     "@powersync/web": "^1.23.0",
