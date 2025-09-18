@@ -77,7 +77,8 @@ const listOfLookupTables = [
     const globalIsDark = inject('globalIsDark');
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
 
-    import { _ } from 'ajv';
+    //import { _ } from 'ajv';
+    import FinishDialog from './FinishDialog.vue';
 
     //const { waitForDb } = useDatabase()
     const lookupTablesValue = ref({});
@@ -95,6 +96,7 @@ const listOfLookupTables = [
     const snackbarColor = ref('info');
 
     const responsibleDialog = ref(false);
+    const finishDialog = ref(false);
 
     const emit = defineEmits(['confirm']);
 
@@ -171,29 +173,11 @@ const listOfLookupTables = [
             actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
             moreCellRenderer: MoreCellRenderer
         },
-        /*onCellValueChanged: async (event) => {
-            const columnId = event.colDef.field;
-            const data = event.data;
-
-            console.log(data)
-
-            if(event.newValue === event.oldValue || !data.plot_id) return;
-
-            
-
-            const newValue = event.newValue;
-            const newValueId = troops.value.find(troop => troop.name === newValue)?.id;
-            // confirm()
-            if(confirm(`Change Aufnahmetrupp to ${newValue}?`)) {
-                saveTroopResponsible('responsible_troop', newValueId || null, data.plot_id);
-            }else{
-                // set to old without triggering onCellValueChanged
-                console.log('revert', dbData.value)
-                rowData.value = JSON.parse(JSON.stringify(dbData.value));
-                refreshCells();
-            }
-
-        }*/
+        defaultColDef: {
+            initialWidth: 215,
+            wrapHeaderText: true,
+            autoHeaderHeight: true,
+        },
     }
     async function saveTroopResponsible(column, value, id){
         const {data, error} = await supabase
@@ -246,7 +230,7 @@ const listOfLookupTables = [
                 field: 'state_by_user', // Custom cell renderer
                 headerName: 'Status',
                 pinned: 'left',
-                width: 75,
+                width: 100,
                 sortable: true,
                 filter: true,
                 cellStyle: params => params.value == 'ToDo' ? { color: 'red' } : (params.value == 'Done' ? { color: 'green' } : {})
@@ -280,17 +264,50 @@ const listOfLookupTables = [
                 width: 95,
             },
             {
-                field: "responsible_troop",
-                headerName: "Aufnahmetrupp",
-                filter: true,
-                sortable: true,
-                pinned: 'right',
-                tooltipField: "responsible_troop",
-                editable: true,
-                cellEditor: 'agSelectCellEditor',
-                cellEditorParams: {
-                    values: [...troops.value.map(troop => troop.name), null],
-                }
+                headerName: 'Trupp',
+                children: [
+                    {
+                        columnGroupShow: 'closed',
+                        field: "responsible_troop",
+                        headerName: "Aufnahmetrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        tooltipField: "responsible_troop",
+                        editable: true,
+                        cellEditor: 'agSelectCellEditor',
+                        cellEditorParams: {
+                            values: [...troops.value.map(troop => troop.name), null],
+                        }
+                    },
+                    {
+                        columnGroupShow: 'open', 
+                        field: "responsible_troop",
+                        headerName: "Aufnahmetrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        tooltipField: "responsible_troop",
+                        editable: true,
+                        cellEditor: 'agSelectCellEditor',
+                        cellEditorParams: {
+                            values: [...troops.value.map(troop => troop.name), null],
+                        }
+                    },
+                    {
+                        columnGroupShow: 'open', 
+                        field: 'completed_at_troop',
+                        headerName: "Abgeschlossen (Trupp)",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        headerTooltip: "records.completed_at_troop",
+                        tooltipField: "completed_at_troop",
+                        cellDataType: "dateTime",
+                        filter: "agDateColumnFilter",
+                        valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
+                    },
+                ]
             },
             {
                 field: "updated_at",
@@ -374,7 +391,7 @@ const listOfLookupTables = [
             },
             {
                 field: "forest_status_ci2012",
-                headerName: "Wald Status (CI 2012)",
+                headerName: "Wald Status (BWI 2012)",
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.plot.forest_status",
@@ -445,6 +462,28 @@ const listOfLookupTables = [
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.states_affected"
+            },
+            {
+                field: 'completed_at_state',
+                headerName: "Abgeschlossen (Landesinventurleitung)",
+                filter: true,
+                sortable: true,
+                headerTooltip: "records.completed_at_state",
+                tooltipField: "completed_at_state",
+                cellDataType: "dateTime",
+                filter: "agDateColumnFilter",
+                valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
+            },
+            {
+                field: 'completed_at_administration',
+                headerName: "Abgeschlossen (Bundesinventurleitung)",
+                filter: true,
+                sortable: true,
+                headerTooltip: "records.completed_at_administration",
+                tooltipField: "completed_at_administration",
+                cellDataType: "dateTime",
+                filter: "agDateColumnFilter",
+                valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
             }
         ]
     }
@@ -509,6 +548,9 @@ const listOfLookupTables = [
                 plot_name: record.plot_name,
 
                 updated_at: record.updated_at,
+                completed_at_state: record.completed_at_state,
+                completed_at_administration: record.completed_at_administration,
+                completed_at_troop: record.completed_at_troop,
 
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
@@ -538,6 +580,8 @@ const listOfLookupTables = [
                 accessibility: _renderLookupOptimized(lookupMaps, 'lookup_accessibility', record.accessibility),
                 property_type: _renderLookupOptimized(lookupMaps, 'lookup_property_type', record.property_type),
                 grid_density: _renderClusterOptimized(clusterData, 'grid_density', lookupMaps, 'lookup_grid_density')
+            
+            
             };
         });
 
@@ -712,7 +756,10 @@ const listOfLookupTables = [
                     forest_office,
                     property_type,
                     ffh_forest_type_field,
-                    center_location
+                    center_location,
+                    completed_at_state,
+                    completed_at_administration,
+                    completed_at_troop
                 `)
                 .eq(companyType, organizationId)
                 //.is(filterRow, null) // Ensure the filterRow is null
@@ -1188,16 +1235,27 @@ const listOfLookupTables = [
     function _handleClose () {
         responsibleDialog.value = false;
     };
+    async function _handleFinished(values) {
+        console.log(values);
+    };
     async function _handleConfirm (selectedCompany, selectedTroop) {
 
         let updateField = null;
+        const update = {
+            responsible_troop: selectedTroop || null
+        }
 
         switch (props.organization_type) {
             case 'root':
-                updateField = 'responsible_state';
+                update.responsible_state = selectedCompany || null;
+                update.completed_at_administration = null; // reset completed at administration
+                update.completed_at_state = null; // reset completed at state
+                update.completed_at_troop = null; // reset completed at troop
                 break;
             case 'country':
-                updateField = 'responsible_provider';
+                update.responsible_provider = selectedCompany || null;
+                update.completed_at_state = null; // reset completed at state
+                update.completed_at_troop = null; // reset completed at troop
                 break;
         };
 
@@ -1206,12 +1264,6 @@ const listOfLookupTables = [
         // Get unique plot IDs from selected rows
         const uniqueClusterIds = [...new Set(clusterIds)];
 
-        const update = {
-            responsible_troop: selectedTroop || null
-        }
-        if(selectedCompany) {
-            update[updateField] = selectedCompany;
-        }
 
         for (const clusterId of uniqueClusterIds) {
             const { data, error } = await supabase
@@ -1376,6 +1428,7 @@ const listOfLookupTables = [
             <v-toolbar-title></v-toolbar-title>
             <div v-if="selectedRows.length > 0">
                 <v-btn
+                    v-if="props.organization_type !== 'troop'"
                     class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-file-download"
@@ -1385,6 +1438,7 @@ const listOfLookupTables = [
                     als .csv herunterladen
                 </v-btn>
                 <v-btn
+                v-if="props.organization_type !== 'troop'"
                     class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-security"
@@ -1393,7 +1447,16 @@ const listOfLookupTables = [
                 >
                     Berechtigung zuweisen
                 </v-btn>
-                
+                <v-btn
+                    v-if="props.organization_type !== 'provider' && selectedRows.length > 0"
+                    class="mx-2"
+                    variant="tonal"
+                    prepend-icon="mdi-bookmark-check"
+                    @click="finishDialog = true"
+                    rounded="xl"
+                >
+                   Als abgeschlossen markieren
+                </v-btn>
                 <!--<v-select
                     v-if="!props.los"
                     :items="selectableLose" 
@@ -1432,30 +1495,41 @@ const listOfLookupTables = [
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
-    
-    <DialogResponsible
-        v-model="responsibleDialog"
-        :organizationId="props.organization_id"
-        @close="_handleClose"
-        @confirm="_handleConfirm"
-    />
+    <div v-if="props.organization_id && props.organization_type && props.organization_type !== 'troop'">
+        <DialogResponsible
+            v-model="responsibleDialog"
+            :organizationId="props.organization_id"
+            @close="_handleClose"
+            @confirm="_handleConfirm"
+        />
 
-    <v-navigation-drawer
-        location="right"
-        v-model="mapDialog"
-        width="600"
-        floating
-        style="z-index: 10;"
-        class="mt-16"
-    >   
-        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
-        <GeoJsonMap
-            :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
-            :modelValue="mapDialog"
-            @update:selected="_selectedOnMap"
-             />
-    </v-navigation-drawer>
+        <FinishDialog
+            v-if="props.organization_type !== 'troop' && selectedRows.length > 0 && !props.los"
+            v-model="finishDialog"
+            :organizationId="props.organization_id"
+            :organizationType="props.organization_type"
+            :selectedRows="selectedRows"
+            @close="finishDialog = false"
+            @confirm="_handleFinished"
+        />
+        
 
+        <v-navigation-drawer
+            location="right"
+            v-model="mapDialog"
+            width="600"
+            floating
+            style="z-index: 10;"
+            class="mt-16"
+        >   
+            <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
+            <GeoJsonMap
+                :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
+                :modelValue="mapDialog"
+                @update:selected="_selectedOnMap"
+                />
+        </v-navigation-drawer>
+    </div>
     <div v-if="selectedCluster">
         <v-dialog
         v-model="recordsDialog"

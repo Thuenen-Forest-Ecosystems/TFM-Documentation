@@ -115,7 +115,6 @@
         //refreshLayer();
 
         map.getSource('geojson-data').setData(_newGeojson);
-        console.log('GeoJSON data updated on map', _newGeojson);
     }
 
     function refreshLayer() {

@@ -145,7 +145,7 @@ layout: home
         <template v-slot:extension>
             <v-tabs v-model="tab" align-tabs="center" class="mt-6">
                 <!--<v-tab value="1">Mitarbeitende</v-tab>-->
-                <v-tab value="0">Statistics</v-tab>
+                <v-tab value="0">Statistik</v-tab>
                 <v-tab value="3">Ecken</v-tab>
                 <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Organisationen' : 'Dienstleister'}}</v-tab>
                 <v-tab value="5">Trupps</v-tab>
