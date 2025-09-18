@@ -14,6 +14,9 @@
     import GeoJsonMap from '../map/GeoJsonMap.vue';
     import ClusterDetails from '../records/ClusterDetails.vue';
 
+    import FinishDialog from './FinishDialog.vue';
+    import { getUsersPermissions } from '../Utils';
+
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
 const listOfLookupTables = [
@@ -76,9 +79,10 @@ const listOfLookupTables = [
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
     const globalIsDark = inject('globalIsDark');
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
+    const usersPermissions = ref([]);
 
     //import { _ } from 'ajv';
-    import FinishDialog from './FinishDialog.vue';
+   
 
     //const { waitForDb } = useDatabase()
     const lookupTablesValue = ref({});
@@ -264,12 +268,12 @@ const listOfLookupTables = [
                 width: 95,
             },
             {
-                headerName: 'Trupp',
+                headerName: 'Trupps',
                 children: [
                     {
                         columnGroupShow: 'closed',
                         field: "responsible_troop",
-                        headerName: "Aufnahmetrupp",
+                        headerName: "Trupp",
                         filter: true,
                         sortable: true,
                         pinned: 'right',
@@ -283,7 +287,7 @@ const listOfLookupTables = [
                     {
                         columnGroupShow: 'open', 
                         field: "responsible_troop",
-                        headerName: "Aufnahmetrupp",
+                        headerName: "Trupp",
                         filter: true,
                         sortable: true,
                         pinned: 'right',
@@ -297,7 +301,7 @@ const listOfLookupTables = [
                     {
                         columnGroupShow: 'open', 
                         field: 'completed_at_troop',
-                        headerName: "Abgeschlossen (Trupp)",
+                        headerName: "Abgeschlossen",
                         filter: true,
                         sortable: true,
                         pinned: 'right',
@@ -539,6 +543,8 @@ const listOfLookupTables = [
             const clusterData = clusterMap.get(record.cluster_id);
             const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
 
+            const troop = troops.value.find(troop => troop.id === record.responsible_troop);
+
             return {
                 plot_id: record.plot_id,
 
@@ -554,7 +560,7 @@ const listOfLookupTables = [
 
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
-                responsible_troop: troops.value.find(troop => troop.id === record.responsible_troop)?.name || record.responsible_troop,
+                responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
 
                 administration_los: record.administration_los,
                 state_los: record.state_los,
@@ -1069,7 +1075,8 @@ const listOfLookupTables = [
 
         //console.log('Lookup tables loaded');
         await _requestPlots();
-        
+
+        usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 
     });
 
@@ -1438,7 +1445,7 @@ const listOfLookupTables = [
                     als .csv herunterladen
                 </v-btn>
                 <v-btn
-                v-if="props.organization_type !== 'troop'"
+                    v-if="props.organization_type !== 'provider' || usersPermissions.find(perm => perm.is_organization_admin)"
                     class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-security"
@@ -1448,7 +1455,7 @@ const listOfLookupTables = [
                     Berechtigung zuweisen
                 </v-btn>
                 <v-btn
-                    v-if="props.organization_type !== 'provider' && selectedRows.length > 0"
+                    v-if="props.organization_type !== 'provider' || !usersPermissions.find(perm => perm.is_organization_admin)"
                     class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-bookmark-check"
@@ -1488,6 +1495,8 @@ const listOfLookupTables = [
                 </v-btn>
             </div>
     </v-card-actions>
+
+    {{ usersPermissions }}
 
     <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
         {{ snackbarText }}
@@ -1554,10 +1563,10 @@ const listOfLookupTables = [
 </template>
 
 <style>
-    .VPNavBar[data-v-84a11e99]:not(.has-sidebar) {
+    /*.VPNavBar[data-v-84a11e99]:not(.has-sidebar) {
         background-color: var(--vp-nav-bg-color);
     }
     .v-navigation-drawer__scrim {
        display: none;
-    }
+    }*/
 </style>

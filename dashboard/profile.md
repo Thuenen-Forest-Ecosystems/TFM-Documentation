@@ -94,7 +94,7 @@
 
 <Firewall>
 
-# Profile
+# Profil
 
 <v-card class="my-4">
     <v-list>
@@ -134,7 +134,8 @@
     </v-list>
 </v-card>
 
-<v-card class="my-4" title="Kohlenstoffinventur 2027">
+## Inventuren
+<v-card title="Kohlenstoffinventur 2027">
     <v-list>
         <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
             <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>

@@ -309,3 +309,41 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
     return allData;
     
 }
+/**
+ * Get user permissions for a specific organization.
+ * @param {*} supabase 
+ * @param {*} organizationId 
+ * @returns 
+ */
+export async function getUsersPermissions(supabase, organizationId) {
+    if (!supabase || !organizationId) {
+        console.warn('Missing parameters for getUsersPermissions:', { supabase, organizationId });
+        return [];
+    }
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+    if (sessionError) {
+        console.error('Error fetching session data:', sessionError);
+        return [];
+    }
+
+    const userId = sessionData?.session?.user?.id;
+    if (!userId) {
+        console.warn('No user is currently logged in.');
+        return [];
+    }
+    console.log('Fetching permissions for user:', userId, 'in organization:', organizationId);
+
+    const { data, error } = await supabase
+        .from('users_permissions')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('user_id', userId);
+
+    if (error) {
+        console.error('Error fetching user permissions:', error);
+        return [];
+    }
+
+    return data;
+}

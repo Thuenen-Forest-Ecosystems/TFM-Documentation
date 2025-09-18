@@ -68,9 +68,12 @@
                 updatedValues.responsible_troop = null;
                 updatedValues.responsible_provider = null;
                 updatedValues.completed_at_state = new Date();
+                updatedValues.completed_at_administration = null;
                 break;
-            case 'troop':
+            case 'provider':
                 updatedValues.completed_at_troop = new Date();
+                updatedValues.completed_at_administration = null;
+                updatedValues.completed_at_state = null;
                 break;
             case 'administration':
                 updatedValues.responsible_troop = null;
@@ -123,10 +126,10 @@
                         </v-alert-text>
                     </v-alert>
 
-                    <p class="my-4">
+                    <p class="my-4" v-if="props.organizationType !== 'provider'">
                         Mit abschließen der Ecken, werden eventuell bestehende Verantwortungen von Trupps entzogen.
                     </p>
-                    <p v-if="props.organizationType !== 'root'">
+                    <p class="my-4" v-if="props.organizationType !== 'root'">
                         Die ausgewählten Ecken und Trakte werden an die {{ targetOrganization }} übergeben.
                     </p>
                     

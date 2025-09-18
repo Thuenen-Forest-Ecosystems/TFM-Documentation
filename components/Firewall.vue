@@ -5,6 +5,7 @@
     const access_token = ref(null);
     const user_email = ref(null);
     const forwardTimeout = null;
+    const loading = ref(true);
     
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -21,7 +22,7 @@
                 window.location.href = withBase('/authentication/sign-in');
             }, 1000);
         }
-        
+        loading.value = false;
     });
 
     function toSignIn() {
@@ -30,7 +31,14 @@
 </script>
 
 <template>
-    <div v-if="access_token">
+    <div v-if="loading" class="text-center ma-11">
+        <v-progress-circular
+            indeterminate
+            color="primary"
+            size="64"
+        ></v-progress-circular>
+    </div>
+    <div v-else-if="access_token">
         <slot />
     </div>
     <div v-else class="text-center ma-11">
