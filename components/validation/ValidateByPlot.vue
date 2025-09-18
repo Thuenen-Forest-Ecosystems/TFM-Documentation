@@ -1,15 +1,17 @@
 <script setup>
     import { onMounted, ref, watch, getCurrentInstance } from 'vue';
+    import localize from 'ajv-i18n';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const validationErrors = ref([]);
+    const plausibilityErrors = ref([]);
     const isValid = ref(null);
 
     const props = defineProps({
         record: {
-            type: Array,
+            type: Object,
             required: true
         },
         validate: {
@@ -18,10 +20,6 @@
         },
         tfm: {
             type: Object,
-            required: true
-        },
-        version: {
-            type: String,
             required: true
         }
     });
@@ -46,8 +44,10 @@
         isValid.value = props.validate(props.record.properties);
         validationErrors.value = props.validate.errors;
 
+        localize.de(props.validate.errors);
+        
         try {
-            validationErrors.value = await props.tfm.runPlots([props.record.properties], null, [props.record.previous_properties]);
+            plausibilityErrors.value = await props.tfm.runPlots([props.record.properties], null, [props.record.previous_properties]);
         } catch (error) {
             console.warn('Error during online validation call:', error);
         }
@@ -55,9 +55,16 @@
     }
 
     watch([props.record, props.validate, props.tfm], (newRecord, newValidate, newTfm) => {
-        console.log('dsfdaf');
         validation();
     });
+
+    watch(
+        () => props.record,
+        (newRecord, oldRecord) => {
+            validation(); // Call your validation logic or any other function
+        },
+        { deep: true } // Enables deep watching for nested properties
+    );
 
     onMounted(() => {
         validation();
@@ -66,7 +73,41 @@
 </script>
 
 <template>
-    <p>Record ID: {{ record.id }}</p>
-    <p>Is valid: {{ validate(record) }}</p>
-    <p>Validation Errors: {{ validate.errors.length }}</p>
+    <v-expansion-panels v-if="validationErrors && validationErrors.length">
+        <v-expansion-panel>
+            <v-expansion-panel-title>Validation Details ({{ validationErrors.length }})</v-expansion-panel-title>
+            <v-expansion-panel-text>
+                <v-list lines="two">
+                    <v-list-item v-for="(error, index) in validationErrors" :key="index">
+                        <v-list-item-title>{{ error.message }}</v-list-item-title>
+                        <v-list-item-subtitle>Schema Path: {{ error.schemaPath }}</v-list-item-subtitle>
+                        <template v-slot:append>
+                            <v-btn
+                                color="grey-lighten-1"
+                                icon="mdi-information"
+                                variant="text"
+                            ></v-btn>
+                        </template>
+                    </v-list-item>
+                </v-list>
+            </v-expansion-panel-text>
+        </v-expansion-panel>
+        <v-expansion-panel :disabled="validationErrors.length > 0">
+            <v-expansion-panel-title>Plausibility Details ({{ plausibilityErrors.length }})</v-expansion-panel-title>
+            <v-expansion-panel-text>
+                <v-list lines="two">
+                    <v-list-item v-for="(error, index) in plausibilityErrors" :key="index">
+                        <v-list-item-title>{{ error.message }}</v-list-item-title>
+                        <template v-slot:append>
+                            <v-btn
+                                color="grey-lighten-1"
+                                icon="mdi-information"
+                                variant="text"
+                            ></v-btn>
+                        </template>
+                    </v-list-item>
+                </v-list>
+            </v-expansion-panel-text>
+        </v-expansion-panel>
+    </v-expansion-panels>
 </template>

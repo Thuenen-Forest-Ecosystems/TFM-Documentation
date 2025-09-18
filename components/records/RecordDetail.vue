@@ -29,7 +29,7 @@
 </script>
 
 <template>
-    
+    <div>
         <v-toolbar color="transparent">
             <v-toolbar-title v-if="props.record.record_id">{{ new Date(props.record.created_at).toLocaleDateString() }} {{ new Date(props.record.created_at).toLocaleTimeString() }}</v-toolbar-title>
             <v-toolbar-title v-else>{{ new Date(props.record.updated_at).toLocaleDateString() }} {{ new Date(props.record.updated_at).toLocaleTimeString() }}</v-toolbar-title>
@@ -63,14 +63,14 @@
                 <v-card-text v-if="toggle_data_view === 1">
                     <JsonViewer :data="props.record.properties" :schema="props.schema" />
                 </v-card-text>
-                <GridView v-if="toggle_data_view === 0" :data="props.record.properties" :schema="props.schema" />
+                <GridView v-if="toggle_data_view === 0 && props.schema" :data="props.record.properties" :schema="props.schema" />
             </v-tabs-window-item>
             <v-tabs-window-item :key="items[1]" :value="items[1]">
                 <v-card-text v-if="toggle_data_view === 1">
                     <JsonViewer :data="props.record.previous_properties" :schema="props.schema" />
                 </v-card-text>
-                <GridView v-if="toggle_data_view === 0" :data="props.record.previous_properties" :schema="props.schema" />
+                <GridView v-if="toggle_data_view === 0 && props.schema" :data="props.record.previous_properties" :schema="props.schema" />
             </v-tabs-window-item>
         </v-tabs-window>
-   
+    </div>
 </template>

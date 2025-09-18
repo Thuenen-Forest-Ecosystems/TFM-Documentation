@@ -28,6 +28,7 @@
     "@vimeo/player": "^2.29.3",
     "ag-grid-vue3": "^33.3.2",
     "ajv": "^8.17.1",
+    "ajv-i18n": "^4.2.0",
     "echarts": "^6.0.0",
     "handsontable": "^16.0.1",
     "maplibre-gl": "^5.7.1",

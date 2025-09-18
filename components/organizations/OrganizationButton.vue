@@ -9,8 +9,7 @@
     const permissions = ref([]);
     
     const instance = getCurrentInstance();
-    // Use the injected Supabase client instead of global properties
-    const supabase = inject('supabase');
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     supabase.auth.onAuthStateChange((event, session) => {
         access_token.value = session?.access_token;
@@ -43,6 +42,7 @@
             
             if (error) throw error;
             permissions.value = data || [];
+            console.log('User permissions:', permissions.value);
         } catch (error) {
             console.error('Error fetching permissions:', error);
         }
@@ -56,7 +56,7 @@
 </script>
 
 <template>
-    <a class="VPLink" v-if="access_token && permissions.length > 0">
+    <a class="VPLink" v-if="access_token && permissions.length > 1">
         <v-select
             rounded="xl"
             variant="outlined"
