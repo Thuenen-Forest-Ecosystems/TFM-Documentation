@@ -54,9 +54,9 @@
         
     }
 
-    watch([props.record, props.validate, props.tfm], (newRecord, newValidate, newTfm) => {
+    /*watch([props.record, props.validate, props.tfm], (newRecord, newValidate, newTfm) => {
         validation();
-    });
+    });*/
 
     watch(
         () => props.record,
