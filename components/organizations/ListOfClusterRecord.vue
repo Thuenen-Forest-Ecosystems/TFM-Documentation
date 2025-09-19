@@ -15,7 +15,8 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getUsersPermissions } from '../Utils';
+    import { getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
+    import StatusFilter from './customFilter/status.vue';
 
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
@@ -175,7 +176,8 @@ const listOfLookupTables = [
 
         components: {
             actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
-            moreCellRenderer: MoreCellRenderer
+            moreCellRenderer: MoreCellRenderer,
+            statusFilter: StatusFilter
         },
         defaultColDef: {
             initialWidth: 215,
@@ -217,6 +219,19 @@ const listOfLookupTables = [
                 suppressMovable: true
             },
             {
+                field: 'state_by_user', // Custom cell renderer
+                headerName: ' ',
+                pinned: 'left',
+                width: 55,
+                sortable: true,
+                //filter: 'statusFilter',
+                tooltipValueGetter: (params) => workflows.find(wf => wf.searchText === params.value)?.tooltip || params.value,
+
+                cellRenderer: (params) => {
+                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflows.find(wf => wf.searchText === params.value)?.searchText || 'transparent'};"></span></div>`;
+                }
+            },
+            {
                 cellRenderer: 'actionCellRenderer', // Custom cell renderer
                 pinned: 'left',
                 width: 50,
@@ -230,15 +245,7 @@ const listOfLookupTables = [
                 sortable: false,
                 filter: false
             },*/
-            {
-                field: 'state_by_user', // Custom cell renderer
-                headerName: 'Status',
-                pinned: 'left',
-                width: 100,
-                sortable: true,
-                filter: true,
-                cellStyle: params => params.value == 'ToDo' ? { color: 'red' } : (params.value == 'Done' ? { color: 'green' } : {})
-            },
+            
             { 
                 field: "plot_id",
                 headerName: "Plot Id",
@@ -548,7 +555,7 @@ const listOfLookupTables = [
             return {
                 plot_id: record.plot_id,
 
-                state_by_user: 'ToDo',
+                state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).searchText,
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
@@ -1252,6 +1259,8 @@ const listOfLookupTables = [
             responsible_troop: selectedTroop || null
         }
 
+        
+
         switch (props.organization_type) {
             case 'root':
                 update.responsible_state = selectedCompany || null;
@@ -1271,6 +1280,7 @@ const listOfLookupTables = [
         // Get unique plot IDs from selected rows
         const uniqueClusterIds = [...new Set(clusterIds)];
 
+        console.log(selectedCompany, selectedTroop, selectedLos);
 
         for (const clusterId of uniqueClusterIds) {
             const { data, error } = await supabase
@@ -1289,6 +1299,9 @@ const listOfLookupTables = [
                 snackbarColor.value = 'success';
                 snackbar.value = true;
 
+                // TODO: Refresh
+                //await _requestPlots();
+
                 // update grid
                 currentGrid.value.api.forEachNode((node) => {
                     if (uniqueClusterIds.includes(node.data.cluster_id)) {
@@ -1300,7 +1313,7 @@ const listOfLookupTables = [
                 });
             }
         }
-        // _requestPlots();
+         _requestPlots();
     }
     function _toggleMap() {
         mapDialog.value = !mapDialog.value;
@@ -1452,7 +1465,7 @@ const listOfLookupTables = [
                     @click="responsibleDialog = true"
                     rounded="xl"
                 >
-                    Berechtigung zuweisen
+                    Berechtigung vergeben
                 </v-btn>
                 <v-btn
                     v-if="props.organization_type !== 'provider' || !usersPermissions.find(perm => perm.is_organization_admin)"
@@ -1496,8 +1509,6 @@ const listOfLookupTables = [
             </div>
     </v-card-actions>
 
-    {{ usersPermissions }}
-
     <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
         {{ snackbarText }}
         <template v-slot:action="{ attrs }">
@@ -1508,6 +1519,8 @@ const listOfLookupTables = [
         <DialogResponsible
             v-model="responsibleDialog"
             :organizationId="props.organization_id"
+            :organizationType="props.organization_type"
+            :selectedRows="selectedRows"
             @close="_handleClose"
             @confirm="_handleConfirm"
         />

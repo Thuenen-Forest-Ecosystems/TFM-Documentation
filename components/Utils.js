@@ -1,3 +1,5 @@
+import { Tooltip } from "vuetify/directives";
+
 export function getOrganizationDetails(supabase, organization_id) {
     return supabase
         .from('organizations')
@@ -11,6 +13,88 @@ export function getOrganizationDetails(supabase, organization_id) {
             }
             return data;
         });
+}
+export const workflows = [
+    {
+        id: 0,
+        searchText: 'red',
+        tooltip: 'Muss an Trupp oder Dienstleister übergeben werden'
+    },
+    {
+        id: 1,
+        searchText: 'yellow',
+        tooltip: 'Kann an Bundesinventurleitung übergeben werden'
+    },
+    {
+        id: 4,
+        searchText: 'yellow',
+        tooltip: 'Kann an Landesinventurleitung übergeben werden'
+    },
+    {
+        id: 2,
+        //style: { color: 'white', backgroundColor: 'green', padding: '10px', },
+        text: 'In Arbeit von Trupp. (2)',
+        searchText: 'green',
+        tooltip: 'In Arbeit von Trupp. (Keine Maßnahme nötig)',
+    },
+    {
+        id: 5,
+        //style: { color: 'white', backgroundColor: 'green', padding: '10px', },
+        text: 'In Arbeit von Trupp. (2)',
+        searchText: 'green',
+        tooltip: 'abgeschlossen',
+    },
+    {
+        id: 6,
+        searchText: 'yellow',
+        tooltip: 'Kann geprüft werden.'
+    },
+    {
+        id: 3,
+        searchText: 'yellow',
+        tooltip: 'Kann an Landesinventurleitung übergeben werden'
+    }
+];
+export function stateByOrganizationType(organizationId, organization_type, record){
+
+    if(organization_type === 'country'){
+        if(record.responsible_state === organizationId){
+            if(!record.responsible_troop || !record.responsible_provider){
+                return workflows.find(w => w.id === 0);
+            }else if(record.completed_at_troop){
+                return workflows.find(w => w.id === 1);
+            }else{
+                return workflows.find(w => w.id === 2);
+            }
+            
+        }
+    }else if (organization_type === 'provider'){
+        if(record.responsible_provider === organizationId){
+            if(!record.responsible_troop){
+                return workflows.find(w => w.id === 0);
+            }else if(record.completed_at_troop){
+                return workflows.find(w => w.id === 3);
+            }else{
+                return workflows.find(w => w.id === 2);
+            }
+        }
+    }else if (organization_type === 'administration'){
+        if(record.responsible_administration === organizationId){
+            if(!record.responsible_state && !record.completed_at_state){
+                return workflows.find(w => w.id === 4);
+            }else if(!record.responsible_state && record.completed_at_state){
+                return workflows.find(w => w.id === 5);
+            }else if(record.responsible_state && !record.completed_at_state){
+                return workflows.find(w => w.id === 2);
+            }else if(record.responsible_state && record.completed_at_state){
+                return workflows.find(w => w.id === 6);
+            }
+        }
+    }
+    return {
+        style: { color: 'black', backgroundColor: 'gray' },
+        text: 'Keine Informationen',
+    };
 }
 export function workflowFromRecord(record){
     if(!record) return null;
@@ -56,7 +140,6 @@ export function workflowFromRecord(record){
             settable: 'completed_at_administration'
         };
     }
-    console.log(record);
     
     return {
         title: 'No Workflow defined',
