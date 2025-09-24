@@ -9,6 +9,7 @@
     const user = ref(null);
     const updating = ref(false);
     const recordState = ref(null);
+    const recordStateByOrganization = ref(null);
     const troopRow = ref(null);
     const permission = ref(null);
     const ownTroop = ref(null);
@@ -58,14 +59,15 @@
 
     onMounted(async () => {
 
-        const { data: { session }, error } = await supabase.auth.getSession();
-        user.value = session?.user ?? null;
+        //const { data: { session }, error } = await supabase.auth.getSession();
+        //user.value = session?.user ?? null;
         // Perform any necessary setup or data fetching here
-        recordState.value = workflowFromRecord(props.record, null);
+        //recordState.value = workflowFromRecord(props.record, null);
         // ToDo: Check if user is part of the organization
-        console.log('stateByOrganizationType: ', props.organizationId, props.organizationType, stateByOrganizationType(props.organizationId, props.organizationType, props.record));
+        console.log('stateByOrganizationType: ', props.record, props.organizationId, props.organizationType, stateByOrganizationType(props.organizationId, props.organizationType, props.record));
+        recordStateByOrganization.value = stateByOrganizationType(props.organizationId, props.organizationType, props.record);
 
-        let organizationId = recordState.responsibleId;
+        /*let organizationId = recordState.responsibleId;
 
 
         if(recordState.value.isTroop){
@@ -83,7 +85,7 @@
                 troopRow.value = data;
             }
 
-            /*const {data: ownTroopData, error: ownTroopError} = await supabase
+            const {data: ownTroopData, error: ownTroopError} = await supabase
                 .from('troop')
                 .select('*')
                 .eq('organization_id', organizationId)
@@ -96,18 +98,18 @@
 
             if(ownTroopData){
                 ownTroop.value = ownTroopData;
-            }*/
-        }
+            }
+        }*/
 
-        await fetchPermission(user.value.id, organizationId, props.record.responsible_troop);
+        //await fetchPermission(user.value.id, organizationId, props.record.responsible_troop);
     });
     
-    async function _markAsCompleted(){
-        if(recordState.settable){
+    async function _markAsCompleted(_recordState){
+        if(_recordState.settable){
             const updateData = {
                 id: props.record.id,
             };
-            updateData[recordState.settable] = new Date().toISOString();
+            updateData[_recordState.settable] = new Date().toISOString();
             updating.value = true;
             const { data, error } = await supabase
                 .from('records')
@@ -122,7 +124,6 @@
             }
             updating.value = false;
         }
-        console.log('Mark as completed clicked for record:', recordState);
 
     }
 </script>
@@ -130,11 +131,11 @@
 
 <template>
     <v-card
-        v-if="permission && recordState && props.organizationId && props.organizationType"
-        color="primary" v-bind="$attrs">
+        v-if="recordStateByOrganization && props.organizationId && props.organizationType"
+        :color="recordStateByOrganization.searchText || 'default'" v-bind="$attrs">
         <v-card-item>
             <v-card-title>
-                Nächster Schritt
+                {{ recordStateByOrganization.tooltip || 'Kein nächster Schritt definiert' }}
             </v-card-title>
             
             <!--
@@ -145,11 +146,7 @@
 
         </v-card-item>
 
-        <v-card-text>
-            {{ recordState.title }}
-        </v-card-text>
-
-        <v-card-actions class="justify-end" v-if="permission && recordState && recordState.settable" :loading="updating">
+        <!--<v-card-actions class="justify-end" v-if="permission && recordState && recordState.settable" :loading="updating">
             <v-btn
                 v-for="(action, index) in recordState.actions"
                 v-if="action && action.visible && action.visible(props.record)"
@@ -161,6 +158,6 @@
             >
                 {{ action.label }}
             </v-btn>
-        </v-card-actions>
+        </v-card-actions>-->
     </v-card>
 </template>

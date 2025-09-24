@@ -150,7 +150,9 @@
 <template>
     <Firewall>
         <v-card>
-            <v-tabs v-model="tab" fixed-tabs>
+            <div class="d-flex align-center">
+            <div class="ma-2">Ecken:</div>
+            <v-tabs v-model="tab" fixed-tabs class="flex-grow-1">
                 <v-tab
                     v-for="record in records"
                     :key="record.id"
@@ -159,6 +161,7 @@
                     {{ record.plot_name }}
                 </v-tab>
             </v-tabs>
+            </div>
         </v-card>
         <v-tabs-window v-model="tab">
             <v-tabs-window-item

@@ -24,6 +24,29 @@
         plotData.value.sort((a, b) => b.sortByDate - a.sortByDate);
     }
 
+    const addAsyncDataToItems = async (items) => {
+        return await Promise.all(items.map(async (item) => {
+            if (item.responsible_troop) {
+                item.troopData = await getTroopById(supabase, item.responsible_troop);
+            }
+
+            if (item.responsible_provider) {
+                // If troopData is still null but responsible_troop exists, fetch it
+                item.providerData = await getOrganizationById(supabase, item.responsible_provider);
+            }
+            if (item.responsible_state) {
+                // If troopData is still null but responsible_troop exists, fetch it
+                item.stateData = await getOrganizationById(supabase, item.responsible_state);
+            }
+            if (item.responsible_administration) {
+                // If troopData is still null but responsible_troop exists, fetch it
+                item.administrationData = await getOrganizationById(supabase, item.responsible_administration);
+            }
+
+            return item;
+        }));
+    };
+
     const getHistory = async (plotId) => {
         const { data, error } = await supabase
             .from('record_changes')
@@ -35,35 +58,9 @@
             console.error('Error fetching history:', error);
             return [];
         }
-        
-        
-
-        const updatedData = await Promise.all(
-            data.map(async (item) => {
-                item.sortByDate = item.created_at;
-                if (item.responsible_troop) {
-                    item.troopData = await getTroopById(supabase, item.responsible_troop);
-                }
-
-                if (item.responsible_provider) {
-                    // If troopData is still null but responsible_troop exists, fetch it
-                    item.providerData = await getOrganizationById(supabase, item.responsible_provider);
-                }
-                if (item.responsible_state) {
-                    // If troopData is still null but responsible_troop exists, fetch it
-                    item.stateData = await getOrganizationById(supabase, item.responsible_state);
-                }
-                if (item.responsible_administration) {
-                    // If troopData is still null but responsible_troop exists, fetch it
-                    item.administrationData = await getOrganizationById(supabase, item.responsible_administration);
-                }
-
-                return item;
-            })
-        );
 
 
-        plotData.value = updatedData; // Replace the old data with the updated data
+        return data; // Replace the old data with the updated data
     };
 
     const getLatest = async (plotId) => {
@@ -79,9 +76,17 @@
         }
         data.sortByDate = data.updated_at;
         latestPlot.value = data;
-        plotData.value.push(data);
+        plotData.value.push(data); // add current record
 
-        getHistory(data.plot_id);
+        const historyData = await getHistory(plotId);
+        historyData.forEach(record => {
+            record.sortByDate = record.created_at;
+            plotData.value.push(record); // add historical records
+        });
+
+        const updatedData = await addAsyncDataToItems(plotData.value);
+        plotData.value = updatedData;
+
         sortPlotData();
     };
 
@@ -120,8 +125,8 @@
             :fill-dot="activeItem === item"
         >
             <div class="d-flex flex-column">
-                <strong v-if="index!==0" class="me-4">{{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}</strong>
-                <strong v-else>Aktueller Status</strong>
+                <strong class="me-4">{{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}</strong>
+                <!--<strong v-else>Aktueller Status</strong>-->
 
                 <div class="mb-2 text-caption">
                     {{ workflowFromRecord(item).title }}
@@ -130,10 +135,10 @@
                     
                     <v-card variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_troop, plotData[index - 1]?.responsible_troop) ||  isDifferent(item.completed_at_troop, plotData[index - 1]?.completed_at_troop)">
                         <template v-slot:title>
-                            {{item.troopData ? item.troopData.name : item.responsible_troop }}
+                            {{item.troopData ? (item.troopData?.name ? item.troopData.name : 'no name') : (item.responsible_troop ? item.responsible_troop : '-') }}
                         </template>
-                        <template v-slot:subtitle>
-                            Trupp
+                        <template v-slot:subtitle >
+                            {{ item.troopData ? (item.troopData.is_control_troop ? 'Kontrolltrupp' : `Aufnahmetrupp`) : 'Trupp' }}
                         </template>
 
                         <v-card-text>
@@ -147,11 +152,11 @@
                                 </span>
                             </v-chip>
                         </v-card-text>
-                        <template v-slot:append>
+                        <!--<template v-slot:append>
                             <v-chip v-if="item.troopData">
                                 {{ item.troopData.is_control_troop ? 'KT' : `AT` }}
                             </v-chip>
-                        </template>
+                        </template>-->
                     </v-card>
                     
 

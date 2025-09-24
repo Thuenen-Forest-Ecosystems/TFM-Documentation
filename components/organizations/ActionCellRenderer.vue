@@ -21,11 +21,6 @@
         if (props.params.onActionClick) {
             props.params.onActionClick(props.params.data);
         }
-
-        //dialog.value = true
-
-        //window.location.href = withBase('/dashboard/records/?clusterId=' + props.params.data.cluster_id);
-    
     }
 </script>
 
@@ -34,25 +29,7 @@
         variant="plain"
         icon="mdi-eye-outline"
         density="compact"
+        :disabled="!props.params.onActionClick"
         @click="handleClick"
     ></v-btn>
-
-    <v-dialog
-      v-model="dialog"
-      fullscreen
-    >
-        <v-card>
-            <v-toolbar>
-                <v-btn
-                    icon="mdi-close"
-                    @click="dialog = false"
-                ></v-btn>
-
-                <v-toolbar-title>Trakt: {{ props.params.data.cluster_name }}</v-toolbar-title>
-
-                
-            </v-toolbar>
-            <ClusterDetails :clusterId="props.params.data.cluster_id"/>
-        </v-card>
-    </v-dialog>
 </template>

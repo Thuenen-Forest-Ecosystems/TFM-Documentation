@@ -1616,7 +1616,7 @@ const listOfLookupTables = [
                         @click="recordsDialog = false"
                     ></v-btn>
 
-                    <v-toolbar-title>Trakt: {{ selectedCluster.cluster_name.toString() }} OrgId:{{ props.organization_id }}</v-toolbar-title>
+                    <v-toolbar-title>Trakt: {{ selectedCluster.cluster_name.toString() }}</v-toolbar-title>
                     
                     
                 </v-toolbar>
