@@ -66,7 +66,6 @@ export function stateByOrganizationType(organizationId, organization_type, recor
             }else{
                 return workflows.find(w => w.id === 2);
             }
-            
         }
     }else if (organization_type === 'provider'){
         if(record.responsible_provider === organizationId){

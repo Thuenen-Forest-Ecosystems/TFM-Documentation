@@ -208,6 +208,7 @@
     }
 
     onMounted(() => {
+        console.log(props.geojson);
         // OSM
         map = new maplibregl.Map({
             container: 'map',

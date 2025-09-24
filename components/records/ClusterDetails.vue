@@ -30,6 +30,14 @@
         clusterId: {
             type: String,
             required: true
+        },
+        organizationId: {
+            type: String,
+            required: true
+        },
+        organizationType: {
+            type: String,
+            required: true
         }
     });
 
@@ -168,30 +176,8 @@
                 </div>
 
                 <div style="margin-left:70px !important;" class="ma-3">
-                    <!--<v-card variant="tonal">
-                        <RecordToDo :record="record" class="mb-11" />
-
-                        <v-toolbar color="transparent">
-                            <v-toolbar-title>Validation</v-toolbar-title>
-                            <template v-slot:append>
-                                <v-select
-                                    rounded="xl"
-                                    variant="outlined"
-                                    density="compact"
-                                    :items="versions"
-                                    v-model="selectedVersion"
-                                    item-title="name"
-                                ></v-select>
-                            </template>
-                        </v-toolbar>
-                        <v-card-text>
-                            <ValidateByPlot :record="record" :validate="validate" :tfm="tfm" :version="selectedVersion" />
-                        </v-card-text>
-                    </v-card>-->
-
-                    
                     <v-card variant="tonal" v-if="selectedHistoricalRecord">
-                        <RecordToDo :record="selectedHistoricalRecord" class="mb-11" />
+                        <RecordToDo :record="selectedHistoricalRecord" :organizationId="props.organizationId" :organizationType="props.organizationType" class="mb-11" />
 
                         <v-toolbar color="transparent">
                             <v-toolbar-title>Validation</v-toolbar-title>
@@ -205,12 +191,6 @@
 
                         <RecordDetail :record="selectedHistoricalRecord" :schema="schema" class="mt-11" />
                     </v-card>
-
-                    <!--<v-card class="mt-11"  variant="tonal">
-                        <v-card-text>
-                            <History :plot_id="record.plot_id" />
-                        </v-card-text>
-                    </v-card>-->
                     <div class="text-caption ma-11 text-center">
                         {{ record.id }}
                     </div>

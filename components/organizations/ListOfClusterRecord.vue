@@ -18,6 +18,8 @@
     import { getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
 
+    import VimeoPlayer from '../../components/VimeoPlayer.vue';
+
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
 const listOfLookupTables = [
@@ -236,7 +238,13 @@ const listOfLookupTables = [
                 pinned: 'left',
                 width: 50,
                 sortable: false,
-                filter: false
+                filter: false,
+                cellRendererParams: {
+                    onActionClick: (rowData) => {
+                        selectedCluster.value = rowData;
+                         recordsDialog.value = true;
+                    }
+                }
             },
             /*{
                 cellRenderer: 'moreCellRenderer', // Custom cell renderer
@@ -1055,6 +1063,27 @@ const listOfLookupTables = [
         });
 
     }
+    function exportSelectedGeoJson(){ // 
+        if (selectedRows.value.length === 0) {
+            console.warn('No rows selected for export');
+            return;
+        }
+
+        const filteredFeatures = geojsonFeatureCollection.value.features.filter(feature => 
+            selectedRows.value.some(row => row.plot_id === feature.properties.record.plot_id)
+        );
+
+        const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', features: filteredFeatures }, null, 2)], { type: 'application/vnd.geo+json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `selected_records_${new Date().toISOString()}.geojson`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+    }
 
     onMounted(async () => {
 
@@ -1193,8 +1222,17 @@ const listOfLookupTables = [
 
         try {
             const text = await file.text();
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-            const numbers = lines.flatMap(line => line.split(',').map(v => v.trim()).filter(v => /^\d+$/.test(v)));
+            // Split lines and trim whitespace
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+            // Extract all numeric values (including quoted numbers) from each line
+            const numbers = lines.reduce((acc, line) => {
+                const matches = line.match(/"(\d+)"|\b\d+\b/g); // Match numbers inside quotes or standalone numbers
+                if (matches) {
+                    acc.push(...matches.map(num => num.replace(/"/g, ''))); // Remove quotes if present
+                }
+                return acc;
+            }, []);
 
             if (numbers.length === 0) {
                 console.warn('No valid cluster IDs found in the file');
@@ -1345,13 +1383,20 @@ const listOfLookupTables = [
 <template>
     <v-card-text class="pa-0">
     <!-- The AG Grid component -->
-    <v-file-input v-if="!loading" 
-        accept=".csv, text/plain"
-        label="Komma separierte Liste von Trakt Namen"
-        @change="handleFileUpload"
-        class="ma-2"
-        rounded="xl"
-        variant="solo"></v-file-input>
+    <div class="d-flex mt-4 align-center">
+        <div class="flex-grow-1">
+            <v-file-input v-if="!loading" 
+                accept=".csv, text/plain"
+                label="Komma separierte Liste von Trakt Namen"
+                @change="handleFileUpload"
+                class="ma-2"
+                rounded="xl"
+                variant="solo"></v-file-input>
+        </div>
+        <div>
+            <VimeoPlayer vimeoId="1121223526" btnTitle="Hilfe" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
+        </div>
+    </div>
 
     <!-- Replace v-app-bar with v-toolbar or v-card-title -->
     <v-card class="mx-4 mt-4 mb-1">
@@ -1447,16 +1492,22 @@ const listOfLookupTables = [
             </v-chip>-->
             <v-toolbar-title></v-toolbar-title>
             <div v-if="selectedRows.length > 0">
-                <v-btn
-                    v-if="props.organization_type !== 'provider'"
-                    class="mx-2"
-                    variant="tonal"
-                    prepend-icon="mdi-file-download"
-                    @click="exportSelected"
-                    rounded="xl"
-                >
-                    als .csv herunterladen
-                </v-btn>
+                Export:
+                <v-btn-toggle rounded="xl" divided>
+                    <v-btn
+                        v-if="props.organization_type !== 'provider'"
+                        @click="exportSelected"
+                    >
+                        .csv
+                    </v-btn>
+                    <v-btn
+                        v-if="props.organization_type !== 'provider'"
+                        @click="exportSelectedGeoJson"
+                        
+                    >
+                        .geojson
+                    </v-btn>
+                </v-btn-toggle>
                 <v-btn
                     v-if="props.organization_type !== 'provider' || usersPermissions.find(perm => perm.is_organization_admin)"
                     class="mx-2"
@@ -1565,11 +1616,11 @@ const listOfLookupTables = [
                         @click="recordsDialog = false"
                     ></v-btn>
 
-                    <v-toolbar-title>Trakt: {{ selectedCluster.cluster_name.toString() }}</v-toolbar-title>
-
+                    <v-toolbar-title>Trakt: {{ selectedCluster.cluster_name.toString() }} OrgId:{{ props.organization_id }}</v-toolbar-title>
+                    
                     
                 </v-toolbar>
-                <ClusterDetails :clusterId="selectedCluster.cluster_id"/>
+                <ClusterDetails :clusterId="selectedCluster.cluster_id" :organizationId="props.organization_id" :organizationType="props.organization_type" />
             </v-card>
         </v-dialog>
     </div>

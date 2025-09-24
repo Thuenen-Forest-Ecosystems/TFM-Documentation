@@ -1,6 +1,6 @@
 <script setup>
     import { onMounted, getCurrentInstance, ref } from 'vue';
-    import { toDoFromRecord, workflowFromRecord } from '../Utils';
+    import { stateByOrganizationType, toDoFromRecord, workflowFromRecord } from '../Utils';
     import DialogResponsible from '../organizations/DialogResponsible.vue';
 
     const instance = getCurrentInstance();
@@ -17,6 +17,16 @@
         record: {
             type: Object,
             required: true
+        },
+        organizationId: {
+            type: String,
+            required: true,
+            default: null
+        },
+        organizationType: {
+            type: String,
+            required: true,
+            default: null
         }
     });
 
@@ -52,6 +62,8 @@
         user.value = session?.user ?? null;
         // Perform any necessary setup or data fetching here
         recordState.value = workflowFromRecord(props.record, null);
+        // ToDo: Check if user is part of the organization
+        console.log('stateByOrganizationType: ', props.organizationId, props.organizationType, stateByOrganizationType(props.organizationId, props.organizationType, props.record));
 
         let organizationId = recordState.responsibleId;
 
@@ -118,7 +130,7 @@
 
 <template>
     <v-card
-        v-if="permission && recordState"
+        v-if="permission && recordState && props.organizationId && props.organizationType"
         color="primary" v-bind="$attrs">
         <v-card-item>
             <v-card-title>
@@ -134,7 +146,6 @@
         </v-card-item>
 
         <v-card-text>
-
             {{ recordState.title }}
         </v-card-text>
 

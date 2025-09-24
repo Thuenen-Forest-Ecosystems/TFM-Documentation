@@ -10,12 +10,12 @@ hero:
     src: /bwi_image.svg
     alt: Bundeswaldinventur
   actions:
-    - theme: brand
-      text: Getting Started
-      link: /getting-started
+    #- theme: brand
+    #  text: Getting Started
+    #  link: /getting-started
     - theme: alt
       text: API
-      link: /general-api
+      link: /api/getting-started.html
 
 features:
 ---

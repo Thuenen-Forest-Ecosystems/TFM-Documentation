@@ -18,7 +18,11 @@
         e.preventDefault();
         e.stopPropagation();
 
-        dialog.value = true
+        if (props.params.onActionClick) {
+            props.params.onActionClick(props.params.data);
+        }
+
+        //dialog.value = true
 
         //window.location.href = withBase('/dashboard/records/?clusterId=' + props.params.data.cluster_id);
     
@@ -32,6 +36,7 @@
         density="compact"
         @click="handleClick"
     ></v-btn>
+
     <v-dialog
       v-model="dialog"
       fullscreen
