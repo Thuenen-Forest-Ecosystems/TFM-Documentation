@@ -77,7 +77,7 @@ export function stateByOrganizationType(organizationId, organization_type, recor
                 return workflows.find(w => w.id === 2);
             }
         }
-    }else if (organization_type === 'administration'){
+    }else if (organization_type === 'root'){
         if(record.responsible_administration === organizationId){
             if(!record.responsible_state && !record.completed_at_state){
                 return workflows.find(w => w.id === 4);

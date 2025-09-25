@@ -75,7 +75,7 @@
                 updatedValues.completed_at_administration = null;
                 updatedValues.completed_at_state = null;
                 break;
-            case 'administration':
+            case 'root':
                 updatedValues.responsible_troop = null;
                 updatedValues.responsible_provider = null;
                 updatedValues.responsible_state = null;
