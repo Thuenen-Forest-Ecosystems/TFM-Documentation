@@ -8,6 +8,8 @@
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const email = ref('');
+    const name = ref('');
+
     const loading = ref(false);
     const valid = ref(false)
     const error = ref('')
@@ -16,6 +18,7 @@
 
     const props = defineProps({
         email: String,
+        name: String,
         modelValue: Boolean,
         organization_id: String,
         showAdmins: Boolean,
@@ -52,9 +55,11 @@
                 method: 'POST',
                 body: {
                     email: adminEmail,
+                    name: name.value || null,
                     metaData: {
                         is_organization_admin: props.showAdmins || false, // Use is_organization_admin from attributes
-                        organization_id: props.organization_id // Use organization ID from attributes
+                        organization_id: props.organization_id, // Use organization_id from attributes
+                        name: name.value || null, // Use name from input
                     }
                 }
             });
@@ -74,12 +79,13 @@
             }
             loading.value = false;
         } catch (error) {
-            console.error('Error inviting user2:', error);
+            console.error('Error inviting user:', error);
             error.value = error.message;
         }
         
         loading.value = false;
         email.value = ''; // Clear the email input after submission
+        name.value = ''; // Clear the name input after submission
         valid.value = false; // Reset the form validity
         
     }
@@ -116,7 +122,7 @@
             
             <v-card-text>
                 <p class="mb-6 text-body-2 text-medium-emphasis">
-                    Bitte gib die E-Mail-Adresse des Mitarbeiters ein, den du einladen möchtest. Der Mitarbeiter erhält eine E-Mail mit einem Link zur Registrierung.
+                    Bitte geben Sie die E-Mail-Adresse des Mitarbeiters ein, den Sie einladen möchten. Der Mitarbeiter erhält eine E-Mail mit einem Link zur Registrierung.
                 </p>
                 <v-chip v-if="error" color="red" class="my-2">
                     <span>{{ error }}</span>
@@ -130,6 +136,16 @@
                     </v-btn>
                 </div>
                 <v-form v-else v-model="valid" @submit.prevent="onSubmit">
+                    <!-- Name -->
+                    <v-text-field
+                        label="Name"
+                        persistent-hint
+                        type="text"
+                        v-model.trim="name"
+                        class="my-4"
+                        rounded="xl"
+                        variant="outlined"
+                    ></v-text-field>
                     <v-text-field
                         label="E-Mail"
                         persistent-hint

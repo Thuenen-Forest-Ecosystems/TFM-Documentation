@@ -59,10 +59,10 @@
         
 
         let permissionColumn = null;
-        
+        console.log('Organization Type:', props.organizationType);
 
         switch(props.organizationType){
-            case 'administration':
+            case 'root':
                 permissionColumn = 'responsible_state';
                 organizationPermissionText.value = 'Dienstleister oder Landesinventurleitung';
                 break;
@@ -203,7 +203,7 @@
                     :rules="[rules.required, rules.minLength, rules.disabled]"
                 />-->
 
-                <v-card variant="tonal" class="ma-2" v-if="organizationPermissionText" :title="organizationPermissionText">
+                <v-card variant="tonal" class="ma-2" v-if="organizationPermissionText" :title="organizationPermissionText ">
                     <v-chip-group
                         selected-class="text-primary"
                         column
