@@ -65,6 +65,8 @@
                 console.error(error);
                 return;
             }
+            // only if organization is not deleted
+            data = data.filter(permission => !permission.organizations.deleted);
             organizationsAccess.value = data;
             console.log('Organizations Access:', organizationsAccess.value);
         });

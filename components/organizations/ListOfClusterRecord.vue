@@ -1297,19 +1297,20 @@ const listOfLookupTables = [
             responsible_troop: selectedTroop || null
         }
 
-        
+        console.log('Selected Troop:', props.organization_type);
 
         switch (props.organization_type) {
             case 'root':
                 update.responsible_state = selectedCompany || null;
-                update.completed_at_administration = null; // reset completed at administration
-                update.completed_at_state = null; // reset completed at state
-                update.completed_at_troop = null; // reset completed at troop
+                update.responsible_provider = null;
+                //update.completed_at_administration = null; // reset completed at administration
+                //update.completed_at_state = null; // reset completed at state
+                //update.completed_at_troop = null; // reset completed at troop
                 break;
             case 'country':
                 update.responsible_provider = selectedCompany || null;
-                update.completed_at_state = null; // reset completed at state
-                update.completed_at_troop = null; // reset completed at troop
+                //update.completed_at_state = null; // reset completed at state
+                //update.completed_at_troop = null; // reset completed at troop
                 break;
         };
 

@@ -1,7 +1,6 @@
 <script setup>
     import { onMounted, getCurrentInstance, ref } from 'vue';
     import { stateByOrganizationType, toDoFromRecord, workflowFromRecord } from '../Utils';
-    import DialogResponsible from '../organizations/DialogResponsible.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;

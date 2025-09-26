@@ -62,13 +62,18 @@
         }
 
         deleting.value[organizationId] = true;
-      const { data, error } = await supabase.from('organizations').delete().eq('id', organizationId);
-      if (error) {
-        console.error('Error removing organization:', error);
-        alert(`Error removing organization: ${error.message}`);
-        return;
-      }
-      organizations.value = organizations.value.filter(org => org.id !== organizationId);
+
+        //const { data, error } = await supabase.from('organizations').delete().eq('id', organizationId);
+        // replaced with soft delete
+        const { data, error } = await supabase.from('organizations').update({ deleted: true }).eq('id', organizationId);
+      
+      
+        if (error) {
+            console.error('Error removing organization:', error);
+            alert(`Error removing organization: ${error.message}`);
+            return;
+        }
+        organizations.value = organizations.value.filter(org => org.id !== organizationId);
     } catch (e) {
       console.error('An unexpected error occurred:', e);
       alert(`An unexpected error occurred: ${e.message}`);
@@ -123,6 +128,7 @@
         ({ data, error } = await supabase.from('organizations')
             .select()
             .eq('parent_organization_id', organizationId)
+            //.eq('deleted', false) // Ensure only active organizations are fetched
             .order('created_at', { ascending: false })
             //.eq('type', attrs.type) // Ensure only active organizations are fetched
             .order('created_at', { ascending: false }));
@@ -303,14 +309,17 @@
             Es wurden noch keine Organisationen hinzugefügt.<br/>Klicke auf "Neu", um eine neue Organisation hinzuzufügen.
         </v-alert>
     </div>
-
-    <v-card v-for="organization in organizations" :key="organization.id" class="mb-4" variant="tonal">
+    <!--opacity-60 if deleted-->
+    <v-card v-for="organization in organizations" :key="organization.id" :class="'mb-4 ' + (organization.deleted ? 'opacity-40' : '')" variant="tonal">
         <v-card-item>
             {{ organization.name || organization.entityName }}
             <template v-slot:append  v-if="props.is_admin">
+                <v-chip v-if="organization.deleted" color="grey" variant="outlined" class="mr-2">
+                    Archived
+                </v-chip>
                 <v-btn 
+                    v-if="!organization.deleted"
                     v-bind="props"
-                    
                     variant="tonal"
                     rounded="xl"
                     @click="_inviteOrganizationAdminDialog(organization.id)"
@@ -318,13 +327,13 @@
                     Einladen
                     <v-icon>mdi-email-plus</v-icon>
                 </v-btn>
-                <v-btn
+                <!--<v-btn
                     icon="mdi-delete" 
                     variant="text" 
                     :loading="deleting[organization.id]"
                     :disabled="deleting[organization.id]"
                     v-if="props.is_admin"
-                    @click="_removeOrganization(organization.id)"></v-btn>
+                    @click="_removeOrganization(organization.id)"></v-btn>-->
             </template>
             <template v-if="is_organization_admin">
                 <v-btn icon="mdi-pencil" variant="text" @click="_createOrganization(organization.name, organization.entityName, organization.parent_organization_id)"></v-btn>
@@ -349,40 +358,6 @@
             </div>
         </v-card-text>
     </v-card>
-
-    <!--<v-list lines="two">
-        <v-list-item v-if="!organizations.length">
-            <v-list-item-title class="text-center">Noch keine Organisationen eingetragen.</v-list-item-title>
-        </v-list-item>
-        <v-list-group v-for="organization in organizations" :key="organization.id">
-            <template v-slot:activator="{ props: slotProps }">
-                <v-list-item v-bind="slotProps" >
-                    <template v-slot:append>
-                        <v-tooltip location="top" text="Verantwortlichen hinzufügen">
-                            <template v-slot:activator="{ props }">
-                                <v-btn 
-                                    v-bind="props"
-                                    icon="mdi-account-plus"
-                                    variant="text"
-                                    @click="_inviteOrganizationAdmin(organization.id)"
-                                ></v-btn>
-                            </template>
-                        </v-tooltip>
-                    </template>
-                    <v-list-item-title>{{ organization.entityName }}</v-list-item-title>
-                    <v-list-item-subtitle>{{ organization.name }}</v-list-item-subtitle>
-                </v-list-item>
-            </template>
-            <template v-for="permission in userPermissions" :key="permission.id">
-                <v-list-item prepend-icon="mdi-account" v-if="permission && permission.organization_id && organization && permission.organization_id === organization.id">
-                    <v-list-item-title>{{ userProfiles.find(user => user && user.id === permission.user_id)?.email || 'Noch nicht angemeldet' }}</v-list-item-title>
-                    <template v-slot:append>
-                        <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserPermission(e, permission.user_id, permission.organization_id)"></v-btn>
-                    </template>
-                </v-list-item>
-            </template>
-        </v-list-group>
-    </v-list>-->
   </div>
 
   <DialogEmail 

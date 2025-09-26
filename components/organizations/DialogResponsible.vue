@@ -45,6 +45,7 @@
         emit('confirm', companyValue, troopValue);
         //emit('confirm', props.selected, losName.value);
         emit('update:modelValue', false); // Close the dialog
+        resetSelection();
     }
 
     function updateLos(){
@@ -55,8 +56,6 @@
     }
 
     function initTexte(){
-
-        
 
         let permissionColumn = null;
         console.log('Organization Type:', props.organizationType);
@@ -90,8 +89,15 @@
 
     }
 
+    function resetSelection(){
+        savingChanges.value = false;
+        selectedTroop.value = null;
+        selectedCompany.value = null;
+    }
+
     // Call this when user cancels
     function cancelAction() {
+       resetSelection();
         emit('update:modelValue', false);
     }
 
@@ -149,8 +155,8 @@
     watch(() => [props.selected, props.organizationId, props.modelValue, props.selectedRows] , ([newSelected, newOrgId, newDialog, newSelectedRows]) => {
         initTexte();
         if(newSelected && newDialog){
-            selectedTroop.value = newSelected.troop_id || null;
-            selectedCompany.value = newSelected.responsible_organization_id || null;
+            //selectedTroop.value = newSelected.troop_id || null;
+            //selectedCompany.value = newSelected.responsible_organization_id || null;
             losName.value = newSelected.name || '';
             
         }

@@ -221,10 +221,10 @@ layout: home
     </v-tabs-window-item>
 </v-tabs-window>
 
-<div class="text-center mt-11 " >
+<!--<div class="text-center mt-11 " >
     Organisation ID:<br/>
     <span class="text-caption text-grey">{{permission.organization_id}}</span>
-</div>
+</div>-->
 
 </div>
 </v-app>
