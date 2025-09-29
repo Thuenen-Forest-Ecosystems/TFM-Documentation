@@ -208,6 +208,19 @@ const listOfLookupTables = [
     function setColDefs(){
         colDefs.value = [
             {
+                cellRenderer: 'actionCellRenderer', // Custom cell renderer
+                pinned: 'left',
+                width: 50,
+                sortable: false,
+                filter: false,
+                cellRendererParams: {
+                    onActionClick: (rowData) => {
+                        selectedCluster.value = rowData;
+                         recordsDialog.value = true;
+                    }
+                }
+            },
+            {
                 headerCheckboxSelection: true, // Enables "select all" checkbox in header
                 checkboxSelection: true, // Enables checkbox selection for rows
                 headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
@@ -233,19 +246,16 @@ const listOfLookupTables = [
                     return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflows.find(wf => wf.searchText === params.value)?.searchText || 'transparent'};"></span></div>`;
                 }
             },
-            {
-                cellRenderer: 'actionCellRenderer', // Custom cell renderer
+            { 
+                field: "validity",
+                headerName: "Gültigkeit",
+                //filter: true,
+                width: 100,
+                //sortable: true,
+                cellDataType: "boolean",
                 pinned: 'left',
-                width: 50,
-                sortable: false,
-                filter: false,
-                cellRendererParams: {
-                    onActionClick: (rowData) => {
-                        selectedCluster.value = rowData;
-                         recordsDialog.value = true;
-                    }
-                }
             },
+            
             /*{
                 cellRenderer: 'moreCellRenderer', // Custom cell renderer
                 pinned: 'left',
@@ -253,8 +263,9 @@ const listOfLookupTables = [
                 sortable: false,
                 filter: false
             },*/
+
             
-            { 
+            {
                 field: "plot_id",
                 headerName: "Plot Id",
                 filter: true,
@@ -568,6 +579,8 @@ const listOfLookupTables = [
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
 
+                validity: record.is_valid ? (record.is_plausible ? true : false) : false,
+
                 updated_at: record.updated_at,
                 completed_at_state: record.completed_at_state,
                 completed_at_administration: record.completed_at_administration,
@@ -780,7 +793,9 @@ const listOfLookupTables = [
                     center_location,
                     completed_at_state,
                     completed_at_administration,
-                    completed_at_troop
+                    completed_at_troop,
+                    is_valid,
+                    is_plausible
                 `)
                 .eq(companyType, organizationId)
                 //.is(filterRow, null) // Ensure the filterRow is null
