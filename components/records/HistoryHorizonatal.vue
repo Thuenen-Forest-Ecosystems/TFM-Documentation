@@ -190,17 +190,16 @@
 
                 <v-card title="Dienstleister" variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_provider, plotData[index - 1]?.responsible_provider)">
                     <template v-slot:title>
-                        {{ item.providerData ? item.providerData.name : `${item.responsible_provider}` }}
+                        {{ item.providerData ? item.providerData.name : (item.responsible_provider ? item.responsible_provider : '-') }}
                     </template>
                     <template v-slot:subtitle>
                         Dienstleister
                     </template>
                 </v-card>
 
-
                 <v-card title="Landesinventurleitung" variant="tonal" class="pa-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_state, plotData[index - 1]?.responsible_state) ||  isDifferent(item.completed_at_state, plotData[index - 1]?.completed_at_state)">
                     <template v-slot:title>
-                        {{ item.stateData ? item.stateData.name : `${item.responsible_state}` }}
+                        {{ item.stateData ? item.stateData.name : (item.responsible_state ? item.responsible_state : '-') }}
                     </template>
                     <template v-slot:subtitle>
                         Landesinventurleitung

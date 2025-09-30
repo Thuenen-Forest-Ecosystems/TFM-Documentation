@@ -3,15 +3,13 @@
 
     import { onMounted, ref, getCurrentInstance, watch, shallowRef } from 'vue';
     import Firewall from '../../components/Firewall.vue';
-    import History from '../../components/records/History.vue';
     import ValidateByPlot from '../../components/validation/ValidateByPlot.vue';
     import RecordToDo from '../../components/records/RecordToDo.vue';
     import RecordDetail from './RecordDetail.vue';
 
     import Ajv from 'ajv';
     import VersionSelection from '../validation/VersionSelection.vue';
-    import DetailAdministration from './DetailAdministration.vue';
-import HistoryHorizonatal from './HistoryHorizonatal.vue';
+    import HistoryHorizonatal from './HistoryHorizonatal.vue';
     
 
     const ajv = new Ajv({
@@ -20,13 +18,6 @@ import HistoryHorizonatal from './HistoryHorizonatal.vue';
     });
     
     const selectedVersion = ref(null);
-
-    // Optional: Watch for changes
-    watch(selectedVersion, (newVersion) => {
-        console.log('Selected version changed:', newVersion);
-        fetchSchemaFromSupabaseStorage();
-        // Trigger any additional logic here
-    });
 
     const props = defineProps({
         cluster: {
@@ -48,6 +39,22 @@ import HistoryHorizonatal from './HistoryHorizonatal.vue';
         }
     });
 
+    onMounted(async () => {
+        
+        if (props.clusterId) {
+            initialLoading.value = true;
+            await fetchSchemaFromSupabaseStorage();
+            await fetchPlausibilityFromSupabaseStorage();
+            await fetchRecordsByCluster(props.clusterId);
+            initialLoading.value = false;
+        }
+    });
+    watch(selectedVersion, (newVersion) => {
+        console.log('Selected version changed:', newVersion);
+        fetchSchemaFromSupabaseStorage();
+        // Trigger any additional logic here
+    });
+
     const sheet = shallowRef(true)
 
     const instance = getCurrentInstance();
@@ -67,6 +74,7 @@ import HistoryHorizonatal from './HistoryHorizonatal.vue';
     const selectedHistoryPerTab = ref({});
 
     async function fetchRecordsByCluster(_clusterId) {
+        console.log('Fetching records for cluster:', _clusterId);
         const { data, error } = await supabase
             .from('records')
             .select('*')
@@ -144,25 +152,22 @@ import HistoryHorizonatal from './HistoryHorizonatal.vue';
         window.history.back();
     }
 
-    onMounted(async () => {
-        
-        if (props.clusterId) {
-            initialLoading.value = true;
-            await fetchSchemaFromSupabaseStorage();
-            await fetchPlausibilityFromSupabaseStorage();
-            await fetchRecordsByCluster(props.clusterId);
-            initialLoading.value = false;
-        }
-    });
+    
 
     function onHistorySelect(record, event) {
         selectedHistoryPerTab.value[tab.value] = record;
     }
-
+     watch(tab, (newTabValue) => {
+        const selectedRecord = records.value.find(r => r.id === newTabValue);
+        if (selectedRecord) {
+            onHistorySelect(selectedRecord, null);
+        }
+    });
 </script>
 
 <template>
     <Firewall>
+
         <v-card>
             <div class="d-flex align-center">
             <div class="ma-2">Ecken:</div>
@@ -191,7 +196,8 @@ import HistoryHorizonatal from './HistoryHorizonatal.vue';
                     </v-navigation-drawer>
                 </div>-->
 
-                <v-bottom-sheet :persistent="true" v-model="sheet" :fullscreen="false" :scrim="false" >
+                <!-- only show history for active tab -->
+                <v-bottom-sheet v-if="tab === record.id" :persistent="true" v-model="sheet" :fullscreen="false" :scrim="false" >
                     <v-expansion-panels>
                         <v-expansion-panel>
                             <v-expansion-panel-title>
@@ -207,12 +213,13 @@ import HistoryHorizonatal from './HistoryHorizonatal.vue';
                     </v-expansion-panels>
                 </v-bottom-sheet>
 
+                <RecordToDo :record="selectedHistoryPerTab[tab]" :organizationId="props.organizationId" :organizationType="props.organizationType" class="ma-4" />
+
                 <div class="ma-3">
                     <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="pa-3">
-                        <RecordToDo :record="selectedHistoryPerTab[tab]" :organizationId="props.organizationId" :organizationType="props.organizationType" class="mb-11" />
 
                         <v-toolbar color="transparent">
-                            <v-toolbar-title>Validation {{ selectedHistoryPerTab[tab].id }}</v-toolbar-title>
+                            <v-toolbar-title>Validation</v-toolbar-title>
                             <template v-slot:append>
                                 <VersionSelection v-model="selectedVersion" />
                             </template>
