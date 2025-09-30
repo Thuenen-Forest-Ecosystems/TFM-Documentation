@@ -1376,9 +1376,7 @@ const listOfLookupTables = [
     function _selectedOnMap(clickedFeature) { // toggle selection on map click
 
         const jsonObject = JSON.parse(clickedFeature.record);
-        console.log('Selected on map parsed:', jsonObject.cluster_id);
         selectedCluster.value = jsonObject;
-        console.log('selectedCluster:', selectedCluster.value);
         recordsDialog.value = true;
         return;
         recordsDialog.value = true;
@@ -1636,7 +1634,11 @@ const listOfLookupTables = [
                     
                     
                 </v-toolbar>
-                <ClusterDetails :clusterId="selectedCluster.cluster_id" :organizationId="props.organization_id" :organizationType="props.organization_type" />
+                <ClusterDetails
+                    :clusterId="selectedCluster.cluster_id"
+                    :cluster="selectedCluster"
+                    :organizationId="props.organization_id"
+                    :organizationType="props.organization_type" />
             </v-card>
         </v-dialog>
     </div>

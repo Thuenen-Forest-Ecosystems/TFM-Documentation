@@ -23,7 +23,7 @@
 
 
     function sortPlotData() {
-        plotData.value.sort((a, b) => b.sortByDate - a.sortByDate);
+        plotData.value.sort((a, b) => a.sortByDate - b.sortByDate);
     }
 
     const addAsyncDataToItems = async (items) => {
@@ -120,14 +120,22 @@
         emit('select:record', item);
     }
 
+    const items = [
+    { title: 'Click Me' },
+    { title: 'Click Me' },
+    { title: 'Click Me' },
+    { title: 'Click Me 2' },
+  ]
+
 </script>
 
 
 
 <template>
     <v-timeline
+        direction="horizontal" line-inset="12"
         v-bind="$attrs"
-        align="start" density="compact" class="ma-2" style="width: 400px;">
+        align="center" density="compact" class="ma-2">
         <v-timeline-item
             size="small"
             v-for="(item, index) in plotData"
@@ -137,84 +145,81 @@
             class="clickable-timeline-item"
             :fill-dot="activeItem === item"
         >
-            <div class="d-flex flex-column">
-                <strong class="me-4">{{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}</strong>
-                <!--<strong v-else>Aktueller Status</strong>-->
+          
+            <v-menu open-on-hover>
+                <template v-slot:activator="{ props }">
+                    <div v-bind="props" >
+                        <p class="mb-2 text-center" style="white-space: nowrap;">
+                            {{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}
+                        </p>
+                        <!--<strong v-else>Aktueller Status</strong>-->
 
-                <div class="mb-2 text-caption">
-                    {{ workflowFromRecord(item).title }}
-                </div>
+                        <v-chip class="mb-2 text-caption">
+                            {{ workflowFromRecord(item).title }}
+                        </v-chip>
+                    </div>
+                </template>
 
-                    
+                <v-card>
                     <v-card variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_troop, plotData[index - 1]?.responsible_troop) ||  isDifferent(item.completed_at_troop, plotData[index - 1]?.completed_at_troop)">
-                        <template v-slot:title>
-                            {{item.troopData ? (item.troopData?.name ? item.troopData.name : 'no name') : (item.responsible_troop ? item.responsible_troop : '-') }}
-                        </template>
-                        <template v-slot:subtitle >
-                            {{ item.troopData ? (item.troopData.is_control_troop ? 'Kontrolltrupp' : `Aufnahmetrupp`) : 'Trupp' }}
-                        </template>
+                    <template v-slot:title>
+                        {{item.troopData ? (item.troopData?.name ? item.troopData.name : 'no name') : (item.responsible_troop ? item.responsible_troop : '-') }}
+                    </template>
+                    <template v-slot:subtitle >
+                        {{ item.troopData ? (item.troopData.is_control_troop ? 'Kontrolltrupp' : `Aufnahmetrupp`) : 'Trupp' }}
+                    </template>
 
-                        <v-card-text>
-                            <v-chip :color="item.completed_at_troop ? 'green' : 'yellow'">
-                                <span v-if="item.completed_at_troop">
-                                    {{ new Date(item.completed_at_troop).toLocaleDateString() }}
-                                    {{ new Date(item.completed_at_troop).toLocaleTimeString() }}
-                                </span>
-                                <span v-else>
-                                    offen
-                                </span>
-                            </v-chip>
-                        </v-card-text>
-                        <!--<template v-slot:append>
-                            <v-chip v-if="item.troopData">
-                                {{ item.troopData.is_control_troop ? 'KT' : `AT` }}
-                            </v-chip>
-                        </template>-->
-                    </v-card>
-                    
+                    <v-card-text>
+                        <v-chip :color="item.completed_at_troop ? 'green' : 'yellow'">
+                            <span v-if="item.completed_at_troop">
+                                {{ new Date(item.completed_at_troop).toLocaleDateString() }}
+                                {{ new Date(item.completed_at_troop).toLocaleTimeString() }}
+                            </span>
+                            <span v-else>
+                                offen
+                            </span>
+                        </v-chip>
+                    </v-card-text>
+                    <!--<template v-slot:append>
+                        <v-chip v-if="item.troopData">
+                            {{ item.troopData.is_control_troop ? 'KT' : `AT` }}
+                        </v-chip>
+                    </template>-->
+                </v-card>
+                
 
-                    <v-card title="Dienstleister" variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_provider, plotData[index - 1]?.responsible_provider)">
-                        <template v-slot:title>
-                            {{ item.providerData ? item.providerData.name : `${item.responsible_provider}` }}
-                        </template>
-                        <template v-slot:subtitle>
-                            Dienstleister
-                        </template>
-                    </v-card>
+                <v-card title="Dienstleister" variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_provider, plotData[index - 1]?.responsible_provider)">
+                    <template v-slot:title>
+                        {{ item.providerData ? item.providerData.name : `${item.responsible_provider}` }}
+                    </template>
+                    <template v-slot:subtitle>
+                        Dienstleister
+                    </template>
+                </v-card>
 
 
-                    <v-card title="Landesinventurleitung" variant="tonal" class="pa-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_state, plotData[index - 1]?.responsible_state) ||  isDifferent(item.completed_at_state, plotData[index - 1]?.completed_at_state)">
-                        <template v-slot:title>
-                            {{ item.stateData ? item.stateData.name : `${item.responsible_state}` }}
-                        </template>
-                        <template v-slot:subtitle>
-                            Landesinventurleitung
-                        </template>
-                        <v-card-text>
-                            <v-chip :color="item.completed_at_state ? 'green' : 'yellow'">
-                                <span v-if="item.completed_at_state">
-                                    {{ new Date(item.completed_at_state).toLocaleDateString() }}
-                                    {{ new Date(item.completed_at_state).toLocaleTimeString() }}
-                                </span>
-                                <span v-else>
-                                    offen
-                                </span>
-                            </v-chip>
-                        </v-card-text>
-                    </v-card>
-                    <!--
-                    <v-card class="my-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_administration, plotData[index - 1]?.responsible_administration)">
-                        <p class="text-caption">Bundesinventurleitung:</p>
-                        {{ item.administrationData ? item.administrationData.name : '' }}
-
-                        <div class="my-2" v-if="!plotData[index - 1] || isDifferent(item.completed_at_administration, plotData[index - 1]?.completed_at_administration)">
-                            <p class="text-caption">Bundesinventurleitung abgeschlossen:</p>
-                            {{ item.completed_at_administration ? new Date(item.completed_at_administration).toLocaleDateString() : '' }}
-                            {{ item.completed_at_administration ? new Date(item.completed_at_administration).toLocaleTimeString() : '' }}
-                        </div>
-                    </v-card>
-                    -->
-            </div>
+                <v-card title="Landesinventurleitung" variant="tonal" class="pa-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_state, plotData[index - 1]?.responsible_state) ||  isDifferent(item.completed_at_state, plotData[index - 1]?.completed_at_state)">
+                    <template v-slot:title>
+                        {{ item.stateData ? item.stateData.name : `${item.responsible_state}` }}
+                    </template>
+                    <template v-slot:subtitle>
+                        Landesinventurleitung
+                    </template>
+                    <v-card-text>
+                        <v-chip :color="item.completed_at_state ? 'green' : 'yellow'">
+                            <span v-if="item.completed_at_state">
+                                {{ new Date(item.completed_at_state).toLocaleDateString() }}
+                                {{ new Date(item.completed_at_state).toLocaleTimeString() }}
+                            </span>
+                            <span v-else>
+                                offen
+                            </span>
+                        </v-chip>
+                    </v-card-text>
+                </v-card>
+                </v-card>
+            </v-menu>
+            
         </v-timeline-item>
         <v-timeline-item
             v-if="latestPlot"
@@ -231,6 +236,7 @@
 
 <style scoped>
     .clickable-timeline-item {
+        position: relative;
         cursor: pointer;
         transition: background-color 0.2s ease;
     }
@@ -242,5 +248,13 @@
 
     .creation-timeline-item {
         opacity: 0.7;
+    }
+    .popout-card {
+        position: absolute;
+        bottom: 100%; /* Adjust as needed */
+        left: 100%; /* Position to the right of the timeline item */
+        z-index: 100;
+        width: 250px; /* Adjust width as needed */
+        transition: opacity 0.2s ease;
     }
 </style>

@@ -49,14 +49,14 @@
                     v-model="tab"
                     align-tabs="center"
                 >
-                <v-tab
-                    v-for="item in items"
-                    :key="item"
-                    :text="item"
-                    :value="item"
-                ></v-tab>
-            </v-tabs>
-        </template>
+                    <v-tab
+                        v-for="item in items"
+                        :key="item"
+                        :text="item"
+                        :value="item"
+                    ></v-tab>
+                </v-tabs>
+            </template>
         </v-toolbar>
         <v-tabs-window v-model="tab">
             <v-tabs-window-item :key="items[0]" :value="items[0]">

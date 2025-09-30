@@ -67,7 +67,7 @@
         }
 
         // Fallback to the raw value
-        return value || '- n/a -';
+        return value || ' ';
     }
 
 </script>

@@ -1,7 +1,7 @@
 
 <script setup>
 
-    import { onMounted, ref, getCurrentInstance, watch } from 'vue';
+    import { onMounted, ref, getCurrentInstance, watch, shallowRef } from 'vue';
     import Firewall from '../../components/Firewall.vue';
     import History from '../../components/records/History.vue';
     import ValidateByPlot from '../../components/validation/ValidateByPlot.vue';
@@ -10,6 +10,8 @@
 
     import Ajv from 'ajv';
     import VersionSelection from '../validation/VersionSelection.vue';
+    import DetailAdministration from './DetailAdministration.vue';
+import HistoryHorizonatal from './HistoryHorizonatal.vue';
     
 
     const ajv = new Ajv({
@@ -27,6 +29,11 @@
     });
 
     const props = defineProps({
+        cluster: {
+            type: Object,
+            required: false,
+            default: null
+        },
         clusterId: {
             type: String,
             required: true
@@ -41,6 +48,8 @@
         }
     });
 
+    const sheet = shallowRef(true)
+
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
@@ -53,9 +62,9 @@
     const validate = ref(null);
     const initialLoading = ref(false);
 
-    const selectedHistoricalRecord = ref(null);
-
     const toggle_data_view = ref(0);
+
+    const selectedHistoryPerTab = ref({});
 
     async function fetchRecordsByCluster(_clusterId) {
         const { data, error } = await supabase
@@ -66,8 +75,13 @@
         if (error) {
             console.error('Error fetching records:', error);
         } else {
-            // tab.value from recordId
-            tab.value = data.length > 0 ? data[0].id : null;
+            data.forEach(record => {
+                if (props.cluster && record.plot_id === props.cluster.plot_id) {
+                    tab.value = record.id;
+                }
+            });
+
+            //tab.value = data.length > 0 ? data[0].id : null;
 
             // Sort by plot_name
             records.value = data.sort((a, b) => a.plot_name - b.plot_name);
@@ -142,7 +156,7 @@
     });
 
     function onHistorySelect(record, event) {
-        selectedHistoricalRecord.value = record;
+        selectedHistoryPerTab.value[tab.value] = record;
     }
 
 </script>
@@ -169,36 +183,51 @@
                 :key="record.id"
                 :value="record.id"
             >
-            <v-app>
-                <div class="full-height d-flex">
+                <!--<div class="full-height d-flex">
                     <v-navigation-drawer  :width="420" expand-on-hover
                         permanent
                         rail>
                         <History :plot_id="record.plot_id" @select:record="onHistorySelect" />
                     </v-navigation-drawer>
-                </div>
+                </div>-->
 
-                <div style="margin-left:70px !important;" class="ma-3">
-                    <v-card variant="tonal" v-if="selectedHistoricalRecord">
-                        <RecordToDo :record="selectedHistoricalRecord" :organizationId="props.organizationId" :organizationType="props.organizationType" class="mb-11" />
+                <v-bottom-sheet :persistent="true" v-model="sheet" :fullscreen="false" :scrim="false" >
+                    <v-expansion-panels>
+                        <v-expansion-panel>
+                            <v-expansion-panel-title>
+                                <v-icon>mdi-history</v-icon>
+                                <span class="ml-2">History</span>
+                            </v-expansion-panel-title>
+                            <v-expansion-panel-text class="ma-0 pa-0">
+                                <div class="ma-0 pa-0 overflow-x-auto">
+                                    <HistoryHorizonatal :plot_id="record.plot_id" @select:record="onHistorySelect" />
+                                </div>
+                            </v-expansion-panel-text>
+                        </v-expansion-panel>
+                    </v-expansion-panels>
+                </v-bottom-sheet>
+
+                <div class="ma-3">
+                    <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="pa-3">
+                        <RecordToDo :record="selectedHistoryPerTab[tab]" :organizationId="props.organizationId" :organizationType="props.organizationType" class="mb-11" />
 
                         <v-toolbar color="transparent">
-                            <v-toolbar-title>Validation</v-toolbar-title>
+                            <v-toolbar-title>Validation {{ selectedHistoryPerTab[tab].id }}</v-toolbar-title>
                             <template v-slot:append>
                                 <VersionSelection v-model="selectedVersion" />
                             </template>
                         </v-toolbar>
-                        <v-card-text v-if="selectedHistoricalRecord && validate && tfm">
-                            <ValidateByPlot :record="selectedHistoricalRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                        <v-card-text v-if="selectedHistoryPerTab[tab] && validate && tfm">
+                            <ValidateByPlot :record="selectedHistoryPerTab[tab]" :validate="validate" :tfm="tfm" :version="selectedVersion" />
                         </v-card-text>
 
-                        <RecordDetail :record="selectedHistoricalRecord" :schema="schema" class="mt-11" />
+                        <RecordDetail :record="selectedHistoryPerTab[tab]" :schema="schema" class="mt-11" />
                     </v-card>
+
                     <div class="text-caption ma-11 text-center">
-                        {{ record.id }}
+                        Cluster:{{ record.id }}
                     </div>
                 </div>
-                </v-app>
             </v-tabs-window-item>
         </v-tabs-window>
         <!--Loader-->
