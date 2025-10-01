@@ -10,7 +10,7 @@
     import Ajv from 'ajv';
     import VersionSelection from '../validation/VersionSelection.vue';
     import HistoryHorizonatal from './HistoryHorizonatal.vue';
-    
+    import DetailAdministration from './DetailAdministration.vue';
 
     const ajv = new Ajv({
         allErrors: true,
@@ -167,7 +167,6 @@
 
 <template>
     <Firewall>
-
         <v-card>
             <div class="d-flex align-center">
             <div class="ma-2">Ecken:</div>
@@ -230,6 +229,8 @@
 
                         <RecordDetail :record="selectedHistoryPerTab[tab]" :schema="schema" class="mt-11" />
                     </v-card>
+
+                    <DetailAdministration v-if="selectedHistoryPerTab[tab]" :record="selectedHistoryPerTab[tab]" />
 
                     <div class="text-caption ma-11 text-center">
                         Cluster:{{ record.id }}
