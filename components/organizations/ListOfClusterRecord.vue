@@ -378,7 +378,7 @@ const listOfLookupTables = [
 
             {
                 field: "cluster_status",
-                headerName: "Cluster Status",
+                headerName: "Trakt Status",
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.cluster_status",
@@ -387,7 +387,7 @@ const listOfLookupTables = [
             },
             {
                 field: "cluster_situation",
-                headerName: "Cluster Situation",
+                headerName: "Trakt Situation",
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.cluster_situation",
@@ -396,7 +396,7 @@ const listOfLookupTables = [
             },
             {
                 field: "state_responsible",
-                headerName: "state_responsible",
+                headerName: "Verantwortlichkeit",
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.state_responsible",
@@ -488,7 +488,7 @@ const listOfLookupTables = [
             },
             {
                 field: "states_affected",
-                headerName: "Affected States",
+                headerName: "Betroffene Bundesländer", // Affected States
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.states_affected"
@@ -826,6 +826,7 @@ const listOfLookupTables = [
             properties: {
                 isSelected: false,
                 isFiltered: false,
+                state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).searchText,
                 record: record
             }
         }));

@@ -87,19 +87,21 @@
     function updateGeoJsonFeatures(_newGeojson = null) {
         if (!map || !map.isStyleLoaded()) return;
 
+        console.log(props.geojson);
+
         // Update the color property for each feature based on selection
         _newGeojson.features.forEach(feature => {
             feature.properties.cluster_name = feature.properties.record.cluster_name;
             feature.properties.plot_name = feature.properties.record.plot_name;
 
-
-            let color = '#00acff'; // Default color
+            console.log('color', feature.properties)
+            let color = feature.properties.state_by_user || '#00acff'; // Default color
             let strokeWidth = 0; // Default border width
             let opacity = 1.0; // Default opacity
             
 
             if (feature.properties.isSelected) {
-                strokeWidth = 2; // Border width for selected features
+                strokeWidth = 4; // Border width for selected features
             }
 
             if(!feature.properties.isFiltered){
@@ -208,7 +210,6 @@
     }
 
     onMounted(() => {
-        console.log(props.geojson);
         // OSM
         map = new maplibregl.Map({
             container: 'map',
