@@ -203,7 +203,7 @@
                 </div>
                 <v-list-item v-for="administrator in administrators" :key="administrator.id">
                     <v-list-item-title>{{ userProfiles.find(profile => profile.id === administrator.user_id)?.email || 'Account wurde noch nicht bestätigt' }}</v-list-item-title>
-                    
+                    <v-list-item-subtitle>{{ userProfiles.find(profile => profile.id === administrator.user_id)?.user_name || '' }}</v-list-item-subtitle>
                     <template v-slot:append>
                         <v-btn v-if="userProfiles.find(profile => profile.id === administrator.user_id)?.email" icon="mdi-email" variant="flat" @click="_openEmailLink(userProfiles.find(profile => profile.id === administrator.user_id)?.email)"/>
                         <v-btn v-if="attrs.is_admin" icon="mdi-delete" variant="flat" @click="_deleteAdministratorDialog(administrator.id)"></v-btn>
