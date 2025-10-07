@@ -35,7 +35,7 @@ export const workflows = [
         //style: { color: 'white', backgroundColor: 'green', padding: '10px', },
         text: 'In Arbeit von Trupp. (2)',
         searchText: 'green',
-        tooltip: 'In Arbeit von Trupp. (Keine Maßnahme nötig)',
+        tooltip: 'In Arbeit durch Trupp.',
     },
     {
         id: 5,
@@ -53,33 +53,49 @@ export const workflows = [
         id: 3,
         searchText: 'yellow',
         tooltip: 'Kann an Landesinventurleitung übergeben werden'
+    },
+    {
+        id: 7,
+        searchText: 'red',
+        tooltip: 'Muss an Trupp übergeben werden'
+    },
+    {
+        id: 8,
+        searchText: 'green',
+        tooltip: 'Wird durch Dienstleister bearbeitet.'
     }
 ];
 export function stateByOrganizationType(organizationId, organization_type, record){
     if(!organizationId || !organization_type || !record) return null;
 
+    console.log('Get state for organization type:', organization_type, 'and ID:', organizationId);
+
     if(organization_type === 'country'){
-        if(record.responsible_state === organizationId){
-            if(!record.responsible_troop || !record.responsible_provider){
+        //if(record.responsible_state === organizationId){
+            if(!record.responsible_troop && !record.responsible_provider){
                 return workflows.find(w => w.id === 0);
             }else if(record.completed_at_troop){
                 return workflows.find(w => w.id === 1);
-            }else{
+            }else if(record.responsible_troop){
                 return workflows.find(w => w.id === 2);
+            }else if(record.responsible_provider){
+                return workflows.find(w => w.id === 8);
             }
-        }
+        //}
     }else if (organization_type === 'provider'){
-        if(record.responsible_provider === organizationId){
+        //if(record.responsible_provider === organizationId){
+        
             if(!record.responsible_troop){
-                return workflows.find(w => w.id === 0);
+                return workflows.find(w => w.id === 7);
             }else if(record.completed_at_troop){
                 return workflows.find(w => w.id === 3);
             }else{
+                console.log('Record for provider:', workflows.find(w => w.id === 2));
                 return workflows.find(w => w.id === 2);
             }
-        }
+        //}
     }else if (organization_type === 'root'){
-        if(record.responsible_administration === organizationId){
+        //if(record.responsible_administration === organizationId){
             if(!record.responsible_state && !record.completed_at_state){
                 return workflows.find(w => w.id === 4);
             }else if(!record.responsible_state && record.completed_at_state){
@@ -89,12 +105,156 @@ export function stateByOrganizationType(organizationId, organization_type, recor
             }else if(record.responsible_state && record.completed_at_state){
                 return workflows.find(w => w.id === 6);
             }
-        }
+       //}
     }
     return {
         style: { color: 'black', backgroundColor: 'gray' },
         text: 'Keine Informationen',
     };
+}
+export const workflows_deprecated = [
+    {
+        id:0,
+        text: 'Initialisierung durch Bundesinventurleitung'
+    },
+    {
+        id:1,
+        text: 'Vorklärung durch Landesinventurleitung'
+    },
+    {
+        id:2,
+        text: 'Freigabe an Dienstleister'
+    },
+    {
+        id:3,
+        text: 'Bearbeitung durch Aufnahmetrupp'
+    },
+    {
+        id:4,
+        text: 'Nachbereitung durch Landesinventurleitung'
+    },
+    {
+        id:5,
+        text: 'Bearbeitung durch Kontrolltrupp'
+    },
+    {
+        id:6,
+        text: 'Fertig Landesinventurleitung'
+    },
+    {
+        id:7,
+        text: 'Freigabe für Bundesinventurleitung'
+    },
+    { 
+        id:8,
+        text: 'Rückgabe an Landesinventurleitung'
+    },
+    {
+        id:9,
+        text: 'Abnahme durch Bundesinventurleitung'
+    }
+];
+export function getDeprectaedWorkflowByRecord(record){
+    if(!record) return null;
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        !record.responsible_state &&
+        !record.completed_at_state &&
+        !record.responsible_provider &&
+        !record.responsible_troop &&
+        !record.completed_at_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 0);
+    }
+
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        record.responsible_state &&
+        !record.completed_at_state &&
+        !record.responsible_provider &&
+        !record.responsible_troop &&
+        !record.completed_at_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 1);
+    }
+
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        record.responsible_state &&
+        !record.completed_at_state &&
+        record.responsible_provider &&
+        !record.responsible_troop &&
+        !record.completed_at_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 2);
+    }
+
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        record.responsible_state &&
+        !record.completed_at_state &&
+        record.responsible_provider &&
+        record.responsible_troop &&
+        !record.completed_at_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 3);
+    }
+
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        record.responsible_state &&
+        !record.completed_at_state &&
+        record.responsible_provider &&
+        record.completed_at_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 4);
+    }
+
+    // ToDO: Add id 5 - Bearbeitung durch Kontrolltrupp
+
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        record.responsible_state &&
+        record.completed_at_state &&
+        !record.responsible_provider &&
+        record.completed_at_troop &&
+        !record.responsible_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 6);
+    }
+
+    if(
+        record.responsible_administration &&
+        !record.completed_at_administration &&
+        record.responsible_state &&
+        record.completed_at_state &&
+        !record.responsible_provider &&
+        record.completed_at_troop &&
+        !record.responsible_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 7);
+    }
+
+    // ToDo: Add id 8 - Rückgabe an Landesinventurleitung
+
+    if(
+        record.responsible_administration &&
+        record.completed_at_administration &&
+        !record.responsible_state &&
+        record.completed_at_state &&
+        !record.responsible_provider &&
+        record.completed_at_troop &&
+        !record.responsible_troop
+    ){
+        return workflows_deprecated.find(w => w.id === 9);
+    }
+
 }
 export function workflowFromRecord(record){
     if(!record) return null;

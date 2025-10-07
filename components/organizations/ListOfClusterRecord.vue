@@ -240,10 +240,10 @@ const listOfLookupTables = [
                 width: 55,
                 sortable: true,
                 //filter: 'statusFilter',
-                tooltipValueGetter: (params) => workflows.find(wf => wf.searchText === params.value)?.tooltip || params.value,
+                tooltipValueGetter: (params) => workflows.find(wf => wf.id === params.value)?.tooltip || params.value,
 
                 cellRenderer: (params) => {
-                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflows.find(wf => wf.searchText === params.value)?.searchText || 'transparent'};"></span></div>`;
+                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflows.find(wf => wf.id === params.value)?.searchText || 'transparent'};"></span></div>`;
                 }
             },
             { 
@@ -574,7 +574,7 @@ const listOfLookupTables = [
             return {
                 plot_id: record.plot_id,
 
-                state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).searchText,
+                state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).id,
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,

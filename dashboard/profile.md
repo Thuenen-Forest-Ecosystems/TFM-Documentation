@@ -1,3 +1,6 @@
+
+
+
 <script setup>
     import LoginForm from '../components/LoginForm.vue';
     import Credentials from '../components/Credentials.vue';
@@ -6,12 +9,10 @@
     import OrganizationsAdmins from '../components/organizations/OrganizationsAdmins.vue';
     import { withBase } from 'vitepress'
     import Firewall from '../components/Firewall.vue';
+    import Support from '../components/Support.vue';
 
     const instance = getCurrentInstance();
-    const apikey = instance.appContext.config.globalProperties.$apikey;
-    const url = instance.appContext.config.globalProperties.$url;
-
-    const supabase = createClient(url, apikey);
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const data = ref({});
     const access_token = ref('');
@@ -93,12 +94,12 @@
     };
 
 </script>
-
+<v-app class="bg-transparent">
 <Firewall>
 
 # Profil
 
-<v-card class="my-4">
+<v-card variant="tonal" class="my-4">
     <v-list>
         <v-list-item>
             <template v-slot:prepend>
@@ -137,7 +138,7 @@
 </v-card>
 
 ## Inventuren
-<v-card title="Kohlenstoffinventur 2027">
+<v-card variant="tonal" title="Kohlenstoffinventur 2027">
     <v-list>
         <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
             <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
@@ -147,4 +148,7 @@
 </v-card>
 <LoginForm/>
 
+<Support/>
+
 </Firewall>
+</v-app>

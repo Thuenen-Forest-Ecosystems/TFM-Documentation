@@ -5,7 +5,10 @@
   --vp-c-brand-2: #8bb63a;
   --vp-c-brand-3: #8bb63a;
 }
-
+/*
+.v-theme--dark {
+  background-color: transparent !important;
+}*/
 
 .center {
   margin: 0;

@@ -94,7 +94,6 @@
             feature.properties.cluster_name = feature.properties.record.cluster_name;
             feature.properties.plot_name = feature.properties.record.plot_name;
 
-            console.log('color', feature.properties)
             let color = feature.properties.state_by_user || '#00acff'; // Default color
             let strokeWidth = 0; // Default border width
             let opacity = 1.0; // Default opacity
