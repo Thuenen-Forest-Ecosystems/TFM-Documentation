@@ -210,14 +210,16 @@ const listOfLookupTables = [
             {
                 cellRenderer: 'actionCellRenderer', // Custom cell renderer
                 pinned: 'left',
-                width: 50,
+                width: 60,
                 sortable: false,
                 filter: false,
+                tooltipField: "note",
                 cellRendererParams: {
                     onActionClick: (rowData) => {
                         selectedCluster.value = rowData;
-                         recordsDialog.value = true;
-                    }
+                        recordsDialog.value = true;
+                    },
+                    has_note: (rowData) => !!rowData.note
                 }
             },
             {
@@ -255,7 +257,15 @@ const listOfLookupTables = [
                 cellDataType: "boolean",
                 pinned: 'left',
             },
-            
+            { 
+                field: "is_training",
+                headerName: "Schulungstrakt",
+                filter: true,
+                width: 108,
+                //sortable: true,
+                cellDataType: "boolean",
+                pinned: 'left',
+            },
             /*{
                 cellRenderer: 'moreCellRenderer', // Custom cell renderer
                 pinned: 'left',
@@ -567,10 +577,11 @@ const listOfLookupTables = [
 
         const processedRecords = records.map(record => {
             const clusterData = clusterMap.get(record.cluster_id);
+            console.log('clusterData', clusterData);
             const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
 
             const troop = troops.value.find(troop => troop.id === record.responsible_troop);
-
+            console.log('Processed record:', record);
             return {
                 plot_id: record.plot_id,
 
@@ -586,6 +597,9 @@ const listOfLookupTables = [
                 completed_at_administration: record.completed_at_administration,
                 completed_at_troop: record.completed_at_troop,
 
+                
+                note: record.note,
+
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
                 responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
@@ -594,6 +608,8 @@ const listOfLookupTables = [
                 state_los: record.state_los,
                 provider_los: record.provider_los,
                 
+                
+                is_training: clusterData.is_training,
                 cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_cluster_status', clusterData?.['cluster_status']),
                 cluster_situation: _renderClusterOptimized(clusterData, 'cluster_situation', lookupMaps, 'lookup_cluster_situation'),
                 
@@ -617,12 +633,6 @@ const listOfLookupTables = [
             
             
             };
-        });
-
-        // Enhanced debugging for nordrhein count
-        const nordrheinRows = processedRecords.filter(row => {
-            const v = row.state_responsible;
-            return v && v.toString().toLowerCase().startsWith('nordrhein');
         });
         
         return processedRecords;
@@ -795,7 +805,8 @@ const listOfLookupTables = [
                     completed_at_administration,
                     completed_at_troop,
                     is_valid,
-                    is_plausible
+                    is_plausible,
+                    note
                 `)
                 .eq(companyType, organizationId)
                 //.is(filterRow, null) // Ensure the filterRow is null
@@ -1306,11 +1317,12 @@ const listOfLookupTables = [
     async function _handleFinished(values) {
         console.log(values);
     };
-    async function _handleConfirm (selectedCompany, selectedTroop) {
+    async function _handleConfirm (selectedCompany, selectedTroop, additionalNote) {
 
         let updateField = null;
         const update = {
-            responsible_troop: selectedTroop || null
+            responsible_troop: selectedTroop || null,
+            note: additionalNote || null
         }
 
         console.log('Selected Troop:', props.organization_type);

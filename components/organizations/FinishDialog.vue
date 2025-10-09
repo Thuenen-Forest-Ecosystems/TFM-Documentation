@@ -26,6 +26,7 @@
     const emit = defineEmits(['close', 'confirm']);
 
     const isEnabled = ref(false);
+    const additionalNote = ref('');
 
     // Computed property to filter invalid rows
     const notValidRows = computed(() => {
@@ -61,7 +62,9 @@
 
         console.log('SEND', props.selectedRows.map(row => row.cluster_id));
 
-        const updatedValues = {};
+        const updatedValues = {
+            note: additionalNote.value || null
+        };
 
         switch (props.organizationType) {
             case 'country':
@@ -103,6 +106,7 @@
 
 <template>
     <v-dialog max-width="600" v-model="props.modelValue" @click:outside="closeDialog">
+        <v-form fast-fail @submit.prevent>
         <v-card prepend-icon="mdi-bookmark-check" title="Trakte abschließen">
                 <v-card-text>
                     <v-alert
@@ -143,14 +147,22 @@
                             </template>
                         </v-checkbox>
                     </p>
+                    <v-divider color="info" class="mb-5"></v-divider>
+                    <!-- Add additional note textarea here -->
+                    <v-textarea
+                        v-model="additionalNote"
+                        label="Zusätzliche Anmerkungen (optional)"
+                        outlined
+                        rows="4"
+                    ></v-textarea>
+
                 </v-card-text>
                 <v-card-actions>
                     <v-btn variant="text" @click="closeDialog">Schließen</v-btn>
                     <v-spacer></v-spacer>
-                    <v-form fast-fail @submit.prevent :disabled="!isEnabled">
-                        <v-btn rounded="xl" variant="elevated" color="primary" type="submit" @click="setAsFinished" :disabled="!isEnabled">Als abgeschlossen markieren</v-btn>
-                    </v-form>
+                    <v-btn rounded="xl" variant="elevated" color="primary" type="submit" @click="setAsFinished" :disabled="!isEnabled">Als abgeschlossen markieren</v-btn>
                 </v-card-actions>
         </v-card>
+        </v-form>
     </v-dialog>
 </template>

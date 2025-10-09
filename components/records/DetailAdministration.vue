@@ -43,7 +43,11 @@
     });
 
     function setPreviousData() {
-        console.log('Setting previous data for record:', props.record);
+
+        // Confirm action
+        if (!confirm('Sind Sie sicher, dass Sie aktuelle mit vorherigen Daten überschreiben möchten?')) {
+            return;
+        }
 
         // overwrite data from 2022 to 2027
         if (props.record && props.record.properties && props.record.previous_properties) {
@@ -66,19 +70,16 @@
     }
     function restoreOldRecord() {
 
+        // Confirm action
+        if (!confirm('Sind Sie sicher, dass Sie den aktuellen mit einem veralteten Datensatz überschreiben möchten?')) {
+            return;
+        }
+
         if (props.record && props.record.record_id) {
             supabase
                 .from('records')
                 .update({
-                    record_changes_id: props.record.id,
                     properties: props.record.properties,
-                    completed_at_troop: props.record.completed_at_troop,
-                    completed_at_administration: props.record.completed_at_administration,
-                    completed_at_state: props.record.completed_at_state,
-                    responsible_administration: props.record.responsible_administration,
-                    responsible_troop: props.record.responsible_troop,
-                    responsible_state: props.record.responsible_state,
-                    responsible_provider: props.record.responsible_provider,
                 })
                 .eq('id', props.record.record_id)
                 .then(({ data, error }) => {

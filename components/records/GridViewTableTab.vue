@@ -24,49 +24,11 @@
         }
     });
 
-    /**
-     * Exaple data
-     * [{
-    "id": "81ddcf59-87b2-43e1-a5be-3c2d67bbef73",
-    "dbh": 794,
-    "intkey": "-18897-2-11-_bwi2022",
-    "azimuth": 104,
-    "plot_id": "d7b52f6e-e4bd-43c2-a803-d89de69ba1e1",
-    "pruning": 0,
-    "distance": 1802,
-    "tree_age": 65,
-    "cave_tree": false,
-    "stem_form": 0,
-    "dbh_height": 130,
-    "bark_pocket": false,
-    "damage_dead": false,
-    "stand_layer": 1,
-    "stem_height": null,
-    "tree_height": null,
-    "tree_marked": false,
-    "tree_number": 11,
-    "tree_status": 1,
-    "damage_other": false,
-    "damage_resin": false,
-    "tree_species": 221,
-    "within_stand": true,
-    "damage_beetle": false,
-    "damage_fungus": false,
-    "deadwood_used": false,
-    "stem_breakage": 0,
-    "bark_condition": null,
-    "biotope_marked": false,
-    "damage_logging": false,
-    "crown_dead_wood": false,
-    "damage_peel_new": false,
-    "damage_peel_old": false,
-    "tree_top_drought": false,
-    "tree_height_azimuth": null,
-    "tree_height_distance": null
-}]
-     */
-
     const gridOptions = ref({
+        autoSizeStrategy: {
+            type: 'fitCellContents',
+            skipHeader: false
+        },
         defaultColDef: {
             flex: 1,
             minWidth: 100,
@@ -80,12 +42,20 @@
         
         if (!jsonSchema || !jsonSchema.properties) return;
 
-        gridOptions.value.columnDefs = Object.keys(jsonSchema.properties).map(key => ({
-            headerName: jsonSchema.properties[key].title || key,
-            field: key,
-            sortable: true,
-            filter: true
-        }));
+        gridOptions.value.columnDefs = Object.keys(jsonSchema.properties).map(key => {
+            const property = jsonSchema.properties[key];
+
+            // Check if the field should be hidden
+            const hide = property?.$tfm?.form?.['ui:options']?.display === false;
+
+            return {
+                headerName: property.title || key,
+                field: key,
+                sortable: true,
+                filter: true,
+                hide // Set hide to true if display is false
+            };
+        });
     }
     function createRowDataFromData(data){
         if (!data) return [];

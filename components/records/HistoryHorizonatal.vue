@@ -10,6 +10,11 @@
         plot_id: {
             type: String,
             required: true
+        },
+        selected: {
+            type: Object,
+            required: false,
+            default: null
         }
     });
 
@@ -93,8 +98,14 @@
 
         // Preselect the latest item
         if (plotData.value.length > 0) {
-            activeItem.value = plotData.value[0];
-            emit('select:record', activeItem.value);
+            // acvtivate selected item
+            if (props.selected && props.selected.id) {
+                const foundItem = plotData.value.find(item => item.id === props.selected.id);
+                if (foundItem) {
+                    emitActiveItem(foundItem);
+                    return;
+                }
+            } 
         }
     };
 
@@ -107,7 +118,7 @@
     watch(() => props.plot_id, async (newPlotId) => {
         if (!newPlotId) return;
         loading.value = true;
-        await getLatest(newPlotId);
+        //await getLatest(newPlotId);
         loading.value = false;
     });
 
@@ -117,15 +128,9 @@
 
     function emitActiveItem(item) {
         activeItem.value = item;
+        console.log('EMIT', item, props.plot_id);
         emit('select:record', item);
     }
-
-    const items = [
-    { title: 'Click Me' },
-    { title: 'Click Me' },
-    { title: 'Click Me' },
-    { title: 'Click Me 2' },
-  ]
 
 </script>
 

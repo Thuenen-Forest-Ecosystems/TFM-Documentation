@@ -49,13 +49,13 @@
             initialLoading.value = false;
         }
     });
+    
     watch(selectedVersion, (newVersion) => {
-        console.log('Selected version changed:', newVersion);
         fetchSchemaFromSupabaseStorage();
         // Trigger any additional logic here
     });
 
-    const sheet = shallowRef(true)
+    const sheet = shallowRef(false)
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -117,6 +117,7 @@
             console.error('Error parsing plausibility:', error);
         }
     }
+    const loadingVersion = ref(false);
     async function fetchSchemaFromSupabaseStorage() {
         if (!selectedVersion.value || !selectedVersion.value.directory) {
             console.warn('No version selected, skipping schema fetch.', selectedVersion.value);
@@ -124,11 +125,12 @@
             validate.value = null;
             return;
         }
+        loadingVersion.value = true;
         const { data, error } = await supabase
             .storage
             .from('validation')
             .download(`${selectedVersion.value.directory}/validation.json`);
-
+        loadingVersion.value = false;
         if (error) {
             console.error('Error fetching schema:', error);
             return;
@@ -156,6 +158,7 @@
 
     function onHistorySelect(record, event) {
         selectedHistoryPerTab.value[tab.value] = record;
+        //sheet.value = false; // Close the bottom sheet after selection
     }
      watch(tab, (newTabValue) => {
         const selectedRecord = records.value.find(r => r.id === newTabValue);
@@ -196,8 +199,19 @@
                 </div>-->
 
                 <!-- only show history for active tab -->
-                <v-bottom-sheet v-if="tab === record.id" :persistent="true" v-model="sheet" :fullscreen="false" :scrim="false" >
-                    <v-expansion-panels>
+                <v-bottom-sheet v-if="tab === record.id" v-model="sheet" :fullscreen="false" >
+                    <v-toolbar flat density="compact">
+                        <v-toolbar-title>History</v-toolbar-title>
+                        <template v-slot:append>
+                            <v-btn text @click="sheet = false">Close</v-btn>
+                        </template>
+                    </v-toolbar>
+                    <v-card>
+                        <div class="ma-0 pa-0 overflow-x-auto">
+                            <HistoryHorizonatal :plot_id="record.plot_id" @select:record="onHistorySelect" :selected="selectedHistoryPerTab[tab]" />
+                        </div>
+                    </v-card>
+                    <!--<v-expansion-panels>
                         <v-expansion-panel>
                             <v-expansion-panel-title>
                                 <v-icon>mdi-history</v-icon>
@@ -207,12 +221,30 @@
                                 <div class="ma-0 pa-0 overflow-x-auto">
                                     <HistoryHorizonatal :plot_id="record.plot_id" @select:record="onHistorySelect" />
                                 </div>
+                                
                             </v-expansion-panel-text>
                         </v-expansion-panel>
-                    </v-expansion-panels>
+                    </v-expansion-panels>-->
                 </v-bottom-sheet>
+                <v-fab
+                    icon="mdi-history"
+                    small
+                    class="ma-4 position-fixed bottom-0 right-0 z-index-1000"
+                    style="z-index:1005;"
+                    @click="sheet = !sheet"
+                ></v-fab>
 
                 <RecordToDo :record="selectedHistoryPerTab[tab]" :organizationId="props.organizationId" :organizationType="props.organizationType" class="ma-4" />
+
+                <!-- Display record.note -->
+                 <v-alert
+                    v-if="selectedHistoryPerTab[tab] && selectedHistoryPerTab[tab].note && selectedHistoryPerTab[tab].note.trim() !== ''"
+                    class="ma-3"
+                    density="compact"
+                    :text="selectedHistoryPerTab[tab].note"
+                    title="Nachricht"
+                    icon="mdi-message"
+                ></v-alert>
 
                 <div class="ma-3">
                     <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="pa-3">
@@ -220,13 +252,12 @@
                         <v-toolbar color="transparent">
                             <v-toolbar-title>Validation</v-toolbar-title>
                             <template v-slot:append>
-                                <VersionSelection v-model="selectedVersion" />
+                                <VersionSelection v-model="selectedVersion" :is_loading="loadingVersion" />
                             </template>
                         </v-toolbar>
                         <v-card-text v-if="selectedHistoryPerTab[tab] && validate && tfm">
                             <ValidateByPlot :record="selectedHistoryPerTab[tab]" :validate="validate" :tfm="tfm" :version="selectedVersion" />
                         </v-card-text>
-
                         <RecordDetail :record="selectedHistoryPerTab[tab]" :schema="schema" class="mt-11" />
                     </v-card>
 

@@ -12,6 +12,7 @@
         },
     });
 
+    /*
     // Simplified type checking function
     function isValidType(type) {
         console.log('Checking type:', type); // Debug log
@@ -27,7 +28,8 @@
         }
         
         return false;
-    }
+    }*/
+
     function hasNotType(type){
         // array and object are not valid
         if (typeof type === 'string') {
@@ -42,12 +44,39 @@
 
     }
 
+    // Check if a field should be displayed based on schema configuration
+    function shouldDisplayField(property) {
+        /* Check frontend.display
+        if (property.$migration?.frontend?.display === false) {
+            return false;
+        }*/
+        
+        // Check $tfm.form.ui:options.display
+        if (property.$tfm?.form?.['ui:options']?.display === false) {
+            return false;
+        }
+        
+        return true;
+    }
+
     // Filter valid properties
     const validProperties = computed(() => {
         if (!props.schema?.properties) return {};
         
         return Object.entries(props.schema.properties)
-            .filter(([key, property]) => property && property.type && hasNotType(property.type))
+            .filter(([key, property]) => {
+                // Existing type validation
+                if (!property || !property.type || !hasNotType(property.type)) {
+                    return false;
+                }
+                
+                // New display validation
+                if (!shouldDisplayField(property)) {
+                    return false;
+                }
+                
+                return true;
+            })
             .reduce((acc, [key, property]) => {
                 acc[key] = property;
                 return acc;

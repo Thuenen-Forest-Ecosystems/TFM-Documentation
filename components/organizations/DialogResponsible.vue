@@ -2,7 +2,8 @@
 
 // parent component: <DialogResponsible v-model="responsibleDialog" :selected="selectedLos" @close="_handleClose" @confirm="(value) => _handleConfirm(value)"/>
 
-    import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
+    import { color } from 'echarts';
+import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -18,6 +19,8 @@
 
     const responibilityAlreadySet = ref(0);
     const troopAlreadySet = ref(0);
+
+    const additionalNote = ref('');
 
     const uniqueClusterIds = computed(() => {
         if (!props.selectedRows || props.selectedRows.length === 0) return [];
@@ -42,7 +45,7 @@
         const companyValue = selectedCompany.value === 'deselect' ? null : selectedCompany.value;
 
         savingChanges.value = true;
-        emit('confirm', companyValue, troopValue);
+        emit('confirm', companyValue, troopValue, additionalNote.value || null);
         //emit('confirm', props.selected, losName.value);
         emit('update:modelValue', false); // Close the dialog
         resetSelection();
@@ -126,7 +129,7 @@
             troops.value = data || [];
 
             // Add null to unassign troop
-            troops.value.push({ id: 'deselect', name: 'Berechtigung entziehen' });
+            troops.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red' });
 
         } catch (e) {
             console.error('An unexpected error occurred while fetching troops:', e);
@@ -145,7 +148,7 @@
                 return [];
             }
             companies.value = data || [];
-            companies.value.push({ id: 'deselect', name: 'Berechtigung entziehen' });
+            companies.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red' });
         } catch (e) {
             console.error('An unexpected error occurred while fetching companies:', e);
             return [];
@@ -178,7 +181,7 @@
 </script>
 
 <template>
-    <v-dialog v-model="props.modelValue" max-width="500" @click:outside="cancelAction">
+    <v-dialog v-model="props.modelValue"  @click:outside="cancelAction" scrollable>
         <v-card rounded="lg">
             <!--<v-toolbar v-if="props.selected">
                 <v-btn v-if="props.icon" :icon="props.icon"></v-btn>
@@ -194,8 +197,10 @@
                 </v-toolbar-items>
             </v-toolbar>-->
             <v-card-title>Berechtigung zuweisen</v-card-title>
-            <v-card-subtitle>{{ uniqueClusterIds.length }} Trakte und {{ props.selectedRows.length }} Ecken ausgewählt</v-card-subtitle>
-
+            <v-card-subtitle>{{ uniqueClusterIds.length }} Trakte ausgewählt</v-card-subtitle>
+            
+            <v-divider class="mt-3"></v-divider>
+            <v-card-text>
             <!--<v-text-field
                     v-if="props.selected"
                     label="Name ändern"
@@ -208,7 +213,7 @@
                     variant="outlined"
                     :rules="[rules.required, rules.minLength, rules.disabled]"
                 />-->
-
+            
                 <v-card variant="tonal" class="ma-2" v-if="organizationPermissionText" :title="organizationPermissionText ">
                     <v-chip-group
                         selected-class="text-primary"
@@ -221,55 +226,68 @@
                             :key="company.id"
                             :value="company.id"
                             class="ma-1"
+                            :color="company.color || 'primary'"
                         >
                             {{ company.name || company.entityName || 'unknown' }}
                         </v-chip>
                     </v-chip-group>
                 </v-card>
                 <v-card variant="tonal" title="Inventur Trupps" class="ma-2">
-                    <v-card-text>
-                        <v-chip-group
-                            selected-class="text-primary"
-                            column
-                            v-model="selectedTroop"
-                            @update:model-value="_selectTroop"
+                    <v-chip-group
+                        selected-class="text-primary"
+                        column
+                        v-model="selectedTroop"
+                        @update:model-value="_selectTroop"
+                    >
+                        <v-chip
+                            v-for="troop in troops"
+                            :key="troop.id === null ? 'deselect' : troop.id"
+                            :value="troop.id"
+                            class="ma-1"
+                            :color="troop.color || 'primary'"
                         >
-                            <v-chip
-                                v-for="troop in troops"
-                                :key="troop.id === null ? 'deselect' : troop.id"
-                                :value="troop.id"
-                                class="ma-1"
-                            >
-                                {{ troop.name || troop.entityName || 'unknown' }}
-                            </v-chip>
-                        </v-chip-group>
-                    </v-card-text>
+                            {{ troop.name || troop.entityName || 'unknown' }}
+                        </v-chip>
+                    </v-chip-group>
                 </v-card>
 
 
-            <v-alert
-                class="mx-2"
-                v-if="selectedCompany && responibilityAlreadySet > 0"
-                color="warning"
-               
-                variant="outlined"
-            >
-                <p class="mt-2 text">
-                    Mit der Bestätigung werden {{ responibilityAlreadySet }} bestehende Berechtigungen ({{ organizationPermissionText }}) für Ecken überschrieben.
-                </p>
-            </v-alert>
-            <v-alert
-                class="mx-2"
-                v-if="selectedTroop && troopAlreadySet > 0"
-                color="warning"
-                variant="outlined"
-            >
-                <p class="mt-2 text">
-                    Mit der Bestätigung werden {{ troopAlreadySet }} bestehende Berechtigungen (Trupp) für Ecken überschrieben.
-                </p>
-            </v-alert>
-            <v-card-actions>
+                <v-alert
+                    class="mx-2"
+                    v-if="selectedCompany && responibilityAlreadySet > 0"
+                    color="warning"
                 
+                    variant="outlined"
+                >
+                    <p class="mt-2 text">
+                        Mit der Bestätigung werden {{ responibilityAlreadySet }} bestehende Berechtigungen ({{ organizationPermissionText }}) für Ecken überschrieben.
+                    </p>
+                </v-alert>
+                <v-alert
+                    class="mx-2"
+                    v-if="selectedTroop && troopAlreadySet > 0"
+                    color="warning"
+                    variant="outlined"
+                >
+                    <p class="mt-2 text">
+                        Mit der Bestätigung werden {{ troopAlreadySet }} bestehende Berechtigungen (Trupp) für Ecken überschrieben.
+                    </p>
+                </v-alert>
+
+                <v-divider color="info" class="my-5"></v-divider>
+
+                <!-- Add additional note textarea here -->
+                <v-textarea
+                    v-model="additionalNote"
+                    label="Zusätzliche Anmerkungen für Berechtigten"
+                    outlined
+                    rows="4"
+                    class="mx-2 mb-2"
+                ></v-textarea>
+            </v-card-text>
+            <v-divider></v-divider>
+            <v-card-actions>
+                <v-btn text="Abbrechen" variant="text" @click="cancelAction">Abbrechen</v-btn>
                 <v-spacer></v-spacer>
                 <v-btn
                     text="Anwenden"

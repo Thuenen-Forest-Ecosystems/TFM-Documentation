@@ -25,7 +25,23 @@
 </script>
 
 <template>
+    <v-badge 
+        v-if="props.params.data.note && props.params.data.note.trim() !== ''" 
+        bordered 
+        location="top right"
+        color="orange"
+        dot
+    >
+        <v-btn
+            variant="plain"
+            icon="mdi-eye-outline"
+            density="compact"
+            :disabled="!props.params.onActionClick"
+            @click="handleClick"
+        ></v-btn>
+    </v-badge>
     <v-btn
+        v-else
         variant="plain"
         icon="mdi-eye-outline"
         density="compact"

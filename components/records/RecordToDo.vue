@@ -134,8 +134,11 @@
         :color="recordStateByOrganization.searchText || 'default'" v-bind="$attrs">
         <v-card-item>
             <v-card-title>
-                {{ recordStateByOrganization.tooltip || 'Kein nächster Schritt definiert' }}
+                ToDo
             </v-card-title>
+            <v-card-text>
+                {{ recordStateByOrganization.tooltip || 'Kein nächster Schritt definiert' }}
+            </v-card-text>
             
             <!--
             <v-card-subtitle>

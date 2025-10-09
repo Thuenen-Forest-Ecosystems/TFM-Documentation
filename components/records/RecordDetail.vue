@@ -33,7 +33,7 @@
         <v-toolbar color="transparent">
             <v-toolbar-title v-if="props.record.record_id">{{ new Date(props.record.created_at).toLocaleDateString() }} {{ new Date(props.record.created_at).toLocaleTimeString() }}</v-toolbar-title>
             <v-toolbar-title v-else>{{ new Date(props.record.updated_at).toLocaleDateString() }} {{ new Date(props.record.updated_at).toLocaleTimeString() }}</v-toolbar-title>
-            <p v-if="props.record.record_id">ID: {{ props.record.record_id }}</p>
+            <p v-if="props.record.record_id">ID (History): {{ props.record.record_id }}</p>
             <p v-else>ID: {{ props.record.id }}</p>
 
             <template v-slot:append>

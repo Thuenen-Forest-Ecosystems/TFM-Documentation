@@ -8,6 +8,7 @@
     const validationErrors = ref([]);
     const plausibilityErrors = ref([]);
     const isValid = ref(null);
+    const isValidating = ref(false);
 
     const props = defineProps({
         record: {
@@ -41,18 +42,21 @@
     async function validation(){
         if (!props.record || !props.validate || !props.tfm) return;
 
+        validationErrors.value = [];
+
+        isValidating.value = true;
         isValid.value = props.validate(props.record.properties);
         validationErrors.value = props.validate.errors ? [...props.validate.errors] : [];
         localize.de(validationErrors.value);
 
         try {
-            console.log('Running online validation call...', props.record.previous_properties, props.record.properties);
             plausibilityErrors.value = await props.tfm.runPlots([props.record.properties], null, [props.record.previous_properties]);
-            console.log('Plausibility errors:', plausibilityErrors.value);
         } catch (error) {
             console.warn('Error during online validation call:', error);
+        } finally {
+            isValidating.value = false;
         }
-        
+        console.log('Validation finished. isValid:', isValid.value, 'Validation Errors:', validationErrors.value, 'Plausibility Errors:', plausibilityErrors.value);
     }
 
     /*watch([props.record, props.validate, props.tfm], (newRecord, newValidate, newTfm) => {
@@ -60,7 +64,6 @@
     });*/
 
     watch(() => props.record, (newRecord, oldRecord) => {
-        console.log('Record changed:', newRecord);
             validation(); // Call your validation logic or any other function
         },
         { deep: true } // Enables deep watching for nested properties
@@ -73,7 +76,7 @@
 </script>
 
 <template>
-    <v-expansion-panels>
+    <v-expansion-panels v-if="!isValidating">
         <v-expansion-panel :disabled="validationErrors.length == 0">
             <v-expansion-panel-title>Fehler Validierung ({{ validationErrors.length }})</v-expansion-panel-title>
             <v-expansion-panel-text>
@@ -118,4 +121,10 @@
             </v-expansion-panel-text>
         </v-expansion-panel>
     </v-expansion-panels>
+    <v-progress-circular
+        v-else
+        indeterminate
+        color="primary"
+        class="ma-4"
+    ></v-progress-circular>
 </template>

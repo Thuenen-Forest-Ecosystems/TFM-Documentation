@@ -83,7 +83,6 @@
         <v-tabs-window v-model="tab">
             <!-- not index but key of object-->
             <v-tabs-window-item v-for="(object, key) in tabObjects" :key="key" :value="key">
-
                 <GridViewTableTab v-if="object.showAsTable" :data="props.data[key]" :schema="object.items" />
                 <GridViewGridTab v-else :data="props.data" :schema="props.schema" />
             </v-tabs-window-item>

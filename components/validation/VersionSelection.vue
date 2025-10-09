@@ -1,5 +1,4 @@
 <script setup>
-
     import { onMounted, ref, getCurrentInstance, computed } from 'vue';
 
     const instance = getCurrentInstance();
@@ -7,17 +6,20 @@
 
     let versions = ref([]);
 
-    // Sync <VersionSelection v-model="selectedVersion" /> with selectedVersion in ClusterDetails.vue
     const props = defineProps({
         modelValue: {
-            type: Object, // Adjust the type based on your `selectedVersion` structure
+            type: Object,
             required: false,
             default: null
+        },
+        is_loading: {
+            type: Boolean,
+            required: false,
+            default: false
         }
     });
 
     const emit = defineEmits(['update:modelValue']);
-
 
     onMounted(async () => {
         const { data, error } = await supabase
@@ -29,10 +31,12 @@
             .not('version', 'is', null)
             .not('title', 'is', null)
             .order('version', { ascending: false });
+            
         if (error) {
             console.error('Error fetching plausibility:', error);
             return;
         }
+        
         try {
             const newVersions = data.map(d => ({
                 id: d.version,
@@ -44,37 +48,28 @@
             if (newVersions.length > 0 && !props.modelValue) {
                 emit('update:modelValue', newVersions[0]);
             }
-
         } catch (e) {
             console.error('Error reading plausibility bundle:', e);
         }
     });
 
-    // Create a computed property for two-way binding
     const selectedVersion = computed({
         get() {
-            return props.modelValue;
+            return props.modelValue?.id || null;
         },
         set(value) {
-            console.log('Raw value from v-select:', value, 'versions:', versions.value);
-            
-            let fullObject;
-            
-            if (typeof value === 'string') {
-                // Try to find by id first, then by name
-                fullObject = versions.value.find(v => v.id === value) || 
-                            versions.value.find(v => v.name === value);
-            } else if (typeof value === 'object' && value !== null) {
-                fullObject = value;
+            if (!versions.value || versions.value.length === 0 || !value) {
+                return;
             }
             
-            console.log('Emitting selected version:', fullObject);
-            emit('update:modelValue', fullObject);
+            const fullObject = versions.value.find(v => v.id === value);
+            
+            if (fullObject && (!props.modelValue || props.modelValue.id !== fullObject.id)) {
+                emit('update:modelValue', fullObject);
+            }
         }
     });
-
 </script>
-
 
 <template>
     <v-select
@@ -85,6 +80,6 @@
         v-model="selectedVersion"
         item-title="name"
         item-value="id"
-        return-object
+        :loading="props.is_loading"
     ></v-select>
 </template>
