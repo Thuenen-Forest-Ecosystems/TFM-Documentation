@@ -58,7 +58,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
       return organizations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
   const deleting = ref({});
-  /*async function _removeOrganization(organizationId) {
+  async function _removeOrganization(organizationId) {
     if (!organizationId) return;
     try {
         if (!confirm('Are you sure you want to remove this organization?')) {
@@ -84,7 +84,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
     } finally {
         deleting.value[organizationId] = false;
     }
-  }*/
+  }
 
   async function _createOrganization(organizationName = 'New Organization', entityName = 'Los', parentOrganizationId = null) {
     if (!parent_organization_id.value) {
@@ -114,6 +114,17 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         alert(`An unexpected error occurred: ${e.message}`); // User feedback
     }
   }
+    async function _confirmAddLos() {
+        loading.value = true; // Show loading state
+        if (!companyName.value) {
+            alert('Please fill in all fields.'); // User feedback
+            return;
+        }
+        await _createOrganization(companyName.value, losName.value,parent_organization_id.value);
+        losName.value = ''; // Reset input fields
+        companyName.value = '';
+        loading.value = false; // Hide loading state
+    }
 
   async function _getOrganizationsByParentId(organizationId){
         let data, error;
@@ -231,7 +242,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         editDialog.value = true;
         selectedOrganization.value = null; // Clear selected organization for new entry
     }
-    /*async function _inviteOrganizationAdmin(organizationId) {
+    async function _inviteOrganizationAdmin(organizationId) {
         const adminEmail = prompt('Enter administrator email:');
         if (adminEmail && adminEmail.trim() !== '' && organizationId) {
             try {
@@ -256,7 +267,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
                 console.error('Unexpected error:', error);
             }
         }
-    }*/
+    }
     async function _removeUserPermission(event, userId, organizationId) {
         event.stopPropagation(); // Prevent the list item from expanding/collapsing
         
@@ -387,6 +398,8 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         :organization="selectedOrganization"
         :title="editOrganizationsTitle"
         :icon="'mdi-domain'"
+        :parent_organization_id="parent_organization_id"
+        :type="props.type"
         :listOfTakenNames="organizations.map(org => org.name).filter(name => selectedOrganization && name !== selectedOrganization.name)"
         @confirm="(updatedOrg) => {
             // Update the organization in the list

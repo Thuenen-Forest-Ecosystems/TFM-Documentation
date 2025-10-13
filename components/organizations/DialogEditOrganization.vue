@@ -28,6 +28,13 @@
         listOfTakenNames: {
             type: Array,
             default: () => []
+        },
+        type: {
+            type: String,
+            default: null
+        },
+        parent_organization_id: {
+            type: String
         }
     });
 
@@ -39,7 +46,11 @@
 
 
     async function onSubmit() {
-        if (!valid.value) {
+        console.log('Parent Organization ID:', props.parent_organization_id);
+        if (!valid.value || loading.value || !props.parent_organization_id) {
+            snackbarText.value = 'Bitte Formular korrekt ausfüllen';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
             return;
         }
 
@@ -51,7 +62,8 @@
                 .from('organizations')
                 .update({
                     name: organizationName.value,
-                    description: organizationDescription.value
+                    description: organizationDescription.value,
+                    type: props.type || 'country'
                 })
                 .eq('id', props.organization.id)
                 .select()
@@ -76,7 +88,9 @@
                 .from('organizations')
                 .insert({
                     name: organizationName.value,
-                    description: organizationDescription.value
+                    description: organizationDescription.value,
+                    type: props.type || 'country',
+                    parent_organization_id: props.parent_organization_id
                 })
                 .select()
                 .single();
@@ -150,7 +164,7 @@
                 ></v-btn>
                 </v-toolbar-items>
             </v-toolbar>
-            
+            {{ props.type }}
             <v-card-text>
                 <v-form v-model="valid" @submit.prevent="onSubmit">
 
