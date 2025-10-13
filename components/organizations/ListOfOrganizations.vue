@@ -3,6 +3,7 @@
     import { onMounted, ref, getCurrentInstance, useAttrs, watch } from 'vue';
     import { useRouter } from 'vitepress'
     import DialogEmail from './DialogEmail.vue';
+import DialogEditOrganization from './DialogEditOrganization.vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -10,6 +11,9 @@
     const router = useRouter()
     const loading = ref(false);
     const valid = ref(false);
+
+    const editDialog = ref(false);
+    const selectedOrganization = ref(null);
 
     const emailDialog = ref(false);
     const dialogOrganization_id = ref(null); // Store the organization ID for the dialog
@@ -229,7 +233,10 @@
         dialogOrganization_id.value = organizationId; // Set the organization ID for the dialog
         emailDialog.value = true; // Open the dialog
     }
-    
+    async function _editOrganization(organization) {
+        editDialog.value = true;
+        selectedOrganization.value = organization; // Set the selected organization
+    }
     async function _inviteOrganizationAdmin(organizationId) {
         const adminEmail = prompt('Enter administrator email:');
         if (adminEmail && adminEmail.trim() !== '' && organizationId) {
@@ -290,82 +297,109 @@
 </script>
 
 <template>
-  <v-alert color="warning" v-if="!parent_organization_id">
-    <p class="text-center">Please select a parent organization to view its Lose.</p>
-  </v-alert>
-  <div v-else >
-    <v-toolbar class="mb-4" color="transparent" style="border-bottom: 1px solid rgba(120, 120, 120, 0.12);">
-        <v-btn icon="mdi-domain" variant="text"></v-btn>
-        <v-toolbar-title>Organisationen</v-toolbar-title>
-        <!-- Only if Admin -->
-        <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="props.is_admin">
-            neu
-            <v-icon>mdi-domain-plus</v-icon>
-        </v-btn>
-    </v-toolbar>
+    <v-alert color="warning" v-if="!parent_organization_id">
+        <p class="text-center">Please select a parent organization to view its Lose.</p>
+    </v-alert>
+    <div v-else >
+        <v-toolbar class="mb-4" color="transparent" style="border-bottom: 1px solid rgba(120, 120, 120, 0.12);">
+            <v-btn icon="mdi-domain" variant="text"></v-btn>
+            <v-toolbar-title>Organisationen</v-toolbar-title>
+            <!-- Only if Admin -->
+            <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="props.is_admin">
+                neu
+                <v-icon>mdi-domain-plus</v-icon>
+            </v-btn>
+        </v-toolbar>
 
-    <div class="text-center mb-4" v-if="!organizations.length">
-        <v-alert type="warning" variant="tonal">
-            Es wurden noch keine Organisationen hinzugefügt.<br/>Klicke auf "Neu", um eine neue Organisation hinzuzufügen.
-        </v-alert>
-    </div>
-    <!--opacity-60 if deleted-->
-    <v-card v-for="organization in organizations" :key="organization.id" :class="'mb-4 ' + (organization.deleted ? 'opacity-40' : '')" variant="tonal">
-        <v-card-item>
-            {{ organization.name || organization.entityName }}
-            <template v-slot:append  v-if="props.is_admin">
-                <v-chip v-if="organization.deleted" color="grey" variant="outlined" class="mr-2">
-                    Archived
-                </v-chip>
-                <v-btn 
-                    v-if="!organization.deleted"
-                    v-bind="props"
-                    variant="tonal"
-                    rounded="xl"
-                    @click="_inviteOrganizationAdminDialog(organization.id)"
-                >
-                    Einladen
-                    <v-icon>mdi-email-plus</v-icon>
-                </v-btn>
-                <!--<v-btn
-                    icon="mdi-delete" 
-                    variant="text" 
-                    :loading="deleting[organization.id]"
-                    :disabled="deleting[organization.id]"
-                    v-if="props.is_admin"
-                    @click="_removeOrganization(organization.id)"></v-btn>-->
-            </template>
-            <template v-if="is_organization_admin">
-                <v-btn icon="mdi-pencil" variant="text" @click="_createOrganization(organization.name, organization.entityName, organization.parent_organization_id)"></v-btn>
-            </template>
-        </v-card-item>
-        <v-card-text>
-            <v-list v-if="userPermissions.map(permission => permission.organization_id).includes(organization.id)">
-                <div v-for="permission in userPermissions || []" :key="permission.id">
-                    <v-list-item :key="permission.id" prepend-icon="mdi-account" v-if="permission?.organization_id === organization?.id">
-                        <v-list-item-title>{{ userProfiles.find(user => user && user.id === permission.user_id)?.email || 'Einladung noch nicht bestätigt.' }}</v-list-item-title>
-                        <template v-slot:append>
-                            <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserPermission(e, permission.user_id, permission.organization_id)"></v-btn>
-                        </template>
+        <div class="text-center mb-4" v-if="!organizations.length">
+            <v-alert type="warning" variant="tonal">
+                Es wurden noch keine Organisationen hinzugefügt.<br/>Klicke auf "Neu", um eine neue Organisation hinzuzufügen.
+            </v-alert>
+        </div>
+        <!--opacity-60 if deleted-->
+        <v-card v-for="organization in organizations" :key="organization.id" :class="'mb-4 ' + (organization.deleted ? 'opacity-40' : '')" variant="tonal">
+            <v-card-item>
+                <v-card-title>
+                    {{ organization.name || organization.entityName }}
+                </v-card-title> 
+                <v-card-subtitle>
+                    {{ organization.description || '' }}
+                </v-card-subtitle>
+
+                
+                <template v-slot:append  v-if="props.is_admin">
+                    <v-chip v-if="organization.deleted" color="grey" variant="outlined" class="mr-2">
+                        Archived
+                    </v-chip>
+                    <v-btn 
+                        v-if="!organization.deleted"
+                        v-bind="props"
+                        variant="tonal"
+                        rounded="xl"
+                        @click="_inviteOrganizationAdminDialog(organization.id)"
+                    >
+                        Einladen
+                        <v-icon>mdi-email-plus</v-icon>
+                    </v-btn>
+                    <v-btn
+                        icon="mdi-pencil"
+                        variant="text"
+                        @click="_editOrganization(organization)"
+                    ></v-btn>
+                    
+                    <!--<v-btn
+                        icon="mdi-delete" 
+                        variant="text" 
+                        :loading="deleting[organization.id]"
+                        :disabled="deleting[organization.id]"
+                        v-if="props.is_admin"
+                        @click="_removeOrganization(organization.id)"></v-btn>-->
+                </template>
+                <template v-if="is_organization_admin">
+                    <v-btn icon="mdi-pencil" variant="text" @click="_createOrganization(organization.name, organization.entityName, organization.parent_organization_id)"></v-btn>
+                </template>
+            </v-card-item>
+            <v-card-text>
+                <v-list v-if="userPermissions.map(permission => permission.organization_id).includes(organization.id)">
+                    <div v-for="permission in userPermissions || []" :key="permission.id">
+                        <v-list-item :key="permission.id" prepend-icon="mdi-account" v-if="permission?.organization_id === organization?.id">
+                            <v-list-item-title>{{ userProfiles.find(user => user && user.id === permission.user_id)?.email || 'Einladung noch nicht bestätigt.' }}</v-list-item-title>
+                            <template v-slot:append>
+                                <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserPermission(e, permission.user_id, permission.organization_id)"></v-btn>
+                            </template>
+                        </v-list-item>
+                    </div>
+                </v-list>
+                <div v-else>
+                    <v-list-item class="text-center text-body-2 text-medium-emphasis">
+                        <v-icon class="mr-2" icon="mdi-email-plus"></v-icon><br/>
+                        Es wurde noch kein Verantwortlicher für diese Organisation eingetragen.
                     </v-list-item>
                 </div>
-            </v-list>
-            <div v-else>
-                <v-list-item class="text-center text-body-2 text-medium-emphasis">
-                    <v-icon class="mr-2" icon="mdi-email-plus"></v-icon><br/>
-                    Es wurde noch kein Verantwortlicher für diese Organisation eingetragen.
-                </v-list-item>
-            </div>
-        </v-card-text>
-    </v-card>
-  </div>
+            </v-card-text>
+        </v-card>
+    </div>
 
-  <DialogEmail 
+    <DialogEmail 
         v-model="emailDialog"
         :organization_id="dialogOrganization_id"
         :showAdmins="true"
         :title="'Administrator einladen'"
     />
+
+    <DialogEditOrganization
+        v-model="editDialog" 
+        :organization="selectedOrganization"
+        :listOfTakenNames="organizations.map(org => org.name).filter(name => selectedOrganization && name !== selectedOrganization.name)"
+        @confirm="(updatedOrg) => {
+            // Update the organization in the list
+            const index = organizations.findIndex(org => org.id === updatedOrg.id);
+            if (index !== -1) {
+                organizations[index] = updatedOrg;
+            }
+            editDialog = false; // Close the dialog
+        }"
+    ></DialogEditOrganization>
 
   <!-- Add Los/Company dialog -->
   <v-dialog v-model="isActive" max-width="500">
@@ -376,6 +410,7 @@
                 ></v-btn>
 
                 <v-toolbar-title>{{ 'Organisation hinzufügen' }}</v-toolbar-title>
+
 
                 <v-toolbar-items>
                     <v-btn
