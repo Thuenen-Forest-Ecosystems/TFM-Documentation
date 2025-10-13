@@ -1546,7 +1546,7 @@ const listOfLookupTables = [
                     Berechtigung vergeben
                 </v-btn>
                 <v-btn
-                    v-if="props.organization_type !== 'provider' || !usersPermissions.find(perm => perm.is_organization_admin)"
+                    v-if="usersPermissions.find(perm => perm.is_organization_admin)"
                     class="mx-2"
                     variant="tonal"
                     prepend-icon="mdi-bookmark-check"

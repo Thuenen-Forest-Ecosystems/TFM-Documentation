@@ -43,7 +43,7 @@
     const targetOrganization = ref(null);
     onMounted(() => {
         switch(props.organizationType) {
-            case 'state':
+            case 'country':
                 targetOrganization.value = 'Bundesinventurleitung';
                 break;
             case 'provider':
