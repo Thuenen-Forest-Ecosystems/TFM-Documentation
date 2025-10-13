@@ -68,8 +68,6 @@ export const workflows = [
 export function stateByOrganizationType(organizationId, organization_type, record){
     if(!organizationId || !organization_type || !record) return null;
 
-    console.log('Get state for organization type:', organization_type, 'and ID:', organizationId);
-
     if(organization_type === 'country'){
         //if(record.responsible_state === organizationId){
             if(!record.responsible_troop && !record.responsible_provider){

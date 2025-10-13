@@ -577,11 +577,11 @@ const listOfLookupTables = [
 
         const processedRecords = records.map(record => {
             const clusterData = clusterMap.get(record.cluster_id);
-            console.log('clusterData', clusterData);
+
             const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
 
             const troop = troops.value.find(troop => troop.id === record.responsible_troop);
-            console.log('Processed record:', record);
+
             return {
                 plot_id: record.plot_id,
 
