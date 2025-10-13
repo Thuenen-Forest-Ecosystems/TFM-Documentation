@@ -7,10 +7,8 @@
 
     const organizationName = ref('');
     const organizationDescription = ref('');
-    const valid = ref(false)
-    const error = ref('')
-    const success = ref('')
-    const loading = ref(false)
+    const valid = ref(false);
+    const loading = ref(false);
 
     const snackbar = ref(false);
     const snackbarText = ref('');
@@ -18,8 +16,15 @@
 
 
     const props = defineProps({
-        organization: Object,
+        organization: {
+            type: Object,
+            default: null
+        },
         modelValue: Boolean,
+        title: {
+            type: String,
+            default: 'Organization bearbeiten'
+        },
         listOfTakenNames: {
             type: Array,
             default: () => []
@@ -34,29 +39,61 @@
 
 
     async function onSubmit() {
-        console.log(organizationName.value);
+        if (!valid.value) {
+            return;
+        }
+
         loading.value = true;
-        const { data, error: supabaseError } = await supabase
-            .from('organizations')
-            .update({
-                name: organizationName.value,
-                description: organizationDescription.value
-            })
-            .eq('id', props.organization.id)
-            .select()
-            .single();
-        loading.value = false;
-        if (supabaseError) {
-            snackbarText.value = `Fehler: ${supabaseError.message}`;
-            snackbarColor.value = 'error';
-            snackbar.value = true;
-            success.value = '';
+
+        if (props.organization) {
+            // Update existing organization
+            const { data, error: supabaseError } = await supabase
+                .from('organizations')
+                .update({
+                    name: organizationName.value,
+                    description: organizationDescription.value
+                })
+                .eq('id', props.organization.id)
+                .select()
+                .single();
+
+            loading.value = false;
+
+            if (supabaseError) {
+                snackbarText.value = `Fehler: ${supabaseError.message}`;
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+            } else {
+                snackbarText.value = 'Organisation erfolgreich aktualisiert';
+                snackbarColor.value = 'success';
+                snackbar.value = true;
+                emit('update:modelValue', false); // Close the dialog
+                emit('confirm', data); // Emit the updated organization data
+            }
         } else {
-            snackbarText.value = 'Organisation erfolgreich aktualisiert';
-            snackbarColor.value = 'success';
-            snackbar.value = true;
-            emit('update:modelValue', false); // Close the dialog
-            emit('confirm', data); // Emit the updated organization data
+            // Add new organization
+            const { data, error: supabaseError } = await supabase
+                .from('organizations')
+                .insert({
+                    name: organizationName.value,
+                    description: organizationDescription.value
+                })
+                .select()
+                .single();
+
+            loading.value = false;
+
+            if (supabaseError) {
+                snackbarText.value = `Fehler: ${supabaseError.message}`;
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+            } else {
+                snackbarText.value = 'Organisation erfolgreich hinzugefügt';
+                snackbarColor.value = 'success';
+                snackbar.value = true;
+                emit('update:modelValue', false); // Close the dialog
+                emit('confirm', data); // Emit the new organization data
+            }
         }
     }
 
@@ -76,6 +113,9 @@
         if (props.organization) {
             organizationName.value = props.organization.name || '';
             organizationDescription.value = props.organization.description || '';
+        } else {
+            organizationName.value = '';
+            organizationDescription.value = '';
         }
     });
     watch(
@@ -84,6 +124,9 @@
             if (newOrganization) {
                 organizationName.value = newOrganization.name || '';
                 organizationDescription.value = newOrganization.description || '';
+            } else {
+                organizationName.value = '';
+                organizationDescription.value = '';
             }
         },
         { immediate: true } // Run immediately on mount
@@ -97,7 +140,7 @@
             <v-toolbar>
                 <v-btn v-if="props.icon" :icon="props.icon"></v-btn>
 
-                <v-toolbar-title>Organization bearbeiten</v-toolbar-title>
+                <v-toolbar-title>{{ props.title }}</v-toolbar-title>
 
                 <v-toolbar-items>
                     <v-btn

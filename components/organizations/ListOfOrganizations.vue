@@ -14,6 +14,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
 
     const editDialog = ref(false);
     const selectedOrganization = ref(null);
+    const editOrganizationsTitle = ref('Organisation bearbeiten');
 
     const emailDialog = ref(false);
     const dialogOrganization_id = ref(null); // Store the organization ID for the dialog
@@ -48,7 +49,6 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
     const userRole = ref(null); // Default to null if no role found
     const is_organization_admin = ref(false); // Default to false
 
-    const isActive = ref(false);
     const losName = ref('');
     const companyName = ref('');
 
@@ -58,7 +58,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
       return organizations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
   const deleting = ref({});
-  async function _removeOrganization(organizationId) {
+  /*async function _removeOrganization(organizationId) {
     if (!organizationId) return;
     try {
         if (!confirm('Are you sure you want to remove this organization?')) {
@@ -84,7 +84,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
     } finally {
         deleting.value[organizationId] = false;
     }
-  }
+  }*/
 
   async function _createOrganization(organizationName = 'New Organization', entityName = 'Los', parentOrganizationId = null) {
     if (!parent_organization_id.value) {
@@ -114,18 +114,6 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         alert(`An unexpected error occurred: ${e.message}`); // User feedback
     }
   }
-    async function _confirmAddLos() {
-        loading.value = true; // Show loading state
-        if (!companyName.value) {
-            alert('Please fill in all fields.'); // User feedback
-            return;
-        }
-        await _createOrganization(companyName.value, losName.value,parent_organization_id.value);
-        isActive.value = false; // Close the dialog
-        losName.value = ''; // Reset input fields
-        companyName.value = '';
-        loading.value = false; // Hide loading state
-    }
 
   async function _getOrganizationsByParentId(organizationId){
         let data, error;
@@ -234,10 +222,16 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         emailDialog.value = true; // Open the dialog
     }
     async function _editOrganization(organization) {
+        editOrganizationsTitle.value = 'Organisation bearbeiten';
         editDialog.value = true;
         selectedOrganization.value = organization; // Set the selected organization
     }
-    async function _inviteOrganizationAdmin(organizationId) {
+    async function _addOrganization() {
+        editOrganizationsTitle.value = 'Neue Organisation';
+        editDialog.value = true;
+        selectedOrganization.value = null; // Clear selected organization for new entry
+    }
+    /*async function _inviteOrganizationAdmin(organizationId) {
         const adminEmail = prompt('Enter administrator email:');
         if (adminEmail && adminEmail.trim() !== '' && organizationId) {
             try {
@@ -262,7 +256,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
                 console.error('Unexpected error:', error);
             }
         }
-    }
+    }*/
     async function _removeUserPermission(event, userId, organizationId) {
         event.stopPropagation(); // Prevent the list item from expanding/collapsing
         
@@ -305,7 +299,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
             <v-btn icon="mdi-domain" variant="text"></v-btn>
             <v-toolbar-title>Organisationen</v-toolbar-title>
             <!-- Only if Admin -->
-            <v-btn rounded="xl" variant="tonal" @click="isActive = true" v-if="props.is_admin">
+            <v-btn rounded="xl" variant="tonal" @click="_addOrganization" v-if="props.is_admin">
                 neu
                 <v-icon>mdi-domain-plus</v-icon>
             </v-btn>
@@ -342,6 +336,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
                         <v-icon>mdi-email-plus</v-icon>
                     </v-btn>
                     <v-btn
+                        v-if="!organization.deleted"
                         icon="mdi-pencil"
                         variant="text"
                         @click="_editOrganization(organization)"
@@ -390,60 +385,19 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
     <DialogEditOrganization
         v-model="editDialog" 
         :organization="selectedOrganization"
+        :title="editOrganizationsTitle"
+        :icon="'mdi-domain'"
         :listOfTakenNames="organizations.map(org => org.name).filter(name => selectedOrganization && name !== selectedOrganization.name)"
         @confirm="(updatedOrg) => {
             // Update the organization in the list
             const index = organizations.findIndex(org => org.id === updatedOrg.id);
             if (index !== -1) {
                 organizations[index] = updatedOrg;
+            }else{
+                organizations.unshift(updatedOrg); // Add new organization to the top
             }
             editDialog = false; // Close the dialog
         }"
     ></DialogEditOrganization>
 
-  <!-- Add Los/Company dialog -->
-  <v-dialog v-model="isActive" max-width="500">
-        <v-card  rounded="lg">
-            <v-toolbar>
-                <v-btn
-                    icon="mdi-domain"
-                ></v-btn>
-
-                <v-toolbar-title>{{ 'Organisation hinzufügen' }}</v-toolbar-title>
-
-
-                <v-toolbar-items>
-                    <v-btn
-                        icon="mdi-close"
-                        variant="text"
-                        @click="isActive = false"
-                ></v-btn>
-                </v-toolbar-items>
-            </v-toolbar>
-            <v-card-text>
-                <p class="mb-6 text-body-2 text-medium-emphasis">
-                    Bitte gib den Namen oder Firmierung der Organisation ein.
-                </p>
-                <v-form v-model="valid" @submit.prevent="_confirmAddLos">
-                    <!--<v-text-field
-                        v-model="losName"
-                        :counter="150"
-                        label="Name des Lose"
-                        required
-                    ></v-text-field>-->
-                    <v-text-field
-                        v-model="companyName"
-                        :counter="150"
-                        label="Name der Organisation"
-                        placeholder="z.B. Thünen-Institut für Waldökosysteme"
-                        required
-                        rounded="xl"
-                        variant="outlined"
-                        :rules="[rules.required]"
-                    ></v-text-field>
-                    <v-btn type="submit" block :disabled="!valid" :loading="loading"  rounded="xl" color="primary"  class="my-3">Organisation hinzufügen</v-btn>
-                </v-form>
-            </v-card-text>
-        </v-card>
-    </v-dialog>
 </template>
