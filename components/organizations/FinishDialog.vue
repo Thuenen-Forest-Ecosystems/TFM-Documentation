@@ -136,7 +136,7 @@
                     <p class="my-4" v-if="props.organizationType !== 'root'">
                         Die ausgewählten Ecken und Trakte werden an die {{ targetOrganization }} übergeben.
                     </p>
-                    
+                    schöne wasser
                     <v-divider color="info" class="my-5"></v-divider>
                     <p class="text-caption">
                         <v-checkbox v-model="isEnabled">

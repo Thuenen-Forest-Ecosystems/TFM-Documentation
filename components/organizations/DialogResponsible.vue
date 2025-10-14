@@ -66,7 +66,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         switch(props.organizationType){
             case 'root':
                 permissionColumn = 'responsible_state';
-                organizationPermissionText.value = 'Dienstleister oder Landesinventurleitung';
+                organizationPermissionText.value = 'Landesinventurleitung';
                 break;
             case 'country':
                 permissionColumn = 'responsible_provider';
