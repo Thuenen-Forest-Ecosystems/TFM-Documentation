@@ -66,7 +66,7 @@ export default defineConfig({
         {
           text: 'Inventory',
           items: [
-            { text: 'Statistics', link: '/dashboard/inventory/stats' },
+            //{ text: 'Statistics', link: '/dashboard/inventory/stats' },
             { text: 'Inventory (Download)', link: '/dashboard/inventory/download' }
           ]
         }/*,
