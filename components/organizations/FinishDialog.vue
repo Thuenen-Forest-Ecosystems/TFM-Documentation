@@ -115,9 +115,7 @@
                         icon="$error"
                         title="Fehler"
                     >
-                        <v-alert-text>
-                            Von den {{ selectedRows.length }} Ecken, sind {{ notValidRows.length }} nicht valide.
-                        </v-alert-text>
+                        Von den {{ selectedRows.length }} Ecken, sind {{ notValidRows.length }} nicht valide.
                     </v-alert>
                     <v-alert
                         v-else
@@ -125,9 +123,7 @@
                         icon="$success"
                         title="Erfolgreich"
                     >
-                        <v-alert-text>
-                            Alle Trakte sind valide.
-                        </v-alert-text>
+                        Alle Trakte sind valide.
                     </v-alert>
 
                     <p class="my-4" v-if="props.organizationType !== 'provider'">

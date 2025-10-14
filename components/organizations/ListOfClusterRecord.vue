@@ -911,13 +911,18 @@ const listOfLookupTables = [
     }
 
     function onSelectionChanged(event) {
+        
         selectedRows.value = currentGrid.value.api.getSelectedRows();
-        console.log('Selected Rows:', selectedRows.value);
-        //selectedRows.value = event.api.getSelectedRows();
+        
+        // Create a Set of selected plot_ids for fast lookup
+        const selectedPlotIds = new Set(selectedRows.value.map(row => row.plot_id));
+
+        // Update each feature's isSelected property
         geojsonFeatureCollection.value.features.forEach(feature => {
-            feature.properties.isSelected = selectedRows.value.some(row => row.plot_id === feature.properties.record.plot_id);
+            feature.properties.isSelected = selectedPlotIds.has(feature.properties.record.plot_id);
         });
-        // Perform actions based on the selected rows
+        console.log('Selection Changed Event:', event);
+        return;
     }
 
     async function addToLos(){
@@ -1593,7 +1598,7 @@ const listOfLookupTables = [
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
-    <div v-if="props.organization_id && props.organization_type && props.organization_type !== 'troop'">
+    <div v-if="selectedRows.length > 0 && props.organization_id && props.organization_type && props.organization_type !== 'troop'">
         <DialogResponsible
             v-model="responsibleDialog"
             :organizationId="props.organization_id"
