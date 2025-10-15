@@ -57,50 +57,8 @@
     }
 
     onMounted(async () => {
-
-        //const { data: { session }, error } = await supabase.auth.getSession();
-        //user.value = session?.user ?? null;
-        // Perform any necessary setup or data fetching here
-        //recordState.value = workflowFromRecord(props.record, null);
-        // ToDo: Check if user is part of the organization
         console.log('stateByOrganizationType: ', props.record, props.organizationId, props.organizationType, stateByOrganizationType(props.organizationId, props.organizationType, props.record));
         recordStateByOrganization.value = stateByOrganizationType(props.organizationId, props.organizationType, props.record);
-
-        /*let organizationId = recordState.responsibleId;
-
-
-        if(recordState.value.isTroop){
-            const {data, error} = await supabase
-                .from('troop')
-                .select('organization_id, user_ids')
-                .eq('id', recordState.value.responsibleId).single();
-
-            if (error) {
-                console.error('Error fetching troop organization ID:', error);
-            }
-
-            if(data){
-                organizationId = data.organization_id;
-                troopRow.value = data;
-            }
-
-            const {data: ownTroopData, error: ownTroopError} = await supabase
-                .from('troop')
-                .select('*')
-                .eq('organization_id', organizationId)
-                .contains('user_ids', [user.value.id])
-                .maybeSingle();
-
-            if (ownTroopError) {
-                console.log('Error fetching own troop data:', ownTroopError);
-            }
-
-            if(ownTroopData){
-                ownTroop.value = ownTroopData;
-            }
-        }*/
-
-        //await fetchPermission(user.value.id, organizationId, props.record.responsible_troop);
     });
     
     async function _markAsCompleted(_recordState){
@@ -119,7 +77,6 @@
                 console.error('Error updating record:', error);
             } else {
                 console.log('Record updated successfully:', data);
-                // Optionally, you can emit an event or update local state here
             }
             updating.value = false;
         }
@@ -132,12 +89,9 @@
     <v-card variant="tonal">
         <v-card
             v-if="recordStateByOrganization && props.organizationId && props.organizationType"
-            :color="recordStateByOrganization.searchText || 'default'" v-bind="$attrs">
-            <v-card-item>
-                <v-card-title>
-                    ToDo
-                </v-card-title>
-            </v-card-item>
+            :color="recordStateByOrganization.searchText || 'default'"
+            v-bind="$attrs"
+            title="Offene Aufgabe">
         </v-card>
         <v-card-text>
             {{ recordStateByOrganization?.tooltip || 'Kein nächster Schritt definiert' }}

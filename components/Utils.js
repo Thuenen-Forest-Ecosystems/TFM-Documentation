@@ -18,7 +18,7 @@ export const workflows = [
     {
         id: 0,
         searchText: 'red',
-        tooltip: 'Muss an Trupp oder Dienstleister übergeben werden'
+        tooltip: 'Ecke sollte an Trupp oder Dienstleister übergeben werden.'
     },
     {
         id: 1,
@@ -35,7 +35,7 @@ export const workflows = [
         //style: { color: 'white', backgroundColor: 'green', padding: '10px', },
         text: 'In Arbeit von Trupp. (2)',
         searchText: 'green',
-        tooltip: 'In Arbeit durch Trupp.',
+        tooltip: 'Ecke ist in Bearbeitung durch Trupp.',
     },
     {
         id: 5,
@@ -57,12 +57,12 @@ export const workflows = [
     {
         id: 7,
         searchText: 'red',
-        tooltip: 'Muss an Trupp übergeben werden'
+        tooltip: 'Ecke sollte an Trupp übergeben werden.'
     },
     {
         id: 8,
         searchText: 'green',
-        tooltip: 'Wird durch Dienstleister bearbeitet.'
+        tooltip: 'Ecke wird durch Dienstleister betreut.'
     }
 ];
 export function stateByOrganizationType(organizationId, organization_type, record){

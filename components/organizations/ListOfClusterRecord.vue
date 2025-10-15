@@ -380,11 +380,11 @@ const listOfLookupTables = [
             { 
                 field: "plot_name",
                 headerName: "Ecke",
-                filter: true,
+                filter: false,
                 sortable: true,
                 pinned: 'left',
                 headerTooltip: "inventory_archive.plot.plot_name",
-                width: 90,
+                width: 80,
                 //type: "number"
             },
 
@@ -1417,9 +1417,9 @@ const listOfLookupTables = [
 <template>
     <v-card-text class="pa-0">
     <!-- The AG Grid component -->
-    <div class="d-flex mt-4 align-center">
+    <div class="d-flex mt-4 align-center"  v-if="!loading" >
         <div class="flex-grow-1">
-            <v-file-input v-if="!loading" 
+            <v-file-input
                 accept=".csv, text/plain"
                 label="Auswahl durch Komma separierte Liste (.csv/.txt) mit Trakt-Namen"
                 @change="handleFileUpload"
@@ -1472,7 +1472,6 @@ const listOfLookupTables = [
         </v-toolbar>
     </v-card>-->
     <ag-grid-vue
-        class="mx-4"
         ref="currentGrid"
         v-if="!loading"
         @selection-changed="onSelectionChanged"

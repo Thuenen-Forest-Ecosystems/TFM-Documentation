@@ -164,7 +164,6 @@
                 ></v-btn>
                 </v-toolbar-items>
             </v-toolbar>
-            {{ props.type }}
             <v-card-text>
                 <v-form v-model="valid" @submit.prevent="onSubmit">
 

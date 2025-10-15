@@ -234,7 +234,7 @@
                     style="z-index:1005;"
                     @click="sheet = !sheet"
                 ></v-fab>
-
+                
                 <RecordToDo :record="selectedHistoryPerTab[tab]" :organizationId="props.organizationId" :organizationType="props.organizationType" class="ma-4" />
 
                 <!-- Display record.note -->
@@ -247,29 +247,30 @@
                     icon="mdi-message"
                 ></v-alert>
 
-                <div class="ma-3">
-                    <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="pa-3">
+                <v-card title="Zuständigkeit" variant="tonal" class="ma-3">
 
-                        <ResponsibleByRecord :record="selectedHistoryPerTab[tab]" class="mb-4" />
-                    
-                        <v-toolbar color="transparent">
-                            <v-toolbar-title>Validation</v-toolbar-title>
-                            <template v-slot:append>
-                                <VersionSelection v-model="selectedVersion" :is_loading="loadingVersion" />
-                            </template>
-                        </v-toolbar>
-                        <v-card-text v-if="selectedHistoryPerTab[tab] && validate && tfm">
-                            <ValidateByPlot :record="selectedHistoryPerTab[tab]" :validate="validate" :tfm="tfm" :version="selectedVersion" />
-                        </v-card-text>
-                        <RecordDetail :record="selectedHistoryPerTab[tab]" :schema="schema" class="mt-11" />
-                    </v-card>
+                    <ResponsibleByRecord :record="selectedHistoryPerTab[tab]" class="ma-1" />
+                </v-card>
 
+                <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="ma-3">
+                    <v-toolbar color="transparent">
+                        <v-toolbar-title>Validation</v-toolbar-title>
+                        <template v-slot:append>
+                            <VersionSelection v-model="selectedVersion" :is_loading="loadingVersion" />
+                        </template>
+                    </v-toolbar>
+                    <v-card-text v-if="selectedHistoryPerTab[tab] && validate && tfm">
+                        <ValidateByPlot :record="selectedHistoryPerTab[tab]" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                    </v-card-text>
+                </v-card>
+
+                <v-card variant="tonal" class="ma-3">
+                    <RecordDetail :record="selectedHistoryPerTab[tab]" :schema="schema"/>
+                </v-card>
+
+                <v-card class="ma-3">
                     <DetailAdministration v-if="selectedHistoryPerTab[tab]" :record="selectedHistoryPerTab[tab]" />
-
-                    <div class="text-caption ma-11 text-center">
-                        Cluster:{{ record.id }}
-                    </div>
-                </div>
+                </v-card>
             </v-tabs-window-item>
         </v-tabs-window>
         <!--Loader-->

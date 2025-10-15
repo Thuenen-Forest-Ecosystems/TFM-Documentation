@@ -102,7 +102,7 @@
 </script>
 
 <template>
-    <v-toolbar flat dense class="mt-11 mb-11" v-if="permission && permission.is_database_admin">
+    <v-toolbar flat dense v-if="permission && permission.is_database_admin">
         <v-toolbar-title>Administrieren</v-toolbar-title>
         <v-btn variant="outlined" rounded="xl" class="ml-3" @click="setPreviousData">
             2022 in 2027 eintragen

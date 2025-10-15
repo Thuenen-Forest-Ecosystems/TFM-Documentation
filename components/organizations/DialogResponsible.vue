@@ -129,7 +129,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
             troops.value = data || [];
 
             // Add null to unassign troop
-            troops.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red' });
+            troops.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
 
         } catch (e) {
             console.error('An unexpected error occurred while fetching troops:', e);
@@ -148,7 +148,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                 return [];
             }
             companies.value = data || [];
-            companies.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red' });
+            companies.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
         } catch (e) {
             console.error('An unexpected error occurred while fetching companies:', e);
             return [];
@@ -228,6 +228,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                             class="ma-1"
                             :color="company.color || 'primary'"
                         >
+                            <v-icon v-if="company.icon" :icon="company.icon" start :color="company.color"></v-icon>
                             {{ company.name || company.entityName || 'unknown' }}
                         </v-chip>
                     </v-chip-group>
@@ -241,11 +242,13 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     >
                         <v-chip
                             v-for="troop in troops"
+                            v-if="troops.length"
                             :key="troop.id === null ? 'deselect' : troop.id"
                             :value="troop.id"
                             class="ma-1"
                             :color="troop.color || 'primary'"
                         >
+                            <v-icon v-if="troop.icon" :icon="troop.icon" start :color="troop.color"></v-icon>
                             {{ troop.name || troop.entityName || 'unknown' }}
                         </v-chip>
                     </v-chip-group>

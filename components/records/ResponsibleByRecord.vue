@@ -56,7 +56,8 @@
     <v-row v-if="props.record">
         <!-- Administrator -->
         <v-col>
-            <v-card 
+            <v-card
+                variant="tonal"
                 class="text-center pa-2" 
                 subtitle="Bundesinventurleitung" 
                 :title="organizationNames.administration"
@@ -64,7 +65,8 @@
         </v-col>
         <!-- LIL -->
         <v-col v-if="record.responsible_state">
-            <v-card 
+            <v-card
+                variant="tonal"
                 class="text-center pa-2" 
                 subtitle="Landesinventurleitung" 
                 :title="organizationNames.country"
@@ -72,7 +74,8 @@
         </v-col>
         <!-- FLL -->
         <v-col v-if="record.responsible_provider">
-            <v-card 
+            <v-card
+                variant="tonal"
                 class="text-center pa-2" 
                 subtitle="Dienstleister" 
                 :title="organizationNames.provider"
@@ -80,7 +83,8 @@
         </v-col>
         <!-- Troop -->
         <v-col>
-            <v-card 
+            <v-card
+                variant="tonal"
                 class="text-center pa-2" 
                 subtitle="Trupp" 
                 :title="organizationNames.troop"
