@@ -70,18 +70,37 @@
             const hasEnum = Array.isArray(property.enum);
             const hasNameDe = property?.$tfm?.name_de && Array.isArray(property.$tfm.name_de);
 
+            // Check if the property has a unit_short
+            const unitShort = property?.$tfm?.unit_short;
+
             return {
                 headerName: property.title || key,
                 field: key,
                 sortable: true,
                 filter: false,
                 hide, // Set hide to true if display is false
-                valueFormatter: hasEnum && hasNameDe
-                    ? params => {
+                headerTooltip: property.description || '', // Add tooltip if description exists
+                valueFormatter: params => {
+                    let value = params.value;
+
+                    // If the property has an enum and name_de, map the value
+                    if (hasEnum && hasNameDe) {
                         const index = property.enum.indexOf(params.value);
-                        return index !== -1 ? `${property.$tfm.name_de[index]} (${params.value})` : params.value;
+                        value = index !== -1 ? property.$tfm.name_de[index] : params.value;
                     }
-                    : undefined // Use raw value if no enum or name_de
+
+                    // Append unit_short if it exists
+                    if (unitShort) {
+                        value = `${value} ${unitShort}`;
+                    }
+
+                    // Append raw value in parentheses if different from displayed value
+                    if (hasEnum && hasNameDe && property.enum.includes(params.value) && value !== params.value) {
+                        value = `${value} (${params.value})`;
+                    }
+
+                    return value;
+                }
             };
         });
     }
