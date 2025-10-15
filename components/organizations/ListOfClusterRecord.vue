@@ -250,7 +250,7 @@ const listOfLookupTables = [
                     return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflows.find(wf => wf.id === params.value)?.searchText || 'transparent'};"></span></div>`;
                 }
             },
-            { 
+            /*{ 
                 field: "validity",
                 headerName: "Gültigkeit",
                 //filter: true,
@@ -267,7 +267,7 @@ const listOfLookupTables = [
                 //sortable: true,
                 cellDataType: "boolean",
                 pinned: 'left',
-            },
+            },*/
             /*{
                 cellRenderer: 'moreCellRenderer', // Custom cell renderer
                 pinned: 'left',
@@ -1421,7 +1421,7 @@ const listOfLookupTables = [
         <div class="flex-grow-1">
             <v-file-input v-if="!loading" 
                 accept=".csv, text/plain"
-                label="Komma separierte Liste von Trakt Namen"
+                label="Auswahl durch Komma separierte Liste (.csv/.txt) mit Trakt-Namen"
                 @change="handleFileUpload"
                 class="ma-2"
                 rounded="xl"

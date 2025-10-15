@@ -129,37 +129,18 @@
 
 
 <template>
-    <v-card
-        v-if="recordStateByOrganization && props.organizationId && props.organizationType"
-        :color="recordStateByOrganization.searchText || 'default'" v-bind="$attrs">
-        <v-card-item>
-            <v-card-title>
-                ToDo
-            </v-card-title>
-            <v-card-text>
-                {{ recordStateByOrganization.tooltip || 'Kein nächster Schritt definiert' }}
-            </v-card-text>
-            
-            <!--
-            <v-card-subtitle>
-                Available Functions for {{ record.plot_id }}
-            </v-card-subtitle>
-            -->
-
-        </v-card-item>
-
-        <!--<v-card-actions class="justify-end" v-if="permission && recordState && recordState.settable" :loading="updating">
-            <v-btn
-                v-for="(action, index) in recordState.actions"
-                v-if="action && action.visible && action.visible(props.record)"
-                :key="index"
-                variant="tonal"
-                rounded="xl"
-                @click="_markAsCompleted(action.value)"
-                :disabled="action.disable(organizationId, troopRow, user?.id)"
-            >
-                {{ action.label }}
-            </v-btn>
-        </v-card-actions>-->
+    <v-card variant="tonal">
+        <v-card
+            v-if="recordStateByOrganization && props.organizationId && props.organizationType"
+            :color="recordStateByOrganization.searchText || 'default'" v-bind="$attrs">
+            <v-card-item>
+                <v-card-title>
+                    ToDo
+                </v-card-title>
+            </v-card-item>
+        </v-card>
+        <v-card-text>
+            {{ recordStateByOrganization?.tooltip || 'Kein nächster Schritt definiert' }}
+        </v-card-text>
     </v-card>
 </template>
