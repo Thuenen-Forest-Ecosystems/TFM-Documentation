@@ -105,6 +105,8 @@ const listOfLookupTables = [
     const responsibleDialog = ref(false);
     const finishDialog = ref(false);
 
+    const loadingSelection = ref(false);
+
     const emit = defineEmits(['confirm']);
 
 
@@ -911,7 +913,7 @@ const listOfLookupTables = [
     }
 
     function onSelectionChanged(event) {
-        
+        loadingSelection.value = true;
         selectedRows.value = currentGrid.value.api.getSelectedRows();
         
         // Create a Set of selected plot_ids for fast lookup
@@ -921,7 +923,7 @@ const listOfLookupTables = [
         geojsonFeatureCollection.value.features.forEach(feature => {
             feature.properties.isSelected = selectedPlotIds.has(feature.properties.record.plot_id);
         });
-        console.log('Selection Changed Event:', event);
+        loadingSelection.value = false;
         return;
     }
 
@@ -1511,7 +1513,7 @@ const listOfLookupTables = [
                 variant="tonal"
                 rounded="xl"
             >
-                {{ selectedRows.length }} ausgewählte Ecken
+                {{ selectedRows.length }} ausgewählt von {{ displayedRows.length }} gefilterten Ecken
             </v-chip>
             <!--<v-chip
                 class="ma-2"
