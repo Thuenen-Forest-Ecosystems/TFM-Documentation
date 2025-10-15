@@ -11,7 +11,7 @@
     const isValidating = ref(false);
 
     const props = defineProps({
-        record: {
+        record: { // is properties
             type: Object,
             required: true
         },

@@ -11,6 +11,7 @@
     import VersionSelection from '../validation/VersionSelection.vue';
     import HistoryHorizonatal from './HistoryHorizonatal.vue';
     import DetailAdministration from './DetailAdministration.vue';
+    import ResponsibleByRecord from './ResponsibleByRecord.vue';
 
     const ajv = new Ajv({
         allErrors: true,
@@ -249,6 +250,8 @@
                 <div class="ma-3">
                     <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="pa-3">
 
+                        <ResponsibleByRecord :record="selectedHistoryPerTab[tab]" class="mb-4" />
+                    
                         <v-toolbar color="transparent">
                             <v-toolbar-title>Validation</v-toolbar-title>
                             <template v-slot:append>

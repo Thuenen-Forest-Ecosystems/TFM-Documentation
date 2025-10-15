@@ -30,7 +30,6 @@
             skipHeader: false
         },
         defaultColDef: {
-            flex: 1,
             minWidth: 100,
             resizable: true
         },
@@ -77,7 +76,7 @@
                 headerName: property.title || key,
                 field: key,
                 sortable: true,
-                filter: false,
+                filter: true,
                 hide, // Set hide to true if display is false
                 headerTooltip: property.description || '', // Add tooltip if description exists
                 valueFormatter: params => {
