@@ -115,6 +115,7 @@ function destroyMap() {
 
 // Watch for dialog visibility changes
 watch(() => props.modelValue, async (isOpen) => {
+    console.log('Dialog visibility changed:', isOpen);
     if (isOpen) {
         await initializeMap();
     } else {

@@ -35,10 +35,13 @@
             player.value = new Player(iframe);
         }
     });
+    const closeDialog = () => {
+        dialog.value = false;
+    };
 </script>
 
 <template>
-    <v-dialog max-width="800">
+    <v-dialog max-width="800" v-model="dialog" @click:outside="closeDialog">
         <template v-slot:activator="{ props: activatorProps }">
             <v-btn
                 v-if="!props.iconOnly"
@@ -58,7 +61,16 @@
         </template>
 
         <template v-slot:default="{ isActive }">
-            <v-card :title="props.title">
+            <v-card>
+                <v-toolbar>
+                    <v-btn icon="mdi-video"></v-btn>
+                    <v-toolbar-title>{{ props.title }}</v-toolbar-title>
+                    <v-btn
+                        icon="mdi-close"
+                        variant="text"
+                        @click="closeDialog"
+                    ></v-btn>
+                </v-toolbar>
                 <v-card-text class="pa-0">
                     <div style="padding:62.5% 0 0 0;position:relative;">
                         <iframe

@@ -174,7 +174,7 @@
                 <v-form v-model="valid" @submit.prevent="onSubmit">
 
                     <v-text-field
-                        label="Firmierung"
+                        label="Firmierung *"
                         required
                         persistent-hint
                         type="text"

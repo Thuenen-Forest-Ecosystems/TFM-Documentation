@@ -18,22 +18,29 @@ export const workflows = [
     {
         id: 0,
         searchText: 'red',
-        tooltip: 'Ecke sollte an Trupp oder Dienstleister übergeben werden.'
+        tooltip: 'Ecke sollte an Trupp oder Dienstleister übergeben werden.',
+        actions: [
+            {
+                label: 'Ecke einem Dienstleister zuweisen',
+                value: 'assign_provider',
+                settable: 'responsible_provider'
+            },
+            {
+                label: 'Ecke einem Trupp zuweisen',
+                value: 'assign_troop',
+                settable: 'responsible_troop'
+            }
+        ]
     },
     {
         id: 1,
         searchText: 'yellow',
-        tooltip: 'Kann an Bundesinventurleitung übergeben werden'
-    },
-    {
-        id: 4,
-        searchText: 'yellow',
-        tooltip: 'Kann an Landesinventurleitung übergeben werden',
+        tooltip: 'Kann an Bundesinventurleitung übergeben werden',
         actions: [
             {
-                label: 'An Landesinventurleitung übergeben',
+                label: 'An Bundesinventurleitung übergeben',
                 value: 'mark_completed',
-                settable: 'completed_at_provider'
+                settable: 'completed_at_state'
             }
         ]
     },
@@ -45,11 +52,28 @@ export const workflows = [
         tooltip: 'Ecke ist in Bearbeitung durch Trupp.',
         actions: [
             { 
-                label: 'Als abgeschlossen markieren',
+                label: 'Trakt als abgeschlossen markieren (temporär)',
                 value: 'mark_completed',
                 settable: 'completed_at_troop'
                 //disable: (organizationId, troop, user_id) => troop.user_ids ? !troop.user_ids.includes(user_id) : true,
                 //visible: (record) => record.completed_at_troop ? false : true,
+            }
+        ]
+    },
+    {
+        id: 3,
+        searchText: 'green',
+        tooltip: 'Wird durch Landesinventurleitung geprüft.',
+    },
+    {
+        id: 4,
+        searchText: 'yellow',
+        tooltip: 'Kann an Landesinventurleitung übergeben werden',
+        actions: [
+            {
+                label: 'An Landesinventurleitung übergeben',
+                value: 'mark_completed',
+                settable: 'completed_at_provider'
             }
         ]
     },
@@ -66,11 +90,6 @@ export const workflows = [
         tooltip: 'Kann geprüft werden.'
     },
     {
-        id: 3,
-        searchText: 'yellow',
-        tooltip: 'Kann an Landesinventurleitung übergeben werden'
-    },
-    {
         id: 7,
         searchText: 'red',
         tooltip: 'Ecke sollte an Trupp übergeben werden.'
@@ -79,6 +98,18 @@ export const workflows = [
         id: 8,
         searchText: 'green',
         tooltip: 'Ecke wird durch Dienstleister betreut.'
+    },
+    {
+        id: 9,
+        searchText: 'green',
+        tooltip: 'Trakt als akzeptiert markiert.',
+        actions: [
+            {
+                label: 'Ecke wieder öffnen',
+                value: 'reopen',
+                settable: 'completed_at_state'
+            }
+        ]
     }
 ];
 export function stateByOrganizationType(organizationId, organization_type, record){
@@ -86,8 +117,10 @@ export function stateByOrganizationType(organizationId, organization_type, recor
 
     if(organization_type === 'country'){
         //if(record.responsible_state === organizationId){
-            if(!record.responsible_troop && !record.responsible_provider){
+            if(!record.responsible_troop && !record.responsible_provider && !record.completed_at_troop && !record.completed_at_state){
                 return workflows.find(w => w.id === 0);
+            }else if(record.completed_at_state){
+                return workflows.find(w => w.id === 9);
             }else if(record.completed_at_troop){
                 return workflows.find(w => w.id === 1);
             }else if(record.responsible_troop){

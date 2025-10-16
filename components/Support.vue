@@ -49,13 +49,11 @@
             </v-list-item>
 
             <v-list-item>
-                <p>Vereinbaren Sie einen Termin mit unserem technischen Support.</p>
+                <p>Haben Sie Fehler gefunden, Verbesserungsvorschläge oder benötigen Sie Unterstützung?</p>
             </v-list-item>
             <v-divider></v-divider>
 
-            <v-list-item>
-                <v-list-item-title class="text-h8">Technisch</v-list-item-title>
-            </v-list-item>
+            <v-list-subheader class="text-h8">Technisch</v-list-subheader>
 
             <template v-for="value in supportProfiles" :key="value?.email || Math.random()">
                 <v-list-item 

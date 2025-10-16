@@ -19,6 +19,7 @@
     import StatusFilter from './customFilter/status.vue';
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
+import ClusterActions from '../cluster/ClusterActions.vue';
 
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
@@ -153,7 +154,7 @@ const listOfLookupTables = [
     const cluster = ref([]);
     const troops = ref([]);
     const rowData = ref([]);
-    const dbData = ref([]);
+    //const dbData = ref([]);
     const geojsonFeatureCollection = ref({
         type: "FeatureCollection",
         features: []
@@ -164,6 +165,10 @@ const listOfLookupTables = [
     const gridOptions = {
         localeText: AG_GRID_LOCALE_DE,
         getRowId: (params) => params.data.plot_id,
+        isRowSelectable: (node) => {
+            // Example condition: Only allow rows where `is_valid` is true
+            return node.data ? node.data.is_selectable : false;
+        },
         suppressRowHoverHighlight: false,
         suppressCellFocus: true,
         columnHoverHighlight: true,
@@ -225,8 +230,8 @@ const listOfLookupTables = [
                 }
             },
             {
-                headerCheckboxSelection: true, // Enables "select all" checkbox in header
-                checkboxSelection: true, // Enables checkbox selection for rows
+                headerCheckboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
+                checkboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
                 headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
                 //checkboxSelectionFilteredOnly: true, // This ensures only filtered rows are selectable
                 pinned: 'left', // Pins the column to the left
@@ -507,7 +512,7 @@ const listOfLookupTables = [
             },
             {
                 field: 'completed_at_state',
-                headerName: "Abgeschlossen (Landesinventurleitung)",
+                headerName: "Akzeptiert (Landesinventurleitung)",
                 filter: true,
                 sortable: true,
                 headerTooltip: "records.completed_at_state",
@@ -518,7 +523,7 @@ const listOfLookupTables = [
             },
             {
                 field: 'completed_at_administration',
-                headerName: "Abgeschlossen (Bundesinventurleitung)",
+                headerName: "Akzeptiert (Bundesinventurleitung)",
                 filter: true,
                 sortable: true,
                 headerTooltip: "records.completed_at_administration",
@@ -558,6 +563,18 @@ const listOfLookupTables = [
         }
         return `coming soon`;
     }
+    function computeSelectable(record) {
+        if( props.organization_type === 'provider' && record.completed_at_troop === null && record.completed_at_state === null && record.completed_at_administration === null){
+            return true;
+        }
+        if( props.organization_type === 'country' && record.completed_at_state === null && record.completed_at_administration === null){
+            return true;
+        }
+        if( props.organization_type === 'root' && record.completed_at_administration === null){
+            return true;
+        }
+        return false;
+    }
     function _preRenderRecords(records) {
 
         if (!records || records.length === 0) {
@@ -585,6 +602,8 @@ const listOfLookupTables = [
             const troop = troops.value.find(troop => troop.id === record.responsible_troop);
 
             return {
+                is_selectable: computeSelectable(record),
+
                 plot_id: record.plot_id,
 
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).id,
@@ -606,17 +625,17 @@ const listOfLookupTables = [
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
                 responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
 
-                administration_los: record.administration_los,
-                state_los: record.state_los,
-                provider_los: record.provider_los,
+                //administration_los: record.administration_los,
+                //state_los: record.state_los,
+                //provider_los: record.provider_los,
                 
                 
-                is_training: clusterData.is_training,
-                cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_cluster_status', clusterData?.['cluster_status']),
-                cluster_situation: _renderClusterOptimized(clusterData, 'cluster_situation', lookupMaps, 'lookup_cluster_situation'),
+                is_training: clusterData?.is_training,
+                cluster_status: _renderLookupOptimized(lookupMaps, 'lookup_cluster_status', record.cluster_status),
+                cluster_situation: _renderLookupOptimized(lookupMaps, 'lookup_cluster_situation', record.cluster_situation),
                 
-                state_responsible: _renderClusterOptimized(clusterData, 'state_responsible', lookupMaps, 'lookup_state'),
-                states_affected: clusterData?.['states_affected'] || 'not defined',
+                state_responsible: _renderLookupOptimized(lookupMaps, 'lookup_state', record.state_responsible), //_renderClusterOptimized(clusterData, 'state_responsible', lookupMaps, 'lookup_state'),
+                states_affected: record.states_affected, //clusterData?.['states_affected'] || 'not defined',
                 
                 
                 is_valid: record.is_valid,
@@ -631,7 +650,7 @@ const listOfLookupTables = [
                 ffh_forest_type: _renderLookupOptimized(lookupMaps, 'lookup_ffh_forest_type', record.ffh_forest_type_field),
                 accessibility: _renderLookupOptimized(lookupMaps, 'lookup_accessibility', record.accessibility),
                 property_type: _renderLookupOptimized(lookupMaps, 'lookup_property_type', record.property_type),
-                grid_density: _renderClusterOptimized(clusterData, 'grid_density', lookupMaps, 'lookup_grid_density')
+                grid_density: _renderLookupOptimized(lookupMaps, 'lookup_grid_density', record.grid_density)//_renderClusterOptimized(clusterData, 'grid_density', lookupMaps, 'lookup_grid_density')
             
             
             };
@@ -641,6 +660,11 @@ const listOfLookupTables = [
     }
    
     async function _requestAllLookupTables(){
+        // Get Browser language
+        const language = navigator.language || navigator.userLanguage || 'de-DE';
+        const languageCode = language.split('-')[0]; // Extract language code (e.g., 'de' from 'de-DE')
+        const languageVariable = languageCode === 'en' ? 'name_en' : 'name_de';
+
         // Lade alle Lookup-Tabellen parallel und warte auf alle Ergebnisse,
         // damit lookupTablesValue vollständig ist bevor _preRenderRecords ausgeführt wird.
         const promises = listOfLookupTables.map(async (table) => {
@@ -648,7 +672,7 @@ const listOfLookupTables = [
                 const { data, error } = await supabase
                     .schema('lookup')
                     .from(table)
-                    .select('*');
+                    .select(`name_de:${languageVariable}, code`);
 
                 if (error) {
                     console.error(`Error loading ${table}:`, error);
@@ -767,7 +791,7 @@ const listOfLookupTables = [
             return [];
         }
     }
-    async function fetchAllDataPaginated(tableName, organizationId, companyType, filterRow) {
+    async function fetchAllDataPaginated(tableName, organizationId, companyType) {
         let allData = [];
         let currentPage = 0;
         const pageSize = 10000; // Choose an appropriate page size
@@ -789,10 +813,6 @@ const listOfLookupTables = [
                     responsible_administration,
                     responsible_troop,
                     is_valid,
-                    administration_los,
-                    state_los,
-                    provider_los,
-                    troop_los,
                     federal_state,
                     growth_district,
                     forest_status_bwi2022,
@@ -808,13 +828,16 @@ const listOfLookupTables = [
                     completed_at_troop,
                     is_valid,
                     is_plausible,
-                    note
+                    note,
+                    cluster_status,
+                    cluster_situation,
+                    state_responsible,
+                    states_affected,
+                    grid_density
                 `)
                 .eq(companyType, organizationId)
-                //.is(filterRow, null) // Ensure the filterRow is null
-                //.is('troop_los', null) // Ensure troop_los is also null
-                .range(start, end) // Use range for pagination
-                .order('cluster_id', { ascending: true }); // <<-- deterministic order
+                .order('cluster_id', { ascending: true })
+                .range(start, end); // <<-- deterministic order
 
             if (error) {
                 console.error('Error fetching data:', error);
@@ -856,34 +879,30 @@ const listOfLookupTables = [
         }
 
         let companyType = null; //'responsible_state'; // responsible_administration
-        let filterRow = null; //'provider_los'; 
 
         switch (props.organization_type) {
             case 'root':
                 companyType = 'responsible_administration';
-                filterRow = 'administration_los';
                 break;
             case 'country':
                 companyType = 'responsible_state';
-                filterRow = 'state_los';
                 break;
             case 'provider':
                 companyType = 'responsible_provider';
-                filterRow = 'provider_los';
                 break;
         }
-        if (!companyType || !filterRow) {
+        if (!companyType) {
             console.warn('No company type or filter row defined for organization type:', props.organization_type);
             return;
         }
         
-        fetchAllDataPaginated('view_records_details', props.organization_id, companyType, filterRow)
+        fetchAllDataPaginated('view_records_details', props.organization_id, companyType)
             .then(async (records) => {
                 
                 if (records && records.length > 0) {
                     loading.value = true;
 
-                    await _requestclusterByPlots(records);
+                    //await _requestclusterByPlots(records);
 
                     // show last record
                     const lastRecord = records[records.length - 1];
@@ -892,7 +911,7 @@ const listOfLookupTables = [
                     await _requestAllLookupTables();
 
                     rowData.value = _preRenderRecords(records);
-                    dbData.value = JSON.parse(JSON.stringify(rowData.value)); // Deep copy for reset purposes
+                    //dbData.value = JSON.parse(JSON.stringify(rowData.value)); // Deep copy for reset purposes
                     createGeojsonFeatureCollection(records);
 
                     snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
@@ -957,7 +976,7 @@ const listOfLookupTables = [
         let totalBatches = Math.ceil(uniqueClusterIds.length / batchSize);
 
         const update = {};
-        switch (props.organization_type) {
+        /*switch (props.organization_type) {
             case 'root':
                 update.administration_los = losId;
                 break;
@@ -967,9 +986,8 @@ const listOfLookupTables = [
             case 'provider':
                 update.provider_los = losId;
                 break;
-        }
+        }*/
 
-        console.log(`Organization Type: ${JSON.stringify(update)}`);
 
         try {
             // Process all batches and track progress
@@ -1137,6 +1155,7 @@ const listOfLookupTables = [
         //console.log('Organizations:', organizations.value.length);
         organizations.value = await _getOrganizations();
         troops.value = await _getTroops(props.organization_id);
+        console.log('troops:', troops.value);
         //console.log('Troops:', troops.value.length);
 
         setColDefs();
@@ -1321,32 +1340,68 @@ const listOfLookupTables = [
     function _handleClose () {
         responsibleDialog.value = false;
     };
-    async function _handleFinished(values) {
-        console.log(values);
+    async function _handleFinished(updatedRecords) {
+        updateRowDataFromRecords(updatedRecords);
+        responsibleDialog.value = false;
+    };
+    async function updateRowDataFromRecords(updatedRecords) {
+        if (!updatedRecords || updatedRecords.length === 0) {
+            console.warn('No records to merge');
+            return;
+        }
+
+        // _preRenderRecords to match grid format
+        const updatedRecordsRendered = _preRenderRecords(updatedRecords);
+        console.log('Merging updated records into grid:', updatedRecords, updatedRecordsRendered);
+
+        updatedRecordsRendered.forEach(updatedRecord => {
+            const rowNode = currentGrid.value.api.getRowNode(updatedRecord.plot_id);
+            if (rowNode) {
+                // Merge updated fields into existing row data
+                const existingData = rowNode.data;
+                const newData = { ...existingData, ...{
+                    responsible_state: updatedRecord.responsible_state,
+                    responsible_provider: updatedRecord.responsible_provider,
+                    responsible_troop: updatedRecord.responsible_troop,
+                    note: updatedRecord.note,
+                    completed_at_state: updatedRecord.completed_at_state,
+                    completed_at_administration: updatedRecord.completed_at_administration,
+                    completed_at_troop: updatedRecord.completed_at_troop,
+                    updated_at: updatedRecord.updated_at,
+                    is_selectable: updatedRecord.is_selectable,
+                    state_by_user: updatedRecord.state_by_user
+                } };
+                rowNode.setData(newData);
+            }
+        });
     };
     async function _handleConfirm (selectedCompany, selectedTroop, additionalNote) {
 
-        let updateField = null;
         const update = {
             responsible_troop: selectedTroop || null,
             note: additionalNote || null
         }
 
-        console.log('Selected Troop:', props.organization_type);
 
         switch (props.organization_type) {
             case 'root':
                 update.responsible_state = selectedCompany || null;
                 update.responsible_provider = null;
-                //update.completed_at_administration = null; // reset completed at administration
-                //update.completed_at_state = null; // reset completed at state
-                //update.completed_at_troop = null; // reset completed at troop
+                update.completed_at_administration = null; // reset completed at administration
+                update.completed_at_state = null; // reset completed at state
+                update.completed_at_troop = null; // reset completed at troop
                 break;
             case 'country':
                 update.responsible_provider = selectedCompany || null;
-                //update.completed_at_state = null; // reset completed at state
-                //update.completed_at_troop = null; // reset completed at troop
+                update.completed_at_state = null; // reset completed at state
+                update.completed_at_troop = null; // reset completed at troop
                 break;
+            case 'provider':
+                update.completed_at_troop = null; // reset completed at troop
+                break;
+            default:    
+                console.error('Unknown organization type:', props.organization_type);
+                return;
         };
 
         const selectedLos = currentGrid.value.api.getSelectedRows();
@@ -1354,7 +1409,6 @@ const listOfLookupTables = [
         // Get unique plot IDs from selected rows
         const uniqueClusterIds = [...new Set(clusterIds)];
 
-        console.log(selectedCompany, selectedTroop, selectedLos);
 
         for (const clusterId of uniqueClusterIds) {
             const { data, error } = await supabase
@@ -1373,21 +1427,10 @@ const listOfLookupTables = [
                 snackbarColor.value = 'success';
                 snackbar.value = true;
 
-                // TODO: Refresh
-                //await _requestPlots();
-
                 // update grid
-                currentGrid.value.api.forEachNode((node) => {
-                    if (uniqueClusterIds.includes(node.data.cluster_id)) {
-                        if(selectedCompany) {
-                            node.setDataValue(updateField, organizations.value.find(org => org.id === selectedCompany)?.name || selectedCompany);
-                        }
-                        node.setDataValue('responsible_troop', troops.value.find(troop => troop.id === selectedTroop)?.name || selectedTroop);
-                    }
-                });
+                updateRowDataFromRecords(data);
             }
         }
-         _requestPlots();
     }
     function _toggleMap() {
         mapDialog.value = !mapDialog.value;
@@ -1399,18 +1442,6 @@ const listOfLookupTables = [
         selectedCluster.value = jsonObject;
         recordsDialog.value = true;
         return;
-        recordsDialog.value = true;
-        selectedCluster.value = clickedFeature.properties.record;
-        // Select the corresponding row in the grid
-        /*if (!currentGrid.value || !currentGrid.value.api) {
-            console.error('Grid API not available');
-            return;
-        }
-        const rowNode = currentGrid.value.api.getRowNode(clickedFeature.plot_id);
-        if (rowNode) {
-            const isSelected = rowNode.isSelected();
-            rowNode.setSelected(!isSelected);
-        }*/
     }
 </script>
 
@@ -1433,8 +1464,8 @@ const listOfLookupTables = [
     </div>
 
     <!-- Replace v-app-bar with v-toolbar or v-card-title -->
-    <v-card class="mx-4 mt-4 mb-1">
-        <v-toolbar density="compact" v-if="Object.keys(filteredRows).length" >
+    <v-card class="my-2" rounded="xl">
+        <v-toolbar density="comfortable" v-if="Object.keys(filteredRows).length" class="pa-2" >
             <template v-slot:prepend>
                 <v-icon>mdi-filter</v-icon>
             </template>
@@ -1450,6 +1481,7 @@ const listOfLookupTables = [
                     rounded="xl"
                     @click="clearFilter(key)"
                 >
+                    <v-icon icon="mdi-close-circle" start></v-icon>
                     {{ key }}: {{ value.filter }}
                 </v-chip>
                 <v-btn @click="clearFilters" variant="outlined" prepend-icon="mdi-delete" rounded="xl">
@@ -1505,6 +1537,21 @@ const listOfLookupTables = [
                 :disabled="!geojsonFeatureCollection.features.length"
                 density="compact"
             ></v-btn>
+            <div v-if="selectedRows.length > 0">
+                <v-btn-toggle rounded="xl" divided density="compact">
+                    <v-btn icon="mdi-download"></v-btn>
+                    <v-btn
+                        @click="exportSelected"
+                    >
+                        .csv
+                    </v-btn>
+                    <v-btn
+                        @click="exportSelectedGeoJson"
+                    >
+                        .geojson
+                    </v-btn>
+                </v-btn-toggle>
+            </div>
             <v-chip
                 class="ma-2"
                 color="primary"
@@ -1514,6 +1561,7 @@ const listOfLookupTables = [
             >
                 {{ selectedRows.length }} ausgewählt von {{ displayedRows.length }} gefilterten Ecken
             </v-chip>
+            
             <!--<v-chip
                 class="ma-2"
                 color="primary"
@@ -1523,24 +1571,8 @@ const listOfLookupTables = [
             >
                 {{ displayedRows.length }} gefilterte Ecken
             </v-chip>-->
-            <v-toolbar-title></v-toolbar-title>
+            <v-spacer></v-spacer>
             <div v-if="selectedRows.length > 0">
-                Export:
-                <v-btn-toggle rounded="xl" divided>
-                    <v-btn
-                        v-if="props.organization_type !== 'provider'"
-                        @click="exportSelected"
-                    >
-                        .csv
-                    </v-btn>
-                    <v-btn
-                        v-if="props.organization_type !== 'provider'"
-                        @click="exportSelectedGeoJson"
-                        
-                    >
-                        .geojson
-                    </v-btn>
-                </v-btn-toggle>
                 <v-btn
                     v-if="props.organization_type !== 'provider' || usersPermissions.find(perm => perm.is_organization_admin)"
                     class="mx-2"
@@ -1549,7 +1581,7 @@ const listOfLookupTables = [
                     @click="responsibleDialog = true"
                     rounded="xl"
                 >
-                    Berechtigung vergeben
+                    Berechtigung zuweisen
                 </v-btn>
                 <v-btn
                     v-if="usersPermissions.find(perm => perm.is_organization_admin)"
@@ -1559,7 +1591,7 @@ const listOfLookupTables = [
                     @click="finishDialog = true"
                     rounded="xl"
                 >
-                   Als abgeschlossen markieren
+                   Aufnahmen akzeptieren
                 </v-btn>
                 <!--<v-select
                     v-if="!props.los"
@@ -1618,24 +1650,22 @@ const listOfLookupTables = [
             @close="finishDialog = false"
             @confirm="_handleFinished"
         />
-        
-
-        <v-navigation-drawer
-            location="right"
-            v-model="mapDialog"
-            width="600"
-            floating
-            style="z-index: 10;"
-            class="mt-16"
-        >   
-            <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
-            <GeoJsonMap
-                :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
-                :modelValue="mapDialog"
-                @update:selected="_selectedOnMap"
-                />
-        </v-navigation-drawer>
     </div>
+    <v-navigation-drawer
+        location="right"
+        v-model="mapDialog"
+        width="600"
+        floating
+        style="z-index: 10;"
+        class="mt-16"
+    >   
+        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
+        <GeoJsonMap
+            :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
+            :modelValue="mapDialog"
+            @update:selected="_selectedOnMap"
+            />
+    </v-navigation-drawer>
     <div v-if="selectedCluster">
         <v-dialog
         v-model="recordsDialog"
@@ -1650,6 +1680,11 @@ const listOfLookupTables = [
                     ></v-btn>
 
                     <v-toolbar-title>Trakt: {{ selectedCluster.cluster_name.toString() }}</v-toolbar-title>
+                    <ClusterActions
+                            :clusterId="selectedCluster.cluster_id"
+                            :cluster="selectedCluster"
+                            :organizationId="props.organization_id"
+                            :organizationType="props.organization_type" />
                     
                     
                 </v-toolbar>

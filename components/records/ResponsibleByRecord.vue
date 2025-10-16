@@ -19,7 +19,6 @@
     });
 
     onMounted(async () => {
-        console.log('props.record: ', props.record);
 
         // Fetch all organization names in a single query
         const ids = [
@@ -55,7 +54,7 @@
 <template>
     <v-row v-if="props.record">
         <!-- Administrator -->
-        <v-col>
+        <v-col cols="12" sm="6" md="3">
             <v-card
                 variant="tonal"
                 class="text-center pa-2" 
@@ -64,7 +63,7 @@
             ></v-card>
         </v-col>
         <!-- LIL -->
-        <v-col v-if="record.responsible_state">
+        <v-col cols="12" sm="6" md="3" v-if="record.responsible_state">
             <v-card
                 variant="tonal"
                 class="text-center pa-2" 
@@ -73,7 +72,7 @@
             ></v-card>
         </v-col>
         <!-- FLL -->
-        <v-col v-if="record.responsible_provider">
+        <v-col cols="12" sm="6" md="3" v-if="record.responsible_provider">
             <v-card
                 variant="tonal"
                 class="text-center pa-2" 
@@ -82,7 +81,7 @@
             ></v-card>
         </v-col>
         <!-- Troop -->
-        <v-col>
+        <v-col cols="12" sm="6" md="3">
             <v-card
                 variant="tonal"
                 class="text-center pa-2" 

@@ -137,8 +137,12 @@ layout: home
 <div v-if="currentOrganization && currentOrganization.id">
 
 <v-toolbar color="transparent" flat>
-    <v-toolbar-title>{{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}</v-toolbar-title>
+    <v-toolbar-title class="text-h5">
+        {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
+    </v-toolbar-title>
+        <!--
         <VimeoPlayer vimeoId="1109589414" :btnTitle="'Tutorial'" :title="'Cluster-Verwaltung für die CI/BWI'" :iconOnly="false" />
+        -->
         <v-btn icon @click="toEditOrganization(currentOrganization)">
             <v-icon>mdi-pencil</v-icon>
         </v-btn>

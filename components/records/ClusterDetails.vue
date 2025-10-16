@@ -75,7 +75,6 @@
     const selectedHistoryPerTab = ref({});
 
     async function fetchRecordsByCluster(_clusterId) {
-        console.log('Fetching records for cluster:', _clusterId);
         const { data, error } = await supabase
             .from('records')
             .select('*')
@@ -160,9 +159,9 @@
         const index = records.value.findIndex(r => r.id === updatedRecord.id);
         if (index !== -1) {
             records.value[index] = { ...records.value[index], ...updatedRecord };
-            console.log('Record updated in list:', records.value[index]);
         }
         console.log('UPDATED RECORD', updatedRecord);
+        onHistorySelect(updatedRecord, null);
     }
     
 

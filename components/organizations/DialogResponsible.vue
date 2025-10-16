@@ -61,7 +61,6 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
     function initTexte(){
 
         let permissionColumn = null;
-        console.log('Organization Type:', props.organizationType);
 
         switch(props.organizationType){
             case 'root':
@@ -100,7 +99,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     // Call this when user cancels
     function cancelAction() {
-       resetSelection();
+        resetSelection();
         emit('update:modelValue', false);
     }
 
@@ -183,25 +182,35 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 <template>
     <v-dialog v-model="props.modelValue"  @click:outside="cancelAction" scrollable>
         <v-card rounded="lg">
-            <!--<v-toolbar v-if="props.selected">
-                <v-btn v-if="props.icon" :icon="props.icon"></v-btn>
+            <v-toolbar>
+                <v-btn icon="mdi-security"></v-btn>
 
-                <v-toolbar-title>{{ props.selected?.name || '' }}</v-toolbar-title>
+                <v-toolbar-title>Berechtigung zuweisen</v-toolbar-title>
 
                 <v-toolbar-items>
                     <v-btn
                         icon="mdi-close"
                         variant="text"
                         @click="cancelAction"
-                ></v-btn>
+                    ></v-btn>
                 </v-toolbar-items>
-            </v-toolbar>-->
-            <v-card-title>Berechtigung zuweisen</v-card-title>
+            </v-toolbar>
+
             <v-card-subtitle>{{ uniqueClusterIds.length }} Trakte ausgewählt</v-card-subtitle>
-            
-            <v-divider class="mt-3"></v-divider>
+
             <v-card-text>
-            <!--<v-text-field
+                <v-alert
+                    type="info"
+                    variant="outlined"
+                    density="compact"
+                >
+                    <p class="mt-2 text">
+                        Die Zuweisung der Berechtigung erfolgt Traktweise.
+                        Alle Ecken eines Traktes erhalten die ausgewählte Berechtigung.
+                    </p>
+                </v-alert>
+
+                <!--<v-text-field
                     v-if="props.selected"
                     label="Name ändern"
                     persistent-hint
@@ -214,7 +223,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     :rules="[rules.required, rules.minLength, rules.disabled]"
                 />-->
             
-                <v-card variant="tonal" class="ma-2" v-if="organizationPermissionText" :title="organizationPermissionText ">
+                <v-card variant="tonal" class="my-2" v-if="organizationPermissionText" :title="organizationPermissionText ">
                     <v-chip-group
                         selected-class="text-primary"
                         column
@@ -233,7 +242,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         </v-chip>
                     </v-chip-group>
                 </v-card>
-                <v-card variant="tonal" title="Inventur Trupps" class="ma-2">
+                <v-card variant="tonal" title="Trupps" class="my-2">
                     <v-chip-group
                         selected-class="text-primary"
                         column
@@ -250,6 +259,9 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         >
                             <v-icon v-if="troop.icon" :icon="troop.icon" start :color="troop.color"></v-icon>
                             {{ troop.name || troop.entityName || 'unknown' }}
+                            <span class="text-caption">
+                            {{ troop.is_control_troop === true ? '(Kontrolltrupp) ' : (troop.is_control_troop === false ? '(Aufnahmetrupp)' : '') }}
+                            </span>
                         </v-chip>
                     </v-chip-group>
                 </v-card>
@@ -285,12 +297,12 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     label="Zusätzliche Anmerkungen für Berechtigten"
                     outlined
                     rows="4"
-                    class="mx-2 mb-2"
+                    class="my-2"
+                    variant="outlined"
                 ></v-textarea>
             </v-card-text>
             <v-divider></v-divider>
             <v-card-actions>
-                <v-btn text="Abbrechen" variant="text" @click="cancelAction">Abbrechen</v-btn>
                 <v-spacer></v-spacer>
                 <v-btn
                     text="Anwenden"

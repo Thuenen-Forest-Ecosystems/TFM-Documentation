@@ -1,5 +1,5 @@
 <script setup>
-    import { onMounted, getCurrentInstance, ref } from 'vue';
+    import { onMounted, getCurrentInstance, ref, watch } from 'vue';
     import { stateByOrganizationType, toDoFromRecord, workflowFromRecord } from '../Utils';
 
     const instance = getCurrentInstance();
@@ -13,6 +13,10 @@
     const permission = ref(null);
     const actionLoading = ref(false);
     const ownTroop = ref(null);
+
+    const snackbar = ref(false);
+    const snackbarText = ref('');
+    const snackbarColor = ref('info');
 
     const props = defineProps({
         record: {
@@ -65,11 +69,11 @@
         recordStateByOrganization.value = stateByOrganizationType(props.organizationId, props.organizationType, props.record);
     });
     
-    async function _markAsCompleted(_recordState){
+    async function _markAsCompleted(_recordState, value){
         const updateData = {
             id: props.record.id,
         };
-        updateData[_recordState.settable] = new Date().toISOString();
+        updateData[_recordState.settable] = value; //new Date().toISOString();
         const { data, error } = await supabase
             .from('records')
             .update(updateData)
@@ -77,9 +81,16 @@
             .select().single();
 
         if (error) {
-            console.error('Error updating record:', error);
+            // Snackbar or similar feedback can be added here
+            snackbarText.value = 'Fehler beim Aktualisieren des Datensatzes: ' + error.message;
+            snackbarColor.value = 'error';
+            snackbar.value = true;
         } else {
-            console.log('Record updated successfully:', data);
+            // Snackbar or similar feedback can be added here
+            emit('update:record', data);
+            snackbarText.value = 'Datensatz erfolgreich aktualisiert';
+            snackbarColor.value = 'success';
+            snackbar.value = true;
         }
         return data;
     }
@@ -87,28 +98,32 @@
         actionLoading.value = true;
 
         if(action.value === 'mark_completed'){
-            const result = await _markAsCompleted(action, recordStateByOrganization.value);
-            if (result) {
-                emit('update:record', result);
-            }
+            const result = await _markAsCompleted(action, new Date().toISOString());
+        }else if(action.value === 'reopen'){
+            const result = await _markAsCompleted(action, null);
         }
         actionLoading.value = false;
     }
+
+    // Watch for changes in props.record to update recordStateByOrganization
+    watch(() => props.record, (newRecord) => {
+        recordStateByOrganization.value = stateByOrganizationType(props.organizationId, props.organizationType, newRecord);
+    }, { immediate: true });
 </script>
 
 
 <template>
-    <v-card variant="tonal">
+    <v-card variant="tonal" title="Aufgaben" class="ma-3">
         <v-card
             v-if="recordStateByOrganization && props.organizationId && props.organizationType"
             :color="recordStateByOrganization.searchText || 'default'"
             v-bind="$attrs"
-            title="Offene Aufgabe">
+        >
+            <v-card-title>
+                {{ recordStateByOrganization?.tooltip || 'Nächster Schritt' }}
+            </v-card-title>
         </v-card>
-        <v-card-text>
-            {{ recordStateByOrganization?.tooltip || 'Kein nächster Schritt definiert' }}
-        </v-card-text>
-        <v-card-actions v-if="recordStateByOrganization?.actions">
+        <!--<v-card-actions v-if="recordStateByOrganization?.actions && !record.record_id">
             <v-spacer></v-spacer>
             <v-btn
                 v-for="action in recordStateByOrganization.actions"
@@ -121,6 +136,14 @@
             >
                 {{ action?.label || 'Aktion ausführen' }}
             </v-btn>
-        </v-card-actions>
+        </v-card-actions>-->
     </v-card>
+    <v-snackbar
+        v-if="snackbar"
+        v-model="snackbar" 
+        :timeout="3000" 
+        :color="snackbarColor"
+    >
+        {{ snackbarText }}
+    </v-snackbar>
 </template>
