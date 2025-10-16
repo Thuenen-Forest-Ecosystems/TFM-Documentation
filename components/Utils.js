@@ -28,7 +28,14 @@ export const workflows = [
     {
         id: 4,
         searchText: 'yellow',
-        tooltip: 'Kann an Landesinventurleitung übergeben werden'
+        tooltip: 'Kann an Landesinventurleitung übergeben werden',
+        actions: [
+            {
+                label: 'An Landesinventurleitung übergeben',
+                value: 'mark_completed',
+                settable: 'completed_at_provider'
+            }
+        ]
     },
     {
         id: 2,
@@ -36,6 +43,15 @@ export const workflows = [
         text: 'In Arbeit von Trupp. (2)',
         searchText: 'green',
         tooltip: 'Ecke ist in Bearbeitung durch Trupp.',
+        actions: [
+            { 
+                label: 'Als abgeschlossen markieren',
+                value: 'mark_completed',
+                settable: 'completed_at_troop'
+                //disable: (organizationId, troop, user_id) => troop.user_ids ? !troop.user_ids.includes(user_id) : true,
+                //visible: (record) => record.completed_at_troop ? false : true,
+            }
+        ]
     },
     {
         id: 5,
@@ -82,13 +98,11 @@ export function stateByOrganizationType(organizationId, organization_type, recor
         //}
     }else if (organization_type === 'provider'){
         //if(record.responsible_provider === organizationId){
-        
             if(!record.responsible_troop){
                 return workflows.find(w => w.id === 7);
             }else if(record.completed_at_troop){
                 return workflows.find(w => w.id === 3);
             }else{
-                console.log('Record for provider:', workflows.find(w => w.id === 2));
                 return workflows.find(w => w.id === 2);
             }
         //}

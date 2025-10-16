@@ -155,6 +155,15 @@
         window.history.back();
     }
 
+    function onUpdateRecord(updatedRecord) {
+        // Refresh the record in the list
+        const index = records.value.findIndex(r => r.id === updatedRecord.id);
+        if (index !== -1) {
+            records.value[index] = { ...records.value[index], ...updatedRecord };
+            console.log('Record updated in list:', records.value[index]);
+        }
+        console.log('UPDATED RECORD', updatedRecord);
+    }
     
 
     function onHistorySelect(record, event) {
@@ -235,7 +244,12 @@
                     @click="sheet = !sheet"
                 ></v-fab>
                 
-                <RecordToDo :record="selectedHistoryPerTab[tab]" :organizationId="props.organizationId" :organizationType="props.organizationType" class="ma-4" />
+                <RecordToDo
+                    :record="selectedHistoryPerTab[tab]"
+                    :organizationId="props.organizationId"
+                    :organizationType="props.organizationType"
+                    @update:record="onUpdateRecord"
+                    class="ma-4" />
 
                 <!-- Display record.note -->
                  <v-alert
@@ -247,7 +261,7 @@
                     icon="mdi-message"
                 ></v-alert>
 
-                <v-card title="Zuständigkeit" variant="tonal" class="ma-3">
+                <v-card title="Zuständigkeiten" variant="tonal" class="ma-3">
 
                     <ResponsibleByRecord :record="selectedHistoryPerTab[tab]" class="ma-1" />
                 </v-card>

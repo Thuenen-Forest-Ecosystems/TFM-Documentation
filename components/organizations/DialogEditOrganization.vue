@@ -6,6 +6,7 @@
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
     const organizationName = ref('');
+    const organizationInternName = ref('');
     const organizationDescription = ref('');
     const valid = ref(false);
     const loading = ref(false);
@@ -62,6 +63,7 @@
                 .from('organizations')
                 .update({
                     name: organizationName.value,
+                    entityName: organizationInternName.value,
                     description: organizationDescription.value,
                     type: props.type || 'country'
                 })
@@ -126,9 +128,11 @@
     onMounted(() => {
         if (props.organization) {
             organizationName.value = props.organization.name || '';
+            organizationInternName.value = props.organization.entityName || '';
             organizationDescription.value = props.organization.description || '';
         } else {
             organizationName.value = '';
+            organizationInternName.value = '';
             organizationDescription.value = '';
         }
     });
@@ -137,9 +141,11 @@
         (newOrganization) => {
             if (newOrganization) {
                 organizationName.value = newOrganization.name || '';
+                organizationInternName.value = newOrganization.entityName || '';
                 organizationDescription.value = newOrganization.description || '';
             } else {
                 organizationName.value = '';
+                organizationInternName.value = '';
                 organizationDescription.value = '';
             }
         },
@@ -168,7 +174,8 @@
                 <v-form v-model="valid" @submit.prevent="onSubmit">
 
                     <v-text-field
-                        label="Name"
+                        label="Firmierung"
+                        required
                         persistent-hint
                         type="text"
                         v-model.trim="organizationName"
@@ -176,6 +183,19 @@
                         rounded="xl"
                         variant="outlined"
                         :rules="[rules.required, rules.minLength, rules.disabled]"
+                        hint="Der Name der Organisation, wie er 'öffentlich' angezeigt wird."
+                    ></v-text-field>
+
+                    <v-text-field
+                        label="Bezeichnung (intern)"
+                        required
+                        persistent-hint
+                        type="text"
+                        v-model.trim="organizationInternName"
+                        class="my-4"
+                        rounded="xl"
+                        variant="outlined"
+                        hint="Eine interne Bezeichnung für die Organisation."
                     ></v-text-field>
 
                     <v-textarea

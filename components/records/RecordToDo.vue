@@ -11,6 +11,7 @@
     const recordStateByOrganization = ref(null);
     const troopRow = ref(null);
     const permission = ref(null);
+    const actionLoading = ref(false);
     const ownTroop = ref(null);
 
     const props = defineProps({
@@ -29,6 +30,9 @@
             default: null
         }
     });
+
+    // <RecordToDo @update:record="onUpdateRecord"
+    const emit = defineEmits(['update:record']);
 
 
     async function fetchPermission(userId, organizationId, isTroop) {
@@ -62,25 +66,33 @@
     });
     
     async function _markAsCompleted(_recordState){
-        if(_recordState.settable){
-            const updateData = {
-                id: props.record.id,
-            };
-            updateData[_recordState.settable] = new Date().toISOString();
-            updating.value = true;
-            const { data, error } = await supabase
-                .from('records')
-                .update(updateData)
-                .eq('id', props.record.id);
+        const updateData = {
+            id: props.record.id,
+        };
+        updateData[_recordState.settable] = new Date().toISOString();
+        const { data, error } = await supabase
+            .from('records')
+            .update(updateData)
+            .eq('id', props.record.id)
+            .select().single();
 
-            if (error) {
-                console.error('Error updating record:', error);
-            } else {
-                console.log('Record updated successfully:', data);
-            }
-            updating.value = false;
+        if (error) {
+            console.error('Error updating record:', error);
+        } else {
+            console.log('Record updated successfully:', data);
         }
+        return data;
+    }
+    async function _runAction(action){
+        actionLoading.value = true;
 
+        if(action.value === 'mark_completed'){
+            const result = await _markAsCompleted(action, recordStateByOrganization.value);
+            if (result) {
+                emit('update:record', result);
+            }
+        }
+        actionLoading.value = false;
     }
 </script>
 
@@ -96,5 +108,19 @@
         <v-card-text>
             {{ recordStateByOrganization?.tooltip || 'Kein nächster Schritt definiert' }}
         </v-card-text>
+        <v-card-actions v-if="recordStateByOrganization?.actions">
+            <v-spacer></v-spacer>
+            <v-btn
+                v-for="action in recordStateByOrganization.actions"
+                :key="action.value"
+                variant="tonal"
+                color="primary"
+                rounded="xl"
+                :loading="actionLoading"
+                @click="_runAction(action)"
+            >
+                {{ action?.label || 'Aktion ausführen' }}
+            </v-btn>
+        </v-card-actions>
     </v-card>
 </template>

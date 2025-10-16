@@ -325,7 +325,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         <v-card v-for="organization in organizations" :key="organization.id" :class="'mb-4 ' + (organization.deleted ? 'opacity-40' : '')" variant="tonal">
             <v-card-item>
                 <v-card-title>
-                    {{ organization.name || organization.entityName }}
+                    {{ organization.entityName || organization.name }}
                 </v-card-title> 
                 <v-card-subtitle>
                     {{ organization.description || '' }}
