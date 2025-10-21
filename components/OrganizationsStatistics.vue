@@ -1,11 +1,10 @@
 <script setup>
-    import { onMounted, ref, getCurrentInstance } from 'vue'
+    import { onMounted, ref, getCurrentInstance, watch } from 'vue'
 import { apiRecords } from './Utils';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
-    const loading = ref(false);
     const data = ref([]);
 
     const props = defineProps({
@@ -17,6 +16,14 @@ import { apiRecords } from './Utils';
             type: String,
             required: false,
             default: null
+        },
+        records: {
+            type: Array,
+            default: () => []
+        },
+        loading: {
+            type: Boolean,
+            default: false
         }
     });
 
@@ -29,11 +36,7 @@ import { apiRecords } from './Utils';
 
     const countUniqueTroops = ref(0);
 
-    onMounted(async () => {
-        loading.value = true;
-        // This is a placeholder for future functionality
-        data.value = await apiRecords(supabase, 'view_records_details', props.organization_id, props.organization_type)
-
+    async function updateStats(){
         plotsLength.value = data.value.length;
         // Group By cluster_id and count unique ones
         const uniqueClusters = new Set(data.value.map(item => item.cluster_id));
@@ -48,15 +51,25 @@ import { apiRecords } from './Utils';
         providerNullLength.value = data.value.filter(item => !item.responsible_provider).length;
 
         countUniqueTroops.value = new Set(data.value.map(item => item.responsible_troop)).size;
+    }
 
-        
-        loading.value = false;
+    watch(() => props.records, (newRecords) => {
+        console.log('Records prop changed, updating data and stats.');
+        data.value = newRecords;
+        updateStats();
+    }, { immediate: true, deep: true });
+
+    onMounted(async () => {
+
+        // This is a placeholder for future functionality
+        data.value = props.records.value; // || await apiRecords(supabase, 'view_records_details', props.organization_id, props.organization_type)
+
     });
 </script>
 
 <template>
     <v-container>
-        <div v-if="loading">
+        <div v-if="props.loading">
             <v-row>
                 <v-col style="min-width: 200px;" v-for="i in [1,2,3,4,5,6,7]"><!--8 placeholders-->
                     <v-skeleton-loader  type="article" />

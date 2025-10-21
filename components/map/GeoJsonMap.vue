@@ -126,6 +126,7 @@ watch(() => props.modelValue, async (isOpen) => {
 // Watch for geojson changes when dialog is open
 watch(() => props.geojson, (newGeojson) => {
     if (props.modelValue && map && map.isStyleLoaded()) {
+        console.log('GeoJSON data changed, updating features');
         updateGeoJsonFeatures(newGeojson);
     }
 }, { deep: true });
@@ -178,7 +179,7 @@ function refreshLayer() {
                 ],
                 'circle-color': ['get', 'color'],
                 'circle-opacity': ['get', 'opacity'],
-                'circle-stroke-color': '#ffff00',
+                'circle-stroke-color': '#4297f3',
                 'circle-stroke-width': ['get', 'strokeWidth'],
             }
         });

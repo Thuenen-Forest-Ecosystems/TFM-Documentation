@@ -81,7 +81,7 @@ import { stateByOrganizationType } from '../Utils';
 <template v-slot:append>
                         
                     
-        <v-chip :color="recordStateByOrganization?.searchText || 'grey'" class="ma-2" variant="outlined">
+        <v-chip :color="recordStateByOrganization?.searchText || 'grey'" class="ma-2" variant="elevated">
             {{ recordStateByOrganization?.tooltip || 'Status unbekannt' }}
         </v-chip>
         <!--<v-card-actions v-if="recordStateByOrganization?.actions">

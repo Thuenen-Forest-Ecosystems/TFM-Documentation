@@ -15,7 +15,6 @@ layout: home
     import ListOfCluster from '../../components/organizations/ListOfCluster.vue';
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
     // import ListOfLose from '../../components/organizations/ListOfLose.vue';
-    import RecordsOverview from '../../components/RecordsOverview.vue';
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
     import OrganizationsStatistics from '../../components/OrganizationsStatistics.vue';
 
@@ -36,6 +35,12 @@ layout: home
 
     const tab = ref('0'); // Default tab
 
+    const records = ref([]);
+
+    const snackbar = ref(false);
+    const snackbarText = ref('');
+    const snackbarColor = ref('info');
+
     const _getOrganizationById = async (organizationId) => {
         const { data, error } = await supabase.from('organizations').select('*').eq('id', organizationId).single();
         if (error) {
@@ -44,37 +49,9 @@ layout: home
         }
         return data;
     };
-    async function _requestcluster() {
-        loadingClusters.value = true;
-        cluster.value = [];
-        const { data, error } = await supabase.rpc('get_user_clusters');
-
-        if (error) {
-            console.error('Error fetching clusters:', error);
-        } else {
-            console.log('Fetched clusters:', data);
-            cluster.value = data;
-            loadingClusters.value = false;
-        }
-        /*await supabase
-            .schema('inventory_archive')
-            .from('cluster')
-            .select('*')
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error('Error fetching clusters:', error);
-                } else {
-                    cluster.value = data;
-                }
-            })
-            .catch((e) => console.error('An unexpected error occurred while fetching clusters:', e))
-            .finally(() => {
-                loadingClusters.value = false;
-            });*/
-    }
 
     onMounted(async () => {
-
+        loadingClusters.value = true;
         currentOrganization.value = await _getOrganizationById(organizationId);
 
 
@@ -84,8 +61,6 @@ layout: home
             return;
         }
         if (sessionData && sessionData.session) {
-
-            //_requestcluster();
 
             user.value = sessionData.session.user;
 
@@ -111,8 +86,9 @@ layout: home
             } else {
                 console.warn('No organization ID found in permissions.');
             }
-
         }
+        await _requestPlots(currentOrganization.value.type, currentOrganization.value.id);
+        loadingClusters.value = false;
     });
     const _getChildOrganizationType = () => {
         if (currentOrganization.value.type === 'root') {
@@ -127,9 +103,119 @@ layout: home
     const toEditOrganization = (organization) => {
         window.location.href = withBase('/dashboard/organizations/administration?organization=' + organization.id);
     }
+
+
+
+    // Globaly load records
+    async function fetchAllDataPaginated(tableName, organizationId, companyType) {
+        let allData = [];
+        let currentPage = 0;
+        const pageSize = 10000; // Choose an appropriate page size
+
+        while (true) {
+            const start = currentPage * pageSize;
+            const end = start + pageSize - 1;
+
+            const { data, error } = await supabase
+                .from(tableName)
+                .select(`
+                    cluster_id,
+                    cluster_name,
+                    plot_name,
+                    plot_id,
+                    updated_at,
+                    responsible_state,
+                    responsible_provider,
+                    responsible_administration,
+                    responsible_troop,
+                    is_valid,
+                    federal_state,
+                    growth_district,
+                    forest_status_bwi2022,
+                    forest_status_ci2017,
+                    forest_status_ci2012,
+                    accessibility,
+                    forest_office,
+                    property_type,
+                    ffh_forest_type_field,
+                    center_location,
+                    completed_at_state,
+                    completed_at_administration,
+                    completed_at_troop,
+                    is_valid,
+                    is_plausible,
+                    note,
+                    cluster_status,
+                    cluster_situation,
+                    state_responsible,
+                    states_affected,
+                    grid_density
+                `)
+                .eq(companyType, organizationId)
+                .order('cluster_id', { ascending: true })
+                .range(start, end); // <<-- deterministic order
+
+            if (error) {
+                console.error('Error fetching paginated data:', error);
+                return null;
+            }
+
+            if (data.length === 0) {
+                break; // No more data
+            }
+
+            allData = allData.concat(data);
+            currentPage++;
+        }
+
+        return allData;
+    }
+    async function _requestPlots(organizationType, organizationId) {
+
+        let companyType = null; //'responsible_state'; // responsible_administration
+
+        switch (organizationType) {
+            case 'root':
+                companyType = 'responsible_administration';
+                break;
+            case 'country':
+                companyType = 'responsible_state';
+                break;
+            case 'provider':
+                companyType = 'responsible_provider';
+                break;
+        }
+        if (!companyType) {
+            console.warn('No company type or filter row defined for organization type:', organizationType);
+            return;
+        }
+
+        records.value = await fetchAllDataPaginated('view_records_details', organizationId, companyType)
+
+        if (records.value && records.value.length > 0) {
+
+            snackbarText.value = `${records.value.length} Datensätze erfolgreich geladen.`;
+            snackbarColor.value = 'success';
+            snackbar.value = true;
+
+        } else {
+            snackbarText.value = 'Keine Datensätze gefunden für die Organisation.';
+            snackbarColor.value = 'warning';
+            snackbar.value = true;
+        }
+
+        return records || [];
+    }
 </script>
 
+<v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
+    {{ snackbarText }}
+    <template v-slot:action="{ attrs }">
+        <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
+    </template>
+</v-snackbar>
 <Firewall>
+
 <v-app style="background-color: transparent !important;">
 <!--<v-btn density="compact" icon @click="toEditOrganization(currentOrganization)" class="position-absolute top-0 right-0">
         <v-icon>mdi-pencil</v-icon>
@@ -150,7 +236,9 @@ layout: home
             <v-tabs v-model="tab" align-tabs="center" class="mt-6">
                 <!--<v-tab value="1">Mitarbeitende</v-tab>-->
                 <v-tab value="0">Statistik</v-tab>
-                <v-tab value="3">Ecken</v-tab>
+                <v-tab value="3">
+                    Ecken
+                </v-tab>
                 <v-tab value="4" v-if="currentOrganization.type !== 'provider'">{{currentOrganization.type == 'root' ? 'Organisationen' : 'Dienstleister'}}</v-tab>
                 <v-tab value="5">Trupps</v-tab>
             </v-tabs>
@@ -159,7 +247,7 @@ layout: home
 
 <v-tabs-window v-model="tab" class="mt-4">
     <v-tabs-window-item value="0">
-        <OrganizationsStatistics :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" />
+        <OrganizationsStatistics :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :records="records" :loading="loadingClusters" />
     </v-tabs-window-item>
     <!--<v-tabs-window-item value="1">
         <v-card variant="tonal" class="mb-4">
@@ -183,13 +271,14 @@ layout: home
         ></v-alert>
     </v-tabs-window-item>-->
     <v-tabs-window-item value="3">
-        <RecordsOverview
+        <ListOfClusterRecord :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" />
+        <!--<RecordsOverview
             v-if="organizationId"
             :organization_id="currentOrganization.id"
             :organization_type="currentOrganization.type"
             :cluster="cluster"
         />
-        <!--<ListOfLose
+        <ListOfLose
             v-if="organizationId"
             :organization_id="currentOrganization.id"
             :organization_type="currentOrganization.type"

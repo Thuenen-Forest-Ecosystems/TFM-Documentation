@@ -19,65 +19,65 @@
     import StatusFilter from './customFilter/status.vue';
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
-import ClusterActions from '../cluster/ClusterActions.vue';
+    import ClusterActions from '../cluster/ClusterActions.vue';
 
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
-const listOfLookupTables = [
-    //'lookup_browsing',
-    'lookup_cluster_situation',
-    'lookup_cluster_status',
-    //'lookup_dead_wood_type',
-    //'lookup_decomposition',
-    //'lookup_edge_status',
-    //'lookup_edge_type',
-    //'lookup_elevation_level',
-    //'lookup_exploration_instruction',
-    'lookup_ffh_forest_type',
-    //'lookup_forest_community',
-    'lookup_forest_office',
-    'lookup_forest_status',
-    //'lookup_gnss_quality',
-    'lookup_grid_density',
-    'lookup_growth_district',
-    //'lookup_land_use',
-    //'lookup_management_type',
-    //'lookup_marker_profile',
-    //'lookup_marker_status',
-    //'lookup_property_size_class',
-    'lookup_property_type',
-    //'lookup_pruning',
-    //'lookup_sampling_stratum',
-    //'lookup_stand_development_phase',
-    //'lookup_stand_layer',
-    //'lookup_stand_structure',
-    'lookup_state',
-    //'lookup_stem_breakage',
-    //'lookup_stem_form',
-    'lookup_terrain',
-    //'lookup_terrain_form',
-    //'lookup_tree_size_class',
-    //'lookup_tree_species_group',
-    //'lookup_tree_status',
-    //'lookup_trees_less_4meter_layer',
-    //'lookup_trees_less_4meter_mirrored',
-    //'lookup_trees_less_4meter_origin',
-    //'lookup_natur_schutzgebiet',
-    //'lookup_vogel_schutzgebiet',
-    //'lookup_natur_park',
-    //'lookup_national_park',
-    'lookup_ffh',
-    //'lookup_biosphaere',
-    //'lookup_biogeographische_region',
-    //'lookup_basal_area_factor',
-    //'lookup_biotope',
-    //'lookup_harvest_restriction',
-    //'lookup_harvest_condition',
-    //'lookup_harvest_type',
-    //'lookup_harvest_reason',
-    //'lookup_harvest_method',
-    'lookup_accessibility'
-];
+    const listOfLookupTables = [
+        //'lookup_browsing',
+        'lookup_cluster_situation',
+        'lookup_cluster_status',
+        //'lookup_dead_wood_type',
+        //'lookup_decomposition',
+        //'lookup_edge_status',
+        //'lookup_edge_type',
+        //'lookup_elevation_level',
+        //'lookup_exploration_instruction',
+        'lookup_ffh_forest_type',
+        //'lookup_forest_community',
+        'lookup_forest_office',
+        'lookup_forest_status',
+        //'lookup_gnss_quality',
+        'lookup_grid_density',
+        'lookup_growth_district',
+        //'lookup_land_use',
+        //'lookup_management_type',
+        //'lookup_marker_profile',
+        //'lookup_marker_status',
+        //'lookup_property_size_class',
+        'lookup_property_type',
+        //'lookup_pruning',
+        //'lookup_sampling_stratum',
+        //'lookup_stand_development_phase',
+        //'lookup_stand_layer',
+        //'lookup_stand_structure',
+        'lookup_state',
+        //'lookup_stem_breakage',
+        //'lookup_stem_form',
+        'lookup_terrain',
+        //'lookup_terrain_form',
+        //'lookup_tree_size_class',
+        //'lookup_tree_species_group',
+        //'lookup_tree_status',
+        //'lookup_trees_less_4meter_layer',
+        //'lookup_trees_less_4meter_mirrored',
+        //'lookup_trees_less_4meter_origin',
+        //'lookup_natur_schutzgebiet',
+        //'lookup_vogel_schutzgebiet',
+        //'lookup_natur_park',
+        //'lookup_national_park',
+        'lookup_ffh',
+        //'lookup_biosphaere',
+        //'lookup_biogeographische_region',
+        //'lookup_basal_area_factor',
+        //'lookup_biotope',
+        //'lookup_harvest_restriction',
+        //'lookup_harvest_condition',
+        //'lookup_harvest_type',
+        //'lookup_harvest_reason',
+        //'lookup_harvest_method',
+        'lookup_accessibility'
+    ];
 
     const darkTheme = themeQuartz.withPart(colorSchemeDark);
     const lightTheme = themeQuartz.withPart(colorSchemeLight);
@@ -127,6 +127,10 @@ const listOfLookupTables = [
         cluster: {
             type: Array,
             default: () => []
+        },
+        records: {
+            type: Array,
+            default: null
         }
     });
 
@@ -246,9 +250,11 @@ const listOfLookupTables = [
                 field: 'state_by_user', // Custom cell renderer
                 headerName: ' ',
                 pinned: 'left',
-                width: 55,
+                width: 60,
                 sortable: true,
+                sort: 'asc',
                 //filter: 'statusFilter',
+                sortingOrder: ['asc', 'desc'],
                 tooltipValueGetter: (params) => workflows.find(wf => wf.id === params.value)?.tooltip || params.value,
 
                 cellRenderer: (params) => {
@@ -564,13 +570,13 @@ const listOfLookupTables = [
         return `coming soon`;
     }
     function computeSelectable(record) {
-        if( props.organization_type === 'provider' && record.completed_at_troop === null && record.completed_at_state === null && record.completed_at_administration === null){
+        if( props.organization_type === 'provider' && record.completed_at_state === null && record.completed_at_administration === null){
             return true;
         }
-        if( props.organization_type === 'country' && record.completed_at_state === null && record.completed_at_administration === null){
+        if( props.organization_type === 'country' && record.completed_at_administration === null){
             return true;
         }
-        if( props.organization_type === 'root' && record.completed_at_administration === null){
+        if( props.organization_type === 'root'){
             return true;
         }
         return false;
@@ -840,8 +846,8 @@ const listOfLookupTables = [
                 .range(start, end); // <<-- deterministic order
 
             if (error) {
-                console.error('Error fetching data:', error);
-            return null;
+                console.error('Error fetching paginated data:', error);
+                return null;
             }
 
             if (data.length === 0) {
@@ -855,7 +861,7 @@ const listOfLookupTables = [
         return allData;
     }
     function createGeojsonFeatureCollection(records) {
-
+        console.log('Creating GeoJSON Feature Collection with records:', records.length);
         geojsonFeatureCollection.value.features = records.map(record => ({
             type: "Feature",
             geometry: record.center_location,
@@ -863,24 +869,17 @@ const listOfLookupTables = [
                 isSelected: false,
                 isFiltered: false,
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).searchText,
-                record: record
+                ...record
             }
         }));
 
     }
-    async function _requestPlots() {
+    async function _requestPlots(organizationType, organizationId) {
 
-        //rowData.value = [];
-
-        // Check if PowerSync is available
-        if (!powerSyncDB) {
-          console.warn('PowerSync not available - loading will remain true');
-          return;
-        }
 
         let companyType = null; //'responsible_state'; // responsible_administration
 
-        switch (props.organization_type) {
+        switch (organizationType) {
             case 'root':
                 companyType = 'responsible_administration';
                 break;
@@ -892,43 +891,25 @@ const listOfLookupTables = [
                 break;
         }
         if (!companyType) {
-            console.warn('No company type or filter row defined for organization type:', props.organization_type);
+            console.warn('No company type or filter row defined for organization type:', organizationType);
             return;
         }
-        
-        fetchAllDataPaginated('view_records_details', props.organization_id, companyType)
-            .then(async (records) => {
-                
-                if (records && records.length > 0) {
-                    loading.value = true;
 
-                    //await _requestclusterByPlots(records);
+        const records = await fetchAllDataPaginated('view_records_details', organizationId, companyType)
 
-                    // show last record
-                    const lastRecord = records[records.length - 1];
+        if (records && records.length > 0) {
 
-                    // Ensure lookup tables are fully loaded before processing
-                    await _requestAllLookupTables();
+            snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
+            snackbarColor.value = 'success';
+            snackbar.value = true;
 
-                    rowData.value = _preRenderRecords(records);
-                    //dbData.value = JSON.parse(JSON.stringify(rowData.value)); // Deep copy for reset purposes
-                    createGeojsonFeatureCollection(records);
+        } else {
+            snackbarText.value = 'Keine Datensätze gefunden für die Organisation.';
+            snackbarColor.value = 'warning';
+            snackbar.value = true;
+        }
 
-                    snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
-                    snackbarColor.value = 'success';
-                    snackbar.value = true;
-
-                } else {
-                    snackbarText.value = 'Keine Datensätze gefunden für die Organisation.';
-                    snackbarColor.value = 'warning';
-                    snackbar.value = true;
-                }
-            })
-            .catch((error) => {
-                console.error('Error fetching records:', error);
-            }).finally(async () => {
-                loading.value = false;
-            });
+        return records || [];
     }
 
     function onSelectionChanged(event) {
@@ -940,7 +921,7 @@ const listOfLookupTables = [
 
         // Update each feature's isSelected property
         geojsonFeatureCollection.value.features.forEach(feature => {
-            feature.properties.isSelected = selectedPlotIds.has(feature.properties.record.plot_id);
+            feature.properties.isSelected = selectedPlotIds.has(feature.properties.plot_id);
         });
         loadingSelection.value = false;
         return;
@@ -1122,7 +1103,7 @@ const listOfLookupTables = [
         }
 
         const filteredFeatures = geojsonFeatureCollection.value.features.filter(feature => 
-            selectedRows.value.some(row => row.plot_id === feature.properties.record.plot_id)
+            selectedRows.value.some(row => row.plot_id === feature.properties.plot_id)
         );
 
         const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', features: filteredFeatures }, null, 2)], { type: 'application/vnd.geo+json' });
@@ -1137,36 +1118,33 @@ const listOfLookupTables = [
 
     }
 
-    onMounted(async () => {
+     watch(() => props.records, (newRecords) => {
 
-        //powerSyncDB = await waitForDb();
+        rowData.value = _preRenderRecords(newRecords);
+        createGeojsonFeatureCollection(newRecords);
+    }, { immediate: true });
+
+    onMounted(async () => {
 
         loading.value = true;
 
-        //await _requestLose(props.organization_id);
-        /*if(props.cluster && props.cluster.length){
-            cluster.value = props.cluster;
-        }else{
-             await _requestcluster();
-        }*/
-
-        //console.log('cluster:', cluster.value.length);
-        //await _requestOrganizations();
-        //console.log('Organizations:', organizations.value.length);
         organizations.value = await _getOrganizations();
         troops.value = await _getTroops(props.organization_id);
-        console.log('troops:', troops.value);
-        //console.log('Troops:', troops.value.length);
 
         setColDefs();
 
-        //await _requestAllLookupTables();
+        const records = props.records || await _requestPlots(props.organization_type, props.organization_id);
 
-        //console.log('Lookup tables loaded');
-        await _requestPlots();
+         // Ensure lookup tables are fully loaded before processing
+        await _requestAllLookupTables();
+
+        rowData.value = _preRenderRecords(records);
+        //dbData.value = JSON.parse(JSON.stringify(rowData.value)); // Deep copy for reset purposes
+        createGeojsonFeatureCollection(records);
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 
+        loading.value = false;
     });
 
     function onGridReady(params) {
@@ -1207,7 +1185,7 @@ const listOfLookupTables = [
 
         // Step 3: Update geojsonFeatureCollection features
         geojsonFeatureCollection.value.features.forEach(feature => {
-            feature.properties.isFiltered = displayedPlotIds.has(feature.properties.record.plot_id);
+            feature.properties.isFiltered = displayedPlotIds.has(feature.properties.plot_id);
         });
 
         console.log('Displayed rows updated:', displayedRows.value.length);
@@ -1350,9 +1328,19 @@ const listOfLookupTables = [
             return;
         }
 
+        // Update props.records if it exists
+        if (props.records) {
+            updatedRecords.forEach(updatedRecord => {
+                const index = props.records.findIndex(r => r.plot_id === updatedRecord.plot_id);
+                if (index !== -1) {
+                    props.records[index] = { ...props.records[index], ...updatedRecord };
+                    console.log('Updated props.records for plot_id:', updatedRecord.plot_id);
+                }
+            });
+        }
+
         // _preRenderRecords to match grid format
         const updatedRecordsRendered = _preRenderRecords(updatedRecords);
-        console.log('Merging updated records into grid:', updatedRecords, updatedRecordsRendered);
 
         updatedRecordsRendered.forEach(updatedRecord => {
             const rowNode = currentGrid.value.api.getRowNode(updatedRecord.plot_id);
@@ -1438,7 +1426,7 @@ const listOfLookupTables = [
     const selectedCluster = ref(null);
     function _selectedOnMap(clickedFeature) { // toggle selection on map click
 
-        const jsonObject = JSON.parse(clickedFeature.record);
+        const jsonObject = clickedFeature; //JSON.parse(clickedFeature);
         selectedCluster.value = jsonObject;
         recordsDialog.value = true;
         return;
@@ -1517,113 +1505,112 @@ const listOfLookupTables = [
         style="height: 700px"
     >
     </ag-grid-vue>
-    <div v-else-if="loading" class="text-center ma-11">
+    <div v-else-if="loading" class="text-center">
         <v-skeleton-loader  type="table" />
-        <!--<v-progress-circular
-            indeterminate
-            color="primary"
-            size="30"
-            width="2"
-        ></v-progress-circular>
-        
-        <p class="mt-2">Cluster laden...</p>-->
     </div>
     </v-card-text>
-    <v-card-actions v-if="!loading">
-            <v-btn
-                variant="tonal"
-                icon="mdi-map"
-                @click="_toggleMap"
-                :disabled="!geojsonFeatureCollection.features.length"
-                density="compact"
-            ></v-btn>
-            <div v-if="selectedRows.length > 0">
-                <v-btn-toggle rounded="xl" divided density="compact">
-                    <v-btn icon="mdi-download"></v-btn>
+    <v-card v-if="!loading" class="position-fixed bottom-0 left-0 w-100" style="z-index: 12; border-top: 1px solid rgba(150, 150, 150, 0.12);">
+        <v-card-text>
+            <v-row class="ma-1">
+                <v-btn
+                    variant="tonal"
+                    icon="mdi-map"
+                    @click="_toggleMap"
+                    :disabled="!geojsonFeatureCollection.features.length"
+                    density="compact"
+                    class="ma-1"
+                ></v-btn>
+                <div v-if="selectedRows.length > 0">
+                    <v-btn-toggle rounded="xl" divided density="compact" variant="outlined">
+                        <!--<v-btn icon="mdi-download"></v-btn>-->
+                        <v-btn
+                            @click="exportSelected"
+                        >
+                            .csv
+                        </v-btn>
+                        <v-btn
+                            @click="exportSelectedGeoJson"
+                        >
+                            .geojson
+                        </v-btn>
+                    </v-btn-toggle>
+                </div>
+                <v-chip
+                    class="ma-1"
+                    color="primary"
+                    text-color="white"
+                    variant="tonal"
+                    rounded="xl"
+                >
+                    {{ selectedRows.length }} ausgewählt von {{ displayedRows.length }} gefilterten Ecken
+                </v-chip>
+                
+                <!--<v-chip
+                    class="ma-2"
+                    color="primary"
+                    text-color="white"
+                    variant="tonal"
+                    rounded="xl"
+                >
+                    {{ displayedRows.length }} gefilterte Ecken
+                </v-chip>-->
+                <v-spacer></v-spacer>
+                <div v-if="selectedRows.length > 0">
                     <v-btn
-                        @click="exportSelected"
+                        v-if="props.organization_type !== 'provider' || usersPermissions.find(perm => perm.is_organization_admin)"
+                        class="mx-2"
+                        variant="elevated"
+                        prepend-icon="mdi-security"
+                        @click="responsibleDialog = true"
+                        rounded="xl"
+                        color="primary"
                     >
-                        .csv
+                        Verantwortlichkeit ändern
                     </v-btn>
                     <v-btn
-                        @click="exportSelectedGeoJson"
+                        v-if="usersPermissions.find(perm => perm.is_organization_admin)"
+                        class="mx-2"
+                        variant="elevated"
+                        prepend-icon="mdi-bookmark-check"
+                        @click="finishDialog = true"
+                        rounded="xl"
+                        color="primary"
                     >
-                        .geojson
+                        Aufnahmen akzeptieren
                     </v-btn>
-                </v-btn-toggle>
-            </div>
-            <v-chip
-                class="ma-2"
-                color="primary"
-                text-color="white"
-                variant="tonal"
-                rounded="xl"
-            >
-                {{ selectedRows.length }} ausgewählt von {{ displayedRows.length }} gefilterten Ecken
-            </v-chip>
-            
-            <!--<v-chip
-                class="ma-2"
-                color="primary"
-                text-color="white"
-                variant="tonal"
-                rounded="xl"
-            >
-                {{ displayedRows.length }} gefilterte Ecken
-            </v-chip>-->
-            <v-spacer></v-spacer>
-            <div v-if="selectedRows.length > 0">
-                <v-btn
-                    v-if="props.organization_type !== 'provider' || usersPermissions.find(perm => perm.is_organization_admin)"
-                    class="mx-2"
-                    variant="tonal"
-                    prepend-icon="mdi-security"
-                    @click="responsibleDialog = true"
-                    rounded="xl"
-                >
-                    Berechtigung zuweisen
-                </v-btn>
-                <v-btn
-                    v-if="usersPermissions.find(perm => perm.is_organization_admin)"
-                    class="mx-2"
-                    variant="tonal"
-                    prepend-icon="mdi-bookmark-check"
-                    @click="finishDialog = true"
-                    rounded="xl"
-                >
-                   Aufnahmen akzeptieren
-                </v-btn>
-                <!--<v-select
-                    v-if="!props.los"
-                    :items="selectableLose" 
-                    item-title="name" 
-                    label="Los zuordnen" 
-                    v-model="selectedLos"
-                    return-object
-                    :disable="assigning"
-                    class="pa-2"
-                    rounded="xl"
-                    variant="solo"
-                    
-                >
-                    <template v-slot:selection="{ item }">
-                        {{ item.raw.name }}
-                    </template>
-                </v-select>-->
-                <v-btn
-                    v-if="props.los"
-                    class="mx-2"
-                    variant="tonal"
-                    rounded="xl"
-                    @click="addToLos"
-                    :disable="assigning"
-                    :loading="assigning"
-                    :loading-text="'Cluster zuweisen...'"
-                >
-                    Zu "{{ props.los.name }}" hinzufügen
-                </v-btn>
-            </div>
-    </v-card-actions>
+                    <!--<v-select
+                        v-if="!props.los"
+                        :items="selectableLose" 
+                        item-title="name" 
+                        label="Los zuordnen" 
+                        v-model="selectedLos"
+                        return-object
+                        :disable="assigning"
+                        class="pa-2"
+                        rounded="xl"
+                        variant="solo"
+                        
+                    >
+                        <template v-slot:selection="{ item }">
+                            {{ item.raw.name }}
+                        </template>
+                    </v-select>-->
+                    <v-btn
+                        v-if="props.los"
+                        class="mx-2"
+                        variant="tonal"
+                        rounded="xl"
+                        @click="addToLos"
+                        :disable="assigning"
+                        :loading="assigning"
+                        :loading-text="'Cluster zuweisen...'"
+                    >
+                        Zu "{{ props.los.name }}" hinzufügen
+                    </v-btn>
+                </div>
+            </v-row>
+        </v-card-text>
+    </v-card>
 
     <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor">
         {{ snackbarText }}
@@ -1656,10 +1643,10 @@ const listOfLookupTables = [
         v-model="mapDialog"
         width="600"
         floating
-        style="z-index: 10;"
+        style="z-index: 11;"
         class="mt-16"
     >   
-        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 11;" density="compact"></v-btn>
+        <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 12;" density="compact"></v-btn>
         <GeoJsonMap
             :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
             :modelValue="mapDialog"

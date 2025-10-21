@@ -128,7 +128,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
             troops.value = data || [];
 
             // Add null to unassign troop
-            troops.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
+            troops.value.push({ id: 'deselect', name: 'VERANTWORTLICHKEIT ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
 
         } catch (e) {
             console.error('An unexpected error occurred while fetching troops:', e);
@@ -147,7 +147,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                 return [];
             }
             companies.value = data || [];
-            companies.value.push({ id: 'deselect', name: 'BERECHTIGUNG ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
+            companies.value.push({ id: 'deselect', name: 'VERANTWORTLICHKEIT ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
         } catch (e) {
             console.error('An unexpected error occurred while fetching companies:', e);
             return [];
@@ -185,7 +185,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
             <v-toolbar>
                 <v-btn icon="mdi-security"></v-btn>
 
-                <v-toolbar-title>Berechtigung zuweisen</v-toolbar-title>
+                <v-toolbar-title>Verantwortlichkeit zuweisen</v-toolbar-title>
 
                 <v-toolbar-items>
                     <v-btn
@@ -205,8 +205,8 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     density="compact"
                 >
                     <p class="mt-2 text">
-                        Die Zuweisung der Berechtigung erfolgt Traktweise.
-                        Alle Ecken eines Traktes erhalten die ausgewählte Berechtigung.
+                        Die Zuweisung der Verantwortung erfolgt Traktweise.
+                        Alle Ecken eines Traktes erhalten die ausgewählte Verantwortung.
                     </p>
                 </v-alert>
 
@@ -275,7 +275,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     variant="outlined"
                 >
                     <p class="mt-2 text">
-                        Mit der Bestätigung werden {{ responibilityAlreadySet }} bestehende Berechtigungen ({{ organizationPermissionText }}) für Ecken überschrieben.
+                        Mit der Bestätigung werden {{ responibilityAlreadySet }} bestehende Verantwortlichkeiten ({{ organizationPermissionText }}) für Ecken überschrieben.
                     </p>
                 </v-alert>
                 <v-alert
@@ -285,7 +285,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     variant="outlined"
                 >
                     <p class="mt-2 text">
-                        Mit der Bestätigung werden {{ troopAlreadySet }} bestehende Berechtigungen (Trupp) für Ecken überschrieben.
+                        Mit der Bestätigung werden {{ troopAlreadySet }} bestehende Verantwortlichkeiten (Trupp) für Ecken überschrieben.
                     </p>
                 </v-alert>
 
@@ -294,7 +294,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                 <!-- Add additional note textarea here -->
                 <v-textarea
                     v-model="additionalNote"
-                    label="Zusätzliche Anmerkungen für Berechtigten"
+                    label="Zusätzliche Anmerkungen (optional)"
                     outlined
                     rows="4"
                     class="my-2"

@@ -24,7 +24,10 @@
         const ids = [
             props.record.responsible_administration,
             props.record.responsible_state,
-            props.record.responsible_provider,
+            props.record.responsible_provider
+        ].filter(id => id); // Remove null/undefined values
+
+        const troopIds = [
             props.record.responsible_troop
         ].filter(id => id); // Remove null/undefined values
 
@@ -34,17 +37,23 @@
                 .select('id, name')
                 .in('id', ids);
 
-            if (error) {
+            const { data: troopData, error: troopError } = await supabase
+                .from('troop')
+                .select('id, name')
+                .in('id', troopIds);
+
+            if (error || troopError) {
                 console.error('Error fetching organizations:', error);
             } else {
                 // Map IDs to names
                 const nameMap = Object.fromEntries(data.map(org => [org.id, org.name]));
+                const troopNameMap = Object.fromEntries(troopData.map(troop => [troop.id, troop.name]));
                 
                 organizationNames.value = {
                     administration: nameMap[props.record.responsible_administration] || '-',
                     country: nameMap[props.record.responsible_state] || '-',
                     provider: nameMap[props.record.responsible_provider] || '-',
-                    troop: nameMap[props.record.responsible_troop] || '-'
+                    troop: troopNameMap[props.record.responsible_troop] || props.record.responsible_troop || '-'
                 };
             }
         }

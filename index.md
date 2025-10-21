@@ -13,9 +13,9 @@ hero:
     #- theme: brand
     #  text: Getting Started
     #  link: /getting-started
-    - theme: alt
-      text: API
-      link: /api/getting-started.html
+    #- theme: alt
+    #  text: API
+    #  link: /api/getting-started.html
 
 features:
 ---
