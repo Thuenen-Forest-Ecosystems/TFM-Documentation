@@ -63,13 +63,14 @@ export default defineConfig({
             { text: 'Profile', link: '/dashboard/profile' }
           ]
         },
-        {
+        /*{
           text: 'Inventory',
           items: [
             //{ text: 'Statistics', link: '/dashboard/inventory/stats' },
             { text: 'Inventory (Download)', link: '/dashboard/inventory/download' }
           ]
-        }/*,
+        }*/
+       /*,
         {
           text: 'Internal',
           items: [
