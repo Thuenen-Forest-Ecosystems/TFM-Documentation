@@ -106,7 +106,7 @@ import { apiRecords } from './Utils';
                     <v-card class="ma-2 text-center" :color="troopNullLength > 0 ? 'yellow lighten-4' : 'green lighten-4'">
                         <v-card-text>
                             <p class="text-h3">{{ troopNullLength }}</p>
-                            <p class="text-caption">ohne verantwortliche Truppe</p>
+                            <p class="text-caption">ohne verantwortliche Trupps</p>
                         </v-card-text>
                     </v-card>
                 </v-col>
