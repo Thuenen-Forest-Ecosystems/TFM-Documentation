@@ -10,7 +10,7 @@ export default defineConfig({
   lang: 'en',
   head: [
     ['link', { rel: 'icon', href: '/TFM-Documentation/thuenen.png' }],
-    { "head": [["meta", { "name": "og:image", "content": "/TFM-Documentation/bwi_og_image.png" }]] }
+    ["meta", { "name": "og:image", "content": "/TFM-Documentation/bwi_og_image.png" }]
 
   ],
   ignoreDeadLinks: true,
