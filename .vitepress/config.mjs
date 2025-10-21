@@ -9,7 +9,9 @@ export default defineConfig({
   description: "Documentation for accessing Inventory of Forest Ecosystems",
   lang: 'en',
   head: [
-    ['link', { rel: 'icon', href: '/TFM-Documentation/thuenen.png' }]
+    ['link', { rel: 'icon', href: '/TFM-Documentation/thuenen.png' }],
+    { "head": [["meta", { "name": "og:image", "content": "/TFM-Documentation/bwi_og_image.png" }]] }
+
   ],
   ignoreDeadLinks: true,
   themeConfig: {
