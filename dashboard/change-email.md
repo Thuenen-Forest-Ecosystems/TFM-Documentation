@@ -75,6 +75,6 @@
     clearable
 ></v-text-field>
 <v-btn type="submit" :disabled="!form" :loading="loading" rounded="xl" color="primary"  class="my-3">
-    Reset Password
+    E-Mailadresse ändern
 </v-btn>
 </v-form>
