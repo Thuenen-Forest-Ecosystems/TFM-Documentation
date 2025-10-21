@@ -1,7 +1,16 @@
 ---
 # https://vitepress.dev/reference/default-theme-home-page
 layout: home
-
+head:
+  - - meta
+    - name: 'og:title'
+      content: German National Forest Inventory
+  - - meta
+    - name: 'og:description'
+      content: Documentation for accessing Inventory of Forest Ecosystems
+  - - meta
+    - name: 'og:image'
+      content: /bwi_og_image.png
 hero:
   name: "German National Forest Inventory"
   text: "Database of field data"
