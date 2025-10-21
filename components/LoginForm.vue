@@ -213,7 +213,7 @@
 
                 <p>
                     <small>
-                        You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:waldmonitoring@lfb.brandenburg.de">administrator</a>.
+                        You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:bwi22-de-support@thuenen.de">administrator</a>.
                     </small>
                 </p>
             </v-form>  
