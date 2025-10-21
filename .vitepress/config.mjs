@@ -8,6 +8,9 @@ export default defineConfig({
   title: "BWI",
   description: "Documentation for accessing Inventory of Forest Ecosystems",
   lang: 'en',
+  head: [
+    ['link', { rel: 'icon', href: '/TFM-Documentation/thuenen.png' }]
+  ],
   ignoreDeadLinks: true,
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
