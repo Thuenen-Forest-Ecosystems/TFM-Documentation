@@ -6,6 +6,8 @@ hero:
   name: "German National Forest Inventory"
   text: "Database of field data"
   tagline: "Thünen Institute of Forest Ecosystems"
+  ogtitle: "German National Forest Inventory"
+  ogdescription: "Documentation for accessing Inventory of Forest Ecosystems"
   image:
     src: /bwi_image.svg
     alt: Bundeswaldinventur
