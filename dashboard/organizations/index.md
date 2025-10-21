@@ -229,8 +229,11 @@ layout: home
         <!--
         <VimeoPlayer vimeoId="1109589414" :btnTitle="'Tutorial'" :title="'Cluster-Verwaltung für die CI/BWI'" :iconOnly="false" />
         -->
-        <v-btn icon @click="toEditOrganization(currentOrganization)">
-            <v-icon>mdi-pencil</v-icon>
+        <v-btn variant="outlined" @click="toEditOrganization(currentOrganization)" rounded="xl">
+            <template v-slot:prepend>
+                <v-icon>mdi-pencil</v-icon>
+            </template>
+            Administratoren bearbeiten
         </v-btn>
         <template v-slot:extension>
             <v-tabs v-model="tab" align-tabs="center" class="mt-6">
