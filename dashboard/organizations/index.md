@@ -223,7 +223,7 @@ layout: home
 <div v-if="currentOrganization && currentOrganization.id">
 
 <v-toolbar color="transparent" flat>
-    <v-toolbar-title class="text-h5">
+    <v-toolbar-title>
         {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
     </v-toolbar-title>
         <!--
