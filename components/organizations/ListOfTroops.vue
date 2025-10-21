@@ -11,6 +11,10 @@
     const users = ref([]);
 
     const nameDialog = ref(false);
+    const editDialog = ref(false);
+    const editTroopId = ref('');
+    const editname = ref('');
+    const editIsControlTroop = ref(false);
     const existingTroops = ref([]);
     const addTroopLoading = ref(false);
 
@@ -53,28 +57,7 @@
             });
     }
 
-    function _addTroop(troopName, isControlTroop) {
-
-        if (troopName && props.organization_id) {
-            supabase
-                .from('troop')
-                .insert({ name: troopName, organization_id: props.organization_id, is_control_troop: isControlTroop })
-                .then(({ data, error }) => {
-                    if (error) {
-                        console.error('Error adding troop:', error);
-                    } else {
-                        _requestData(props.organization_id); // Refresh the list
-                        nameDialog.value = false; // Close the dialog
-                        addTroopLoading.value = false; // Reset loading state
-                    }
-                })
-                .catch((e) => {
-                    console.error('An unexpected error occurred while adding troop:', e);
-                });
-        } else {
-            console.error('Error: Troop name is required and organization_id must be set.');
-        }
-    }
+    
 
     function _getListOfUserInOrganization(organizationId) {
         return supabase
@@ -122,6 +105,25 @@
             .finally(() => {
                 deleting.value[troopId] = false; // Reset loading state
             });
+    }
+
+    async function _editTroop(troop) {
+        editTroopId.value = troop.id;
+        editname.value = troop.name;
+        editIsControlTroop.value = troop.is_control_troop;
+        editDialog.value = true;
+        // Implement edit functionality here
+        // This could involve opening a dialog similar to _addTroop but pre-filled with troop data
+    }
+    async function refresh(updatedTroops) {
+
+        // Update troops list with new Troop object
+        updatedTroops.forEach(updatedTroop => {
+            const index = troops.value.findIndex(t => t.id === updatedTroop.id);
+            if (index !== -1) {
+                troops.value[index] = updatedTroop;
+            }
+        });
     }
 
     const deletingUser = ref({});
@@ -226,13 +228,16 @@
 </script>
 
 <template>
-    <v-toolbar class="mb-4" color="transparent" style="border-bottom: 1px solid rgba(120, 120, 120, 0.12);">
+    <v-toolbar color="transparent">
         <!-- Add icon for adding users to troops -->
         <v-btn icon="mdi-account-group" variant="text"></v-btn>
         <v-toolbar-title>{{ props.title }}</v-toolbar-title>
         <!-- Only if Admin -->
         <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="() => { nameDialog = true; }">
-            neu<v-icon>mdi-account-multiple-plus</v-icon>
+            neu
+            <template v-slot:append>
+                <v-icon>mdi-account-multiple-plus</v-icon>
+            </template>
         </v-btn>
     </v-toolbar>
 
@@ -251,7 +256,13 @@
                 <v-menu>
                     <template v-slot:activator="{ props: menuProps }">
                         <!-- Disable button if no troops available -->
-                        <v-btn v-if="props.is_admin" icon="mdi-account-plus" variant="text" v-bind="menuProps" :disabled="users.length === 0"></v-btn>
+                        <v-btn variant="tonal"
+                            rounded="xl" v-if="props.is_admin" v-bind="menuProps" :disabled="users.length === 0">
+                            Trupp-Personal Hinzufügen
+                            <template v-slot:append>
+                                <v-icon>mdi-account-plus</v-icon>
+                            </template>
+                        </v-btn>
                     </template>
                     <v-list>
                         <v-list-item
@@ -269,7 +280,7 @@
                         </v-list-item>
                     </v-list>
                 </v-menu>
-                <v-btn
+                <!--<v-btn
                     v-if="props.is_admin"
                     color="grey-lighten-1"
                     icon="mdi-delete"
@@ -277,6 +288,12 @@
                     :loading="troop.id && deleting[troop.id]"
                     variant="text"
                     @click="(e) => _removeTroop(e, troop.id)"
+                ></v-btn>-->
+                <v-btn
+                    v-if="!troop.deleted"
+                    icon="mdi-pencil"
+                    variant="text"
+                    @click="_editTroop(troop)"
                 ></v-btn>
             </template>
         </v-card-item>
@@ -299,7 +316,7 @@
 
     <DialogTroop
         v-model="nameDialog"
-        :value="''"
+        :name="''"
         :title="'Trupp hinzufügen'"
         :text="'Bitte gib den Namen des Trupps ein, den du hinzufügen möchtest.'"
         :btnText="'Trupp Hinzufügen'"
@@ -309,5 +326,20 @@
         :placeholder="'z.B. Trupp Eberswalde, Trupp Versuchsfläche'"
         @close="() => { nameDialog = false; }"
         @confirm="_addTroop"
+    />
+    <DialogTroop
+        v-model="editDialog"
+        :name="editname"
+        :troopId="editTroopId"
+        :isControlTroop="editIsControlTroop"
+        :organization_id="props.organization_id"
+        :title="'Trupp bearbeiten'"
+        :text="'Bitte gib den Namen des Trupps ein, den du bearbeiten möchtest.'"
+        :btnText="'Trupp bearbeiten'"
+        :icon="'mdi-account-multiple-plus'"
+        :loading="addTroopLoading"
+        :disabled="existingTroops"
+        :placeholder="'z.B. Trupp Eberswalde, Trupp Versuchsfläche'"
+        @success="refresh"
     />
 </template>

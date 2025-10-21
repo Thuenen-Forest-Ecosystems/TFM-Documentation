@@ -1,25 +1,28 @@
 <script setup>
 
-    import { getCurrentInstance, onMounted, ref, watch } from 'vue';
+    import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
-    const email = ref('');
+    //const name = ref('');
     const valid = ref(false)
     const error = ref('')
     const success = ref('')
 
-    const isControlTroop = ref(false)
+    //const isControlTroop = ref(false)
 
     const props = defineProps({
-        email: String,
         modelValue: Boolean,
+        troopId: String,
+        name: String,
+        isControlTroop: Boolean,
+        organization_id: String,
         title: String,
         text: String,
         btnText: String,
         icon: String,
-        isControlTroop: Boolean,
+        
         loading: {
             type: Boolean,
             default: false
@@ -31,30 +34,81 @@
         placeholder: String
     });
 
-    const emit = defineEmits(['confirm']);
+    const emit = defineEmits(['confirm', 'success']);
 
+    // local, writable state — do NOT emit on change
+    const modelValue = ref(!!props.modelValue);
+    const name = ref(props.name || '');
+    const isControlTroop = ref(!!props.isControlTroop);
+
+    watch(() => props.modelValue, (newVal) => {
+        modelValue.value = newVal;
+    });
+
+    watch(() => props.name, v => { name.value = v || ''; });
+    watch(() => props.isControlTroop, v => { isControlTroop.value = !!v; });
+
+    
     function cancelAction() {
-        emit('update:modelValue', false); // Close the dialog
+        emit('update:modelValue', false);
     }
 
 
     async function onSubmit() {
-        emit('confirm', email.value, isControlTroop.value); // Emit the email value
+        upsertTroop( name.value, isControlTroop.value, props.troopId );
         isControlTroop.value = false;
-        email.value = '';
+        name.value = '';
     }
 
     const rules = {
         required: value => !!value || 'wird benötigt',
         minLength: value => ( value && value.length >= 4 ) || 'Muss mindestens 4 Zeichen lang sein',
-        disabled: value => !props.disabled.includes(value.toLowerCase()) || 'Name schon vergeben'
+        disabled: value => !(props.disabled.includes(value.toLowerCase()) && !name.value) || 'Name schon vergeben'
     };
 
+    async function upsertTroop(troopName, isControlTroop, troopId = null) {
+
+        if (troopName && props.organization_id) {
+            if (troopId) {
+                // Edit existing troop
+                const { data: updateData, error: updateError } = await supabase
+                    .from('troop')
+                    .update({ name: troopName, is_control_troop: isControlTroop })
+                    .eq('id', troopId)
+                    .select();
+
+                if (updateError) {
+                    console.error('Error updating troop:', updateError);
+                    return;
+                }
+
+                emit('success', updateData);
+                cancelAction();
+                return;
+            }else{
+                const { data: insertData, error: insertError } = await supabase
+                    .from('troop')
+                    .insert({ name: troopName, organization_id: props.organization_id, is_control_troop: isControlTroop })
+                    .select();
+
+                if (insertError) {
+                    console.error('Error adding troop:', insertError);
+                    return;
+                }
+
+                emit('success', insertData);
+                cancelAction();
+                return;
+            }
+        } else {
+            console.error('Error: Troop name is required and organization_id must be set.');
+        }
+    }
 
 </script>
 
 <template>
-    <v-dialog v-model="props.modelValue" max-width="500" @click:outside="cancelAction">
+    <v-dialog v-model="modelValue" max-width="500" @click:outside="cancelAction">
         <v-card rounded="lg">
             <v-toolbar>
                 <v-btn v-if="props.icon" :icon="props.icon"></v-btn>
@@ -90,7 +144,7 @@
                         label="Name"
                         persistent-hint
                         type="text"
-                        v-model.trim="email"
+                        v-model.trim="name"
                         :placeholder="props.placeholder || ''"
                         class="my-4"
                         rounded="xl"
