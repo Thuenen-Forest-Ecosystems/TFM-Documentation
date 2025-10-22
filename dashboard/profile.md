@@ -108,7 +108,7 @@
                 </v-avatar>
             </template>
             <v-list-item-title>{{user['email']}}</v-list-item-title>
-            <v-list-item-subtitle>{{users_profile['id']}}</v-list-item-subtitle>
+            <!--<v-list-item-subtitle>{{users_profile['id']}}</v-list-item-subtitle>-->
         </v-list-item>
     </v-list>
     <v-list>
