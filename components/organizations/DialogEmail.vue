@@ -31,6 +31,17 @@
         emit('update:modelValue', false); // Close the dialog
     }
 
+    watch(() => props.modelValue, (newValue) => {
+        if (newValue) {
+            // Clear fields and state when dialog opens
+            email.value = '';
+            name.value = '';
+            error.value = '';
+            success.value = '';
+            valid.value = false;
+        }
+    });
+
 
     async function onSubmit() {
 
@@ -76,6 +87,7 @@
             }
             if (!supabaseError) {
                 success.value = `Einladung an ${adminEmail} wurde gesendet.`;
+                emit('confirm');
             }
             loading.value = false;
         } catch (error) {

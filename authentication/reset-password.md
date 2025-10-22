@@ -50,7 +50,7 @@
     }
 </script>
 
-# Passwort ändern
+# Passwort neu vergeben
 
 <Firewall>
 <p>

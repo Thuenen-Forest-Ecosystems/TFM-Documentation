@@ -158,6 +158,11 @@
             console.error('An unexpected error occurred:', e);
         }
     }
+    async function _refreshData() {
+        if (attrs.organization_id) {
+            await _requestData(attrs.organization_id);
+        }
+    }
     watch(() => [attrs.organization_id], ([newOrganizationId]) => {
         _requestData(newOrganizationId);
         _getPermissions(newOrganizationId);
@@ -222,6 +227,7 @@
         :showAdmins="attrs.showAdmins"
         :title="attrs.title + ' einladen' || 'Mitarbeiter einladen'"
         @close="() => { emailDialog = false; }"
+        @confirm="_refreshData"
     />
     
 

@@ -67,7 +67,16 @@
                     </template>
                 </v-list-item>
             </template>
+
+            <v-divider></v-divider>
+            <v-list-subheader class="text-h8">Support-Meeting (November 2025)</v-list-subheader>
         </v-list>
+        <div class="mx-4">
+            Jeden Mittwoch von 10:00 Uhr bis 11:00 Uhr<br/>
+            <v-btn href="https://thuenen.webex.com/thuenen/j.php?MTID=m7f91bb9d6b02bd22f63abfacbc354b81" target="_blank" variant="elevated" class="mt-4" color="primary">
+                Webex Meeting beitreten
+            </v-btn>
+        </div>
       </v-navigation-drawer>
     
     </div>

@@ -20,6 +20,7 @@
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
     import ClusterActions from '../cluster/ClusterActions.vue';
+import { consoleError } from 'vuetify/lib/util/console.mjs';
 
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
@@ -131,6 +132,10 @@
         records: {
             type: Array,
             default: null
+        },
+        tab_active: {
+            type: Boolean,
+            default: true
         }
     });
 
@@ -327,7 +332,7 @@
                         sortable: true,
                         pinned: 'right',
                         tooltipField: "responsible_troop",
-                        editable: true,
+                        editable: false,
                         cellEditor: 'agSelectCellEditor',
                         cellEditorParams: {
                             values: [...troops.value.map(troop => troop.name), null],
@@ -341,7 +346,7 @@
                         sortable: true,
                         pinned: 'right',
                         tooltipField: "responsible_troop",
-                        editable: true,
+                        editable: false,
                         cellEditor: 'agSelectCellEditor',
                         cellEditorParams: {
                             values: [...troops.value.map(troop => troop.name), null],
@@ -785,8 +790,8 @@
         try {
             const { data, error } = await supabase
                 .from('troop')
-                .select('id, name')
-                .eq('organization_id', organizationId);
+                .select('id, name');
+                //.eq('organization_id', organizationId);
             if (error) {
                 console.error('Error fetching troops:', error);
                 return [];
@@ -1081,6 +1086,23 @@
     watch(selectedLos, (newValue) => {
         assignTo(newValue.id);
     });
+    // watch tab_active
+    watch(() => props.tab_active, (newValue) => {
+        if (newValue) {
+            nextTick(async () => {
+
+                organizations.value = await _getOrganizations();
+                troops.value = await _getTroops(props.organization_id);
+                console.log('Organizations and Troops loaded on tab active', troops.value);
+
+                const records = props.records || await _requestPlots(props.organization_type, props.organization_id);
+
+                rowData.value = _preRenderRecords(records);
+                createGeojsonFeatureCollection(records);
+                
+            });
+        }
+    }, { immediate: true });
 
     function exportSelected() {
         if (selectedRows.value.length === 0) {
@@ -1128,8 +1150,8 @@
 
         loading.value = true;
 
-        organizations.value = await _getOrganizations();
-        troops.value = await _getTroops(props.organization_id);
+        //organizations.value = await _getOrganizations();
+        //troops.value = await _getTroops(props.organization_id);
 
         setColDefs();
 
@@ -1139,7 +1161,6 @@
         await _requestAllLookupTables();
 
         rowData.value = _preRenderRecords(records);
-        //dbData.value = JSON.parse(JSON.stringify(rowData.value)); // Deep copy for reset purposes
         createGeojsonFeatureCollection(records);
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);

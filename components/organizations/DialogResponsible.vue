@@ -222,7 +222,6 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     variant="outlined"
                     :rules="[rules.required, rules.minLength, rules.disabled]"
                 />-->
-            
                 <v-card variant="tonal" class="my-2" v-if="organizationPermissionText" :title="organizationPermissionText ">
                     <v-chip-group
                         selected-class="text-primary"

@@ -217,19 +217,13 @@ layout: home
 <Firewall>
 
 <v-app style="background-color: transparent !important;">
-<!--<v-btn density="compact" icon @click="toEditOrganization(currentOrganization)" class="position-absolute top-0 right-0">
-        <v-icon>mdi-pencil</v-icon>
-    </v-btn>-->
 <div v-if="currentOrganization && currentOrganization.id">
 
 <v-toolbar color="transparent" flat>
     <v-toolbar-title>
         {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
     </v-toolbar-title>
-        <!--
-        <VimeoPlayer vimeoId="1109589414" :btnTitle="'Tutorial'" :title="'Cluster-Verwaltung für die CI/BWI'" :iconOnly="false" />
-        -->
-        <v-btn variant="outlined" @click="toEditOrganization(currentOrganization)" rounded="xl">
+        <v-btn v-if="permission.is_organization_admin" variant="outlined" @click="toEditOrganization(currentOrganization)" rounded="xl">
             <template v-slot:prepend>
                 <v-icon>mdi-pencil</v-icon>
             </template>
@@ -237,7 +231,6 @@ layout: home
         </v-btn>
         <template v-slot:extension>
             <v-tabs v-model="tab" align-tabs="center" class="mt-6">
-                <!--<v-tab value="1">Mitarbeitende</v-tab>-->
                 <v-tab value="0">Statistik</v-tab>
                 <v-tab value="3">
                     Ecken
@@ -252,44 +245,8 @@ layout: home
     <v-tabs-window-item value="0">
         <OrganizationsStatistics :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :records="records" :loading="loadingClusters" />
     </v-tabs-window-item>
-    <!--<v-tabs-window-item value="1">
-        <v-card variant="tonal" class="mb-4">
-            <OrganizationsAdmins title="Administratoren" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="true" key="admin" />
-            <p class="text-body-2 text-medium-emphasis px-2 ma-1" style="background-color:rgba(0, 0, 0, 0.04)">
-                Administratoren können Lose, Trupps und Dienstleister verwalten.
-            </p>
-        </v-card>
-    </v-tabs-window-item>
-    <v-tabs-window-item value="2">
-        <p class="mb-5">
-            Eine Liste aller Cluster, die ihrer Organisation zugewiesen wurden.
-        </p>
-        <ListOfClusterRecord v-if="currentSyncStatus.hasSynced" :organization_id="permission.organization_id" />
-        <v-alert
-            v-if="!currentSyncStatus.hasSynced"
-            density="compact"
-            text="Warten Sie, bis die Synchronisation abgeschlossen ist."
-            title="Synchronisation läuft"
-            type="warning"
-        ></v-alert>
-    </v-tabs-window-item>-->
     <v-tabs-window-item value="3">
-        <ListOfClusterRecord :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" />
-        <!--<RecordsOverview
-            v-if="organizationId"
-            :organization_id="currentOrganization.id"
-            :organization_type="currentOrganization.type"
-            :cluster="cluster"
-        />
-        <ListOfLose
-            v-if="organizationId"
-            :organization_id="currentOrganization.id"
-            :organization_type="currentOrganization.type"
-            :title="'Lose'" 
-            :is_admin="permission.is_organization_admin || false"
-            :is_root="currentOrganization.is_root || false"
-            :cluster="cluster"
-        />-->
+        <ListOfClusterRecord :tab_active="tab == 3" :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
         <ListOfOrganizations
@@ -305,7 +262,7 @@ layout: home
             <v-card>
                 <OrganizationsAdmins title="Trupp-Personal" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
                 <p class="text-body-2 text-medium-emphasis px-2 ma-2 " style="background-color:rgba(0, 0, 0, 0.04)">
-                    Trupp-Personal kann Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich. Sie können keine Lose oder Dienstleister verwalten.
+                    Trupp-Personal kann Trupps zugewiesen werden und sind für die Durchführung von Einsätzen verantwortlich.
                 </p>
             </v-card>
             <v-divider class="my-8" />
@@ -319,12 +276,6 @@ layout: home
         </v-container>
     </v-tabs-window-item>
 </v-tabs-window>
-
-<!--<div class="text-center mt-11 " >
-    Organisation ID:<br/>
-    <span class="text-caption text-grey">{{permission.organization_id}}</span>
-</div>-->
-
 </div>
 </v-app>
 </Firewall>
