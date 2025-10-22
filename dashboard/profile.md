@@ -102,6 +102,8 @@
 <v-app class="bg-transparent">
 <Firewall>
 
+# Profil
+
 <v-card variant="tonal" class="my-4" :title="user['email']" :subtitle="'Registriert:'+format(user['confirmed_at'], 'de')">
     <template v-slot:append>
         <VimeoPlayer vimeoId="1109589414" :btnTitle="'Tutorial'" title="Profil verwalten" :iconOnly="false" />
