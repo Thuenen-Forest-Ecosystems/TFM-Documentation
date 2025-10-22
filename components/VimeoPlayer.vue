@@ -26,7 +26,11 @@
         icon: {
             type: String,
             default: 'mdi-play'
-        }
+        },
+        h: {
+            type: String,
+            default: 'f9ace217d8'
+        },
     });
 
     onMounted(() => {
@@ -75,7 +79,7 @@
                     <div style="padding:62.5% 0 0 0;position:relative;">
                         <iframe
                             v-bind="iframeProps"
-                            :src="`https://player.vimeo.com/video/${props.vimeoId}?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479`"
+                            :src="`https://player.vimeo.com/video/${props.vimeoId}?h=${props.h}&badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479`"
                             frameborder="0"
                             allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
                             referrerpolicy="strict-origin-when-cross-origin"
