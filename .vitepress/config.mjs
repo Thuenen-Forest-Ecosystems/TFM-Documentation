@@ -64,6 +64,10 @@ export default defineConfig({
       '/dashboard/': [
         {
           text: 'Dashboard',
+          docFooter: {
+            prev: false,
+            next: false
+          },
           items: [
             { text: 'Profile', link: '/dashboard/profile' }
           ]

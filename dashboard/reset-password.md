@@ -32,7 +32,7 @@
             error.value = 'Fehler beim Zurücksetzen des Passworts: ' + apiError.message;
             success.value = '';
         } else {
-            success.value = 'Passwort erfolgreich zurückgesetzt';
+            success.value = 'Passwort erfolgreich geändert';
             error.value = '';
         }
     };
