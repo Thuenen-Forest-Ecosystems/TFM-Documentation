@@ -306,13 +306,15 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
         <p class="text-center">Please select a parent organization to view its Lose.</p>
     </v-alert>
     <div v-else >
-        <v-toolbar class="mb-4" color="transparent" style="border-bottom: 1px solid rgba(120, 120, 120, 0.12);">
+        <v-toolbar color="transparent">
             <v-btn icon="mdi-domain" variant="text"></v-btn>
             <v-toolbar-title>Organisationen</v-toolbar-title>
             <!-- Only if Admin -->
             <v-btn rounded="xl" variant="tonal" @click="_addOrganization" v-if="props.is_admin">
                 neu
-                <v-icon>mdi-domain-plus</v-icon>
+                <template v-slot:append>
+                    <v-icon>mdi-domain-plus</v-icon>
+                </template>
             </v-btn>
         </v-toolbar>
 
@@ -344,7 +346,9 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
                         @click="_inviteOrganizationAdminDialog(organization.id)"
                     >
                         Einladen
-                        <v-icon>mdi-email-plus</v-icon>
+                        <template v-slot:append>
+                            <v-icon>mdi-email-plus</v-icon>
+                        </template>
                     </v-btn>
                     <v-btn
                         v-if="!organization.deleted"
