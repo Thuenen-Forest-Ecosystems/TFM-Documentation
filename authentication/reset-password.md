@@ -50,11 +50,11 @@
     }
 </script>
 
-# Reset Password
+# Passwort zurücksetzen
 
 <Firewall>
 <p>
-    Please enter your new password. Make sure it is strong and secure.
+    Bitte geben Sie Ihr neues Passwort ein. Stellen Sie sicher, dass es stark und sicher ist.
 </p>
 
 <v-chip color="red" v-if="error" class="my-2">
@@ -67,8 +67,8 @@
 <v-form v-if="success === ''" v-model="form"
         @submit.prevent="onSubmit">
 <v-text-field
-    hint="Select a strong new password"
-    label="Password"
+    hint="Wählen Sie ein starkes neues Passwort"
+    label="Passwort"
     persistent-hint
     type="password"
     :rules="[rules.require]"
@@ -79,8 +79,8 @@
 ></v-text-field>
 
 <v-text-field
-    hint="Re-enter your new password"
-    label="Confirm Password"
+    hint="Passwort zur Bestätigung erneut eingeben"
+    label="Passwort bestätigen"
     persistent-hint
     type="password"
     :rules="[rules.require]"
@@ -91,7 +91,7 @@
 ></v-text-field>
 
 <v-btn type="submit" :disabled="!form" :loading="loading"  rounded="xl" @click="_resetPassword" color="primary"  class="my-3">
-    Reset Password
+    Passwort zurücksetzen
 </v-btn>
 </v-form>
 </Firewall>

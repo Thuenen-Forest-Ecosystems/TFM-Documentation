@@ -48,7 +48,7 @@
 
 </script>
 
-# E-Mailadresse ändern
+# E-Mail-Adresse ändern
 
 <v-chip color="red" v-if="error" class="my-2">
     <span>{{ error }}</span>
@@ -63,8 +63,8 @@
         @submit.prevent="onSubmit"
       >
 <v-text-field
-    hint="Enter your new email address"
-    label="E-Mail"
+    hint="Geben Sie Ihre neue E-Mail Adresse ein"
+    label="E-Mail Adresse"
     persistent-hint
     type="email"
     v-model="new_email"

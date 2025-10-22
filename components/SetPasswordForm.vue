@@ -38,7 +38,7 @@
 
     const onSubmit = async () => {
         if (password.value !== password_repeat.value) {
-            error.value = 'Passwords do not match';
+            error.value = 'Passwörter stimmen nicht überein.';
             return;
         }
         const supabase = createClient(url, apikey, {
@@ -66,11 +66,11 @@
         });
     }
     const rules = {
-        required: value => !!value || 'Required.',
-        counter: value => value.length <= 20 || 'Max 20 characters',
+        required: value => !!value || 'Feld ist erforderlich.',
+        counter: value => value.length <= 20 || 'Maximal 20 Zeichen',
         email: value => {
         const pattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-        return pattern.test(value) || 'Invalid e-mail.'
+        return pattern.test(value) || 'Ungültige E-Mail-Adresse.'
         },
     }
 
@@ -86,16 +86,18 @@
     </v-chip>
 
     <div v-if="authErrors">
-        <h1>Authentication Error</h1><br/>
+        <h1>Authentifizierungsfehler</h1><br/>
         <p>{{authErrors}}</p>
     </div>
     <div v-else>
-        <h1>Set Password</h1><br/>
-        
+        <h1>Konto erstellen</h1><br/>
+        <p>
+            Bitte legen Sie ein neues Passwort für Ihr Konto fest. Das Passwort muss mindestens 6 Zeichen lang sein.
+        </p>
         <v-form v-if="success === ''" v-model="form" @submit.prevent="onSubmit">
             <v-text-field
-                hint="Select a strong password"
-                label="Password"
+                hint="Wählen Sie ein starkes Passwort"
+                label="Passwort"
                 persistent-hint
                 type="password"
                 :rules="[rules.require]"
@@ -106,8 +108,8 @@
             ></v-text-field>
 
             <v-text-field
-                hint="Re-enter your password"
-                label="Confirm Password"
+                hint="Passwort erneut eingeben"
+                label="Passwort bestätigen"
                 persistent-hint
                 type="password"
                 :rules="[rules.require]"
@@ -116,8 +118,8 @@
                 rounded="xl"
                 variant="outlined"
             ></v-text-field>
-            <v-btn type="submit" :disabled="!form" :loading="loading"  rounded="xl" @click="changePassword" color="primary"  class="my-3">
-                Set Password
+            <v-btn type="submit" :disabled="!form" :loading="loading"  rounded="xl" color="primary"  class="my-3">
+                Passwort festlegen
             </v-btn>
         </v-form>
     </div>

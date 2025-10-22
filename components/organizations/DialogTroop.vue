@@ -9,6 +9,7 @@
     const valid = ref(false)
     const error = ref('')
     const success = ref('')
+    const loading = ref(false)
 
     //const isControlTroop = ref(false)
 
@@ -67,15 +68,19 @@
     };
 
     async function upsertTroop(troopName, isControlTroop, troopId = null) {
-
+       
         if (troopName && props.organization_id) {
             if (troopId) {
-                // Edit existing troop
+
+                loading.value = true;
+
                 const { data: updateData, error: updateError } = await supabase
                     .from('troop')
                     .update({ name: troopName, is_control_troop: isControlTroop })
                     .eq('id', troopId)
                     .select();
+
+                loading.value = false;
 
                 if (updateError) {
                     console.error('Error updating troop:', updateError);
@@ -84,12 +89,16 @@
 
                 emit('success', updateData);
                 cancelAction();
-                return;
             }else{
+
+                loading.value = true;
+                
                 const { data: insertData, error: insertError } = await supabase
                     .from('troop')
                     .insert({ name: troopName, organization_id: props.organization_id, is_control_troop: isControlTroop })
                     .select();
+
+                loading.value = false;
 
                 if (insertError) {
                     console.error('Error adding troop:', insertError);
@@ -98,7 +107,6 @@
 
                 emit('success', insertData);
                 cancelAction();
-                return;
             }
         } else {
             console.error('Error: Troop name is required and organization_id must be set.');
@@ -157,7 +165,7 @@
                         <v-chip :value="true" filter>Kontroll-Trupp</v-chip>
                     </v-chip-group>
 
-                    <v-btn type="submit" block :disabled="!valid" :loading="props.loading"  rounded="xl" color="primary"  class="my-3">
+                    <v-btn type="submit" block :disabled="!valid" :loading="loading"  rounded="xl" color="primary"  class="my-3">
                         {{ btnText }}
                     </v-btn>
                 </v-form>
