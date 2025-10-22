@@ -50,7 +50,7 @@
 </script>
 
 <BackBtn />
-# E-Mail-Adresse ändern
+# E-Mailadresse ändern
 
 <v-chip color="red" v-if="error" class="my-2">
     <span>{{ error }}</span>

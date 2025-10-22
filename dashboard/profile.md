@@ -10,6 +10,11 @@
     import { withBase } from 'vitepress'
     import Firewall from '../components/Firewall.vue';
     import Support from '../components/Support.vue';
+    import VimeoPlayer from '../components/VimeoPlayer.vue';
+
+    import { format, render, cancel, register } from 'timeago.js';
+    import de from 'timeago.js/lib/lang/de';
+    register('de', de);
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -69,7 +74,6 @@
             // only if organization is not deleted
             data = data.filter(permission => !permission.organizations.deleted);
             organizationsAccess.value = data;
-            console.log('Organizations Access:', organizationsAccess.value);
         });
 
     }
@@ -80,6 +84,7 @@
             user.value = data.session.user;
             _getUsersProfile(data.session.user.id);
             _getOrganizations(data.session.user.id);
+            console.log('User Profile:', user.value['confirmed_at'], format(user['confirmed_at'], 'de'));
         }
     });
 
@@ -97,24 +102,17 @@
 <v-app class="bg-transparent">
 <Firewall>
 
-# Profil
-
-<v-card variant="tonal" class="my-4">
-    <v-list>
-        <v-list-item>
-            <template v-slot:prepend>
-                <v-avatar >
-                    <v-icon>mdi-account</v-icon>
-                </v-avatar>
-            </template>
-            <v-list-item-title>{{user['email']}}</v-list-item-title>
-            <!--<v-list-item-subtitle>{{users_profile['id']}}</v-list-item-subtitle>-->
-        </v-list-item>
-    </v-list>
+<v-card variant="tonal" class="my-4" :title="user['email']" :subtitle="'Registriert:'+format(user['confirmed_at'], 'de')">
+    <template v-slot:append>
+        <VimeoPlayer vimeoId="1109589414" :btnTitle="'Tutorial'" title="Profil verwalten" :iconOnly="false" />
+    </template>
     <v-list>
         <v-list-item @click="_toChangeEmail">
             <v-list-item-title>E-Mailadresse ändern</v-list-item-title>
             <v-list-item-subtitle></v-list-item-subtitle>
+            <template v-slot:prepend>
+                <v-icon>mdi-email-edit</v-icon>
+            </template>
             <template v-slot:append>
                 <v-btn
                     v-if="users_profile['is_organization_admin']"
@@ -126,6 +124,9 @@
         <v-list-item  @click="_toChangePassword">
             <v-list-item-title>Passwort ändern</v-list-item-title>
             <v-list-item-subtitle></v-list-item-subtitle>
+            <template v-slot:prepend>
+                <v-icon>mdi-form-textbox-password</v-icon>
+            </template>
             <template v-slot:append>
                 <v-btn
                     v-if="users_profile['is_organization_admin']"

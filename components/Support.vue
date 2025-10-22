@@ -45,7 +45,7 @@
                 <template v-slot:prepend>
                     <v-icon>mdi-face-agent</v-icon>
                 </template>
-                <v-list-item-title class="text-h6">Hilfe</v-list-item-title>
+                <v-list-item-title class="text-h6">Support</v-list-item-title>
             </v-list-item>
 
             <v-list-item>

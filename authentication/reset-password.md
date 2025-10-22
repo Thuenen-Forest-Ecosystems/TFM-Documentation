@@ -50,7 +50,7 @@
     }
 </script>
 
-# Passwort zurücksetzen
+# Passwort ändern
 
 <Firewall>
 <p>
@@ -91,7 +91,7 @@
 ></v-text-field>
 
 <v-btn type="submit" :disabled="!form" :loading="loading"  rounded="xl" @click="_resetPassword" color="primary"  class="my-3">
-    Passwort zurücksetzen
+    Passwort ändern
 </v-btn>
 </v-form>
 </Firewall>

@@ -14,7 +14,7 @@
     };
 </script>
 
-# Passwort zurücksetzen
+# Passwort ändern
 
 Bitte geben Sie Ihr neues Passwort ein, das Sie festlegen möchten.
 

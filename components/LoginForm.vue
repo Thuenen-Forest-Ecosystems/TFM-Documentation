@@ -152,7 +152,7 @@
 
     <div v-if="!currentSession?.user">
         <div v-if="forgottenPassword && !authSuccess">
-            <h1>Passwort zurücksetzen</h1>
+            <h1>Passwort ändern</h1>
             <p>
                 Bitte geben Sie Ihre E-Mail-Adresse ein, um Anweisungen zum Zurücksetzen Ihres Passworts zu erhalten.
             </p>
