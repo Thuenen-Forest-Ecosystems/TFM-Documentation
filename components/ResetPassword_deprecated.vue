@@ -14,18 +14,18 @@
     };
 </script>
 
-# Reset Password
+# Passwort zurücksetzen
 
-Please enter a new password you would like to set.
+Bitte geben Sie Ihr neues Passwort ein, das Sie festlegen möchten.
 
 <template>
     <v-text-field
-    hint="Enter your password to access this website"
-    label="Password"
+    hint="Geben Sie Ihr Passwort ein, um auf diese Website zuzugreifen"
+    label="Passwort"
     persistent-hint
     type="input"
     ></v-text-field>
     <v-btn @click="_resetPassword" color="primary">
-        Reset Password
+        Passwort zurücksetzen
     </v-btn>
 </template>

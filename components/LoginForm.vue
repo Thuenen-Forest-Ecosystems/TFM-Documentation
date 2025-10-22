@@ -132,7 +132,14 @@
             //window.location.replace("./profile");
         }
     });
-
+    const rules = {
+        required: value => !!value || 'Feld ist erforderlich.',
+        counter: value => value.length <= 20 || 'Maximal 20 Zeichen',
+        email: value => {
+        const pattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+        return pattern.test(value) || 'Ungültige E-Mail-Adresse.'
+        },
+    }
 </script>
 
 <template>
@@ -145,15 +152,37 @@
 
     <div v-if="!currentSession?.user">
         <div v-if="forgottenPassword && !authSuccess">
-            <h1>Forgot Password</h1><br/>
-            <p v-if="authErrors">{{authErrors}}</p>
-            <input type="text" v-model.trim="username" placeholder="Username" /><br/>
-            <v-btn rounded="xl" @click="passwordReset" color="primary">
-                 RESET
-            </v-btn>
+            <h1>Passwort zurücksetzen</h1>
             <p>
-                <button @click="forgottenPassword = false">LOGIN</button>
+                Bitte geben Sie Ihre E-Mail-Adresse ein, um Anweisungen zum Zurücksetzen Ihres Passworts zu erhalten.
             </p>
+
+
+            <p v-if="authErrors">{{authErrors}}</p>
+
+            <v-text-field
+                hint="Geben Sie Ihre E-Mail-Adresse ein"
+                label="E-Mail"
+                persistent-hint
+                type="email"
+                :rules="[rules.email, rules.required]"
+                v-model.trim="username"
+                class="my-8"
+                rounded="xl"
+                variant="solo"
+            ></v-text-field>
+
+            <br/>
+
+            <v-row class="mt-6">
+                
+                <v-btn @click="forgottenPassword = false" variant="text">zurück zum login</v-btn>
+                <v-spacer></v-spacer>
+                <v-btn rounded="xl" @click="passwordReset" color="primary">
+                    ZURÜCKSETZEN
+                </v-btn>
+                
+            </v-row>
         </div>
         <div v-else>
             <div v-if="is_signeUp">
@@ -200,18 +229,20 @@
                     variant="solo"
                 ></v-text-field>
 
-                <v-btn rounded="xl" type="submit" color="primary">
-                    anmelden
-                </v-btn>
+                <v-row>
+                    
 
             
-                <p style="text-align: center;">
-                    <v-btn rounded="xl"  @click="forgottenPassword = true" class="my-4">
-                        Forgot Password
+                    <v-btn rounded="xl" variant="text"  @click="forgottenPassword = true">
+                        Passwort vergessen
                     </v-btn>
-                </p>
+                    <v-spacer></v-spacer>
+                    <v-btn rounded="xl" type="submit" color="primary">
+                        anmelden
+                    </v-btn>
+                </v-row>
 
-                <p>
+                <p class="mt-11">
                     <small>
                         You need be invited to use this application. <br/> If you have not received an invitation, please contact the <a href="mailto:bwi22-de-support@thuenen.de">administrator</a>.
                     </small>

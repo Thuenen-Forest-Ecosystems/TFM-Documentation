@@ -10,7 +10,6 @@
     const troops = ref([]);
     const users = ref([]);
 
-    const nameDialog = ref(false);
     const editDialog = ref(false);
     const editTroopId = ref('');
     const editname = ref('');
@@ -112,16 +111,15 @@
         editname.value = troop.name;
         editIsControlTroop.value = troop.is_control_troop;
         editDialog.value = true;
-        // Implement edit functionality here
-        // This could involve opening a dialog similar to _addTroop but pre-filled with troop data
     }
     async function refresh(updatedTroops) {
-
         // Update troops list with new Troop object
         updatedTroops.forEach(updatedTroop => {
             const index = troops.value.findIndex(t => t.id === updatedTroop.id);
             if (index !== -1) {
                 troops.value[index] = updatedTroop;
+            }else {
+                troops.value.unshift(updatedTroop);
             }
         });
     }
@@ -233,7 +231,7 @@
         <v-btn icon="mdi-account-group" variant="text"></v-btn>
         <v-toolbar-title>{{ props.title }}</v-toolbar-title>
         <!-- Only if Admin -->
-        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="() => { nameDialog = true; }">
+        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="_editTroop({ id: null, name: '', is_control_troop: false })">
             neu
             <template v-slot:append>
                 <v-icon>mdi-account-multiple-plus</v-icon>
@@ -314,19 +312,7 @@
         </v-card-text>
     </v-card>
 
-    <DialogTroop
-        v-model="nameDialog"
-        :name="''"
-        :title="'Trupp hinzufügen'"
-        :text="'Bitte gib den Namen des Trupps ein, den du hinzufügen möchtest.'"
-        :btnText="'Trupp Hinzufügen'"
-        :icon="'mdi-account-multiple-plus'"
-        :loading="addTroopLoading"
-        :disabled="existingTroops"
-        :placeholder="'z.B. Trupp Eberswalde, Trupp Versuchsfläche'"
-        @close="() => { nameDialog = false; }"
-        @confirm="_addTroop"
-    />
+    
     <DialogTroop
         v-model="editDialog"
         :name="editname"
