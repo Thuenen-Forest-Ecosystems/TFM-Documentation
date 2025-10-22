@@ -2,6 +2,7 @@
 
     import { ref, onMounted, getCurrentInstance } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+    import BackBtn from '../components/BackBtn.vue';
 
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
@@ -48,6 +49,7 @@
 
 </script>
 
+<BackBtn />
 # E-Mail-Adresse ändern
 
 <v-chip color="red" v-if="error" class="my-2">
@@ -56,6 +58,13 @@
 <v-chip color="green" v-if="success" class="my-2">
     <span>{{ success }}</span>
 </v-chip>
+<v-alert
+    v-if="success !== ''"
+    type="success"
+    class="my-4"
+>
+    Eine Bestätigungs-E-Mail wurde an Ihre neue E-Mail-Adresse gesendet. Bitte überprüfen Sie Ihren Posteingang und folgen Sie den Anweisungen in der E-Mail, um die Änderung zu bestätigen.
+</v-alert>
 
 <v-form
     v-if="success === ''"
@@ -78,3 +87,4 @@
     E-Mailadresse ändern
 </v-btn>
 </v-form>
+

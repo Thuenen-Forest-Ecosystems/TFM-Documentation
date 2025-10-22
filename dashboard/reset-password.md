@@ -3,6 +3,7 @@
 
     import { ref, onMounted, getCurrentInstance, useAttrs } from 'vue'
     import { createClient } from '@supabase/supabase-js'
+    import BackBtn from '../components/BackBtn.vue';
     
     const instance = getCurrentInstance();
     const apikey = instance.appContext.config.globalProperties.$apikey;
@@ -48,6 +49,7 @@
     }
 </script>
 
+<BackBtn />
 # Passwort zurücksetzen
 
 Bitte geben Sie Ihr neues Passwort ein. Stellen Sie sicher, dass es stark und sicher ist.

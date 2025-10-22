@@ -1,5 +1,9 @@
 import { Tooltip } from "vuetify/directives";
 
+export function historyBack(){
+    window.history.back();
+}
+
 export function getOrganizationDetails(supabase, organization_id) {
     return supabase
         .from('organizations')
