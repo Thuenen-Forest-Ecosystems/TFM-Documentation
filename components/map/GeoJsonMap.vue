@@ -7,6 +7,8 @@ import { workflows } from '../Utils';
 let map;
 const basemapToggle = ref(true);
 
+let popup = null;
+
 const props = defineProps({
     geojson: {
         type: Object,
@@ -77,7 +79,7 @@ async function initializeMap() {
     });
 
     map.on('load', () => {
-        console.log('Map loaded');
+        console.log('Map loaded', map.isStyleLoaded());
         
         // Wait for style to be fully loaded
         if (map.isStyleLoaded()) {
@@ -94,14 +96,28 @@ async function initializeMap() {
 
         // Add click event listener
         map.on('click', handleMapClick);
-    });
 
-    map.on('mouseover', 'geojson-layer', () => {
-        map.getCanvasContainer().style.cursor = 'pointer';
-    });
+        // Add mouseover for tooltip
+        map.on('mousemove', 'geojson-layer', (e) => {
+            if (popup) popup.remove();
+            popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
+                .setLngLat(e.lngLat)
+                .setHTML(`<strong style="color:#000">${e.features[0].properties.cluster_name} - ${e.features[0].properties.plot_name}</strong>`)
+                .addTo(map);
+        });
 
-    map.on('mouseout', 'geojson-layer', () => {
-        map.getCanvasContainer().style.cursor = 'default';
+        // Add mouseout to remove tooltip and reset cursor
+        map.on('mouseout', 'geojson-layer', () => {
+            if (popup) {
+                popup.remove();
+                popup = null;
+            }
+            map.getCanvasContainer().style.cursor = 'default';
+        });
+
+        map.on('mouseover', 'geojson-layer', () => {
+            map.getCanvasContainer().style.cursor = 'pointer';
+        });
     });
 }
 
@@ -126,7 +142,7 @@ watch(() => props.modelValue, async (isOpen) => {
 // Watch for geojson changes when dialog is open
 watch(() => props.geojson, (newGeojson) => {
     if (props.modelValue && map && map.isStyleLoaded()) {
-        console.log('GeoJSON data changed, updating features');
+        console.log('GeoJSON data changed, updating features', newGeojson);
         updateGeoJsonFeatures(newGeojson);
     }
 }, { deep: true });
@@ -183,11 +199,33 @@ function refreshLayer() {
                 'circle-stroke-width': ['get', 'strokeWidth'],
             }
         });
+        
+        map.addLayer({
+            id: 'geojson-cluster-name',
+            type: 'symbol', // Use 'symbol' for labels
+            source: 'geojson-data',
+            filter: [">=", ["zoom"], 14], // zeige layer erst ab zoomstufe
+            layout: {
+                'text-field': ['concat', ['get', 'cluster_name'], ' - ', ['get', 'plot_name']],  // Updated to concatenate cluster_name and plot_name
+                'text-allow-overlap': true,
+                'text-size': 15,
+                //'text-font': ['Open Sans Regular'], // nötg wegen der Glyphen
+                'text-anchor': 'center', // Der Text wird unten vom Punkt platziert
+                "text-offset": [0, 2]
+            },
+            paint: {
+                'text-color': '#000',
+                'text-halo-width': 5,
+                'text-halo-color': '#fff'
+            }
+        });
+
     }
 }
 
 function updateGeoJsonFeatures(_newGeojson = null) {
     // Remove the isStyleLoaded check here since we're already ensuring it's called after style loads
+    
     if (!map) return;
 
     _newGeojson.features.forEach(feature => {
@@ -204,6 +242,7 @@ function updateGeoJsonFeatures(_newGeojson = null) {
     // Check if source exists before trying to update
     if (map.getSource('geojson-data')) {
         map.getSource('geojson-data').setData(_newGeojson);
+        console.log('GeoJSON data source updated', _newGeojson);
     }
 }
 
