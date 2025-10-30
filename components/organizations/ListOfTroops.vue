@@ -255,7 +255,7 @@
                     <template v-slot:activator="{ props: menuProps }">
                         <!-- Disable button if no troops available -->
                         <v-btn variant="tonal"
-                            rounded="xl" v-if="props.is_admin" v-bind="menuProps" :disabled="users.length === 0">
+                            rounded="xl" v-if="props.is_admin" v-bind="menuProps" :disabled="users.length === 0" @click="_getListOfUserInOrganization(props.organization_id)">
                             Trupp-Personal Hinzufügen
                             <template v-slot:append>
                                 <v-icon>mdi-account-plus</v-icon>
