@@ -1455,22 +1455,7 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
 </script>
 
 <template>
-    <v-card-text class="pa-0">
-    <!-- The AG Grid component -->
-    <div class="d-flex mt-4 align-center"  v-if="!loading" >
-        <div class="flex-grow-1">
-            <v-file-input
-                accept=".csv, text/plain"
-                label="Auswahl durch Komma separierte Liste (.csv/.txt) mit Trakt-Namen"
-                @change="handleFileUpload"
-                class="ma-2"
-                rounded="xl"
-                variant="solo"></v-file-input>
-        </div>
-        <div>
-            <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Hilfe" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
-        </div>
-    </div>
+
 
     <!-- Replace v-app-bar with v-toolbar or v-card-title -->
     <v-card class="my-2" rounded="xl">
@@ -1499,6 +1484,7 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
             </template>
         </v-toolbar>
     </v-card>
+    
     <!--
     <v-card class="mx-4 mt-4 mb-1">
         <v-toolbar density="compact" v-if="rowData.length" >
@@ -1526,10 +1512,26 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
         style="height: 700px"
     >
     </ag-grid-vue>
+    <div class="d-flex mt-4 align-center"  v-if="!loading" >
+        <div class="flex-grow-1">
+            <v-file-input
+                accept=".csv, text/plain"
+                label="Auswahl durch Komma separierte Liste (.csv/.txt) mit Trakt-Namen"
+                @change="handleFileUpload"
+                class="ma-2"
+                rounded="xl"
+                variant="solo"
+                density="compact"
+                ></v-file-input>
+        </div>
+        <div style="align-self: flex-start;" class="ma-2">
+            <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Hilfe" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
+        </div>
+    </div>
+
     <div v-else-if="loading" class="text-center">
         <v-skeleton-loader  type="table" />
     </div>
-    </v-card-text>
     <v-card v-if="!loading" class="position-fixed bottom-0 left-0 w-100" style="z-index: 12; border-top: 1px solid rgba(150, 150, 150, 0.12);">
         <v-card-text>
             <v-row class="ma-1">

@@ -247,6 +247,12 @@ layout: home
         <OrganizationsStatistics :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :records="records" :loading="loadingClusters" />
     </v-tabs-window-item>
     <v-tabs-window-item value="3">
+        <v-row class="mb-2">
+            <v-spacer></v-spacer>
+                <v-col class="d-flex justify-end" cols="12" md="4">
+                    <VimeoPlayer vimeoId="1132162497" h="8de2faac57" :btnTitle="'Tutorial'" title="Trakte verwalten" :iconOnly="false" />
+                </v-col>
+            </v-row>
         <ListOfClusterRecord :tab_active="tab == 3" :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
@@ -260,6 +266,14 @@ layout: home
     </v-tabs-window-item>
     <v-tabs-window-item value="5">
         <v-container max-width="1000px">
+            <v-row class="mb-11">
+                <v-col>
+                    <p class="text-h5 ma-0">Trupp-Verwaltung</p>
+                </v-col>
+                <v-col class="d-flex justify-end" cols="12" md="4">
+                    <VimeoPlayer vimeoId="1132135984" h="82c03dee0e" :btnTitle="'Tutorial'" title="Trupps verwalten" :iconOnly="false" />
+                </v-col>
+            </v-row>
             <v-card>
                 <OrganizationsAdmins title="Trupp-Personal" :organization_id="permission.organization_id" :is_admin="permission.is_organization_admin" :showAdmins="false" key="trupp" />
                 <p class="text-body-2 text-medium-emphasis px-2 ma-2 " style="background-color:rgba(0, 0, 0, 0.04)">
