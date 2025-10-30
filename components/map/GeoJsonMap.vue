@@ -79,7 +79,6 @@ async function initializeMap() {
     });
 
     map.on('load', () => {
-        console.log('Map loaded', map.isStyleLoaded());
         
         // Wait for style to be fully loaded
         if (map.isStyleLoaded()) {
@@ -100,10 +99,13 @@ async function initializeMap() {
         // Add mouseover for tooltip
         map.on('mousemove', 'geojson-layer', (e) => {
             if (popup) popup.remove();
-            popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
-                .setLngLat(e.lngLat)
-                .setHTML(`<strong style="color:#000">${e.features[0].properties.cluster_name} - ${e.features[0].properties.plot_name}</strong>`)
-                .addTo(map);
+
+            if (map.getZoom() < 14) {
+                popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false })
+                    .setLngLat(e.lngLat)
+                    .setHTML(`<strong style="color:#000">${e.features[0].properties.cluster_name} - ${e.features[0].properties.plot_name}</strong>`)
+                    .addTo(map);
+            }
         });
 
         // Add mouseout to remove tooltip and reset cursor

@@ -25,4 +25,11 @@ curl -X GET "https://ci.thuenen.de/rest/v1/"  -H "Accept-Profile: lookup"  -H "a
 ```
 :::
 
+## Training Data Sets / Schulungstrakte
+::: tip 
+  Clusters marked with <code>is_testing = true</code> are test data, may change at any time, and should therefore be excluded when using the data for analysis.
+:::
+
+## Database Schema
+
 <RestDocumentation contentProfile="inventory_archive" />
