@@ -158,6 +158,7 @@
                         rounded="xl"
                         variant="outlined"
                         :rules="[rules.required, rules.minLength, rules.disabled]"
+                        autocomplete="off"
                     ></v-text-field>
 
                     <v-chip-group v-model="isControlTroop" selected-class="text-primary" column>

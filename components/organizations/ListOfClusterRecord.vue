@@ -790,7 +790,7 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
         try {
             const { data, error } = await supabase
                 .from('troop')
-                .select('id, name');
+                .select('id, name, is_control_troop');
                 //.eq('organization_id', organizationId);
             if (error) {
                 console.error('Error fetching troops:', error);
