@@ -20,7 +20,6 @@
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
     import ClusterActions from '../cluster/ClusterActions.vue';
-import { consoleError } from 'vuetify/lib/util/console.mjs';
 
 
     //import { listOfLookupTables } from '../../.vitepress/theme/powersync-schema';
@@ -86,6 +85,8 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
     const usersPermissions = ref([]);
 
+    const selectedClusterIdsInput = ref([]);
+    const searchInput = ref('');
     //import { _ } from 'ajv';
    
 
@@ -1114,7 +1115,8 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
             fileName: `selected_records_${new Date().toISOString()}.csv`,
             onlySelected: true,
             skipColumnGroupHeaders: true,
-            skipHeaders: false
+            skipHeaders: false,
+            columnSeparator: ';'
         });
 
     }
@@ -1294,7 +1296,9 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
             // array string to number
             const numbersAsInt = numbers.map(Number);
 
-            selectByClusterIds(numbersAsInt);
+            // Add to selectedClusterIdsInput
+            selectedClusterIdsInput.value = numbersAsInt;
+            //selectByClusterIds(numbersAsInt);
 
         } catch (e) {
             console.error('Error processing file:', e);
@@ -1452,6 +1456,82 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
         recordsDialog.value = true;
         return;
     }
+
+    function addToSelection() {
+        const input = searchInput.value.trim();
+        
+        if (!input) {
+            return;
+        }
+        
+        // Split input by commas, spaces, or semicolons and filter out empty strings
+        const inputs = input.split(/[,\s;]+/).filter(str => str.length > 0);
+        
+        const validNumbers = [];
+        const invalidInputs = [];
+        const duplicates = [];
+        
+        inputs.forEach(str => {
+            const num = Number(str);
+            
+            // Check if it's a valid number
+            if (isNaN(num) || num <= 0 || !Number.isInteger(num)) {
+                invalidInputs.push(str);
+                return;
+            }
+            
+            // Check if already in the list
+            if (selectedClusterIdsInput.value.includes(num)) {
+                duplicates.push(num);
+                return;
+            }
+            
+            validNumbers.push(num);
+        });
+        
+        // Add all valid numbers
+        if (validNumbers.length > 0) {
+            selectedClusterIdsInput.value.push(...validNumbers);
+            searchInput.value = ''; // Clear input after adding
+            
+            snackbarText.value = `${validNumbers.length} Trakt${validNumbers.length > 1 ? 'e' : ''} zur Auswahl hinzugefügt.`;
+            snackbarColor.value = 'success';
+            snackbar.value = true;
+        }
+        
+        // Show warnings for invalid inputs
+        if (invalidInputs.length > 0) {
+            snackbarText.value = `Ungültige Eingaben: ${invalidInputs.join(', ')}`;
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+            return;
+        }
+        
+        // Show warnings for duplicates
+        if (duplicates.length > 0 && validNumbers.length === 0) {
+            snackbarText.value = `Diese Nummern sind bereits vorhanden: ${duplicates.join(', ')}`;
+            snackbarColor.value = 'warning';
+            snackbar.value = true;
+        }
+    }
+    function removeFromSelection(index) {
+        selectedClusterIdsInput.value.splice(index, 1);
+    }
+
+    function clearSelection() {
+        selectedClusterIdsInput.value = [];
+    }
+
+    function selectFromInputList() {
+        if (selectedClusterIdsInput.value.length === 0) {
+            snackbarText.value = 'Keine Trakt-IDs eingegeben.';
+            snackbarColor.value = 'warning';
+            snackbar.value = true;
+            return;
+        }
+        
+        selectByClusterIds(selectedClusterIdsInput.value);
+    }
 </script>
 
 <template>
@@ -1512,7 +1592,11 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
         style="height: 700px"
     >
     </ag-grid-vue>
-    <div class="d-flex mt-4 align-center"  v-if="!loading" >
+    <div v-if="loading" class="text-center">
+        <v-skeleton-loader  type="table" />
+    </div>
+
+    <!--<div class="d-flex mt-4 align-center"  v-if="!loading" >
         <div class="flex-grow-1">
             <v-file-input
                 accept=".csv, text/plain"
@@ -1527,11 +1611,98 @@ import { consoleError } from 'vuetify/lib/util/console.mjs';
         <div style="align-self: flex-start;" class="ma-2">
             <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Hilfe" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
         </div>
-    </div>
-
-    <div v-else-if="loading" class="text-center">
-        <v-skeleton-loader  type="table" />
-    </div>
+    </div>-->
+    <v-card variant="tonal" class="mt-2 pa-2">
+        <v-toolbar color="transparent">
+            <v-toolbar-title>Vorauswahl von Trakten treffen</v-toolbar-title>
+            <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Anleitung GIS" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
+        </v-toolbar>
+        <div class="d-flex align-center ga-11 mt-2" v-if="!loading">
+            <div class="flex-grow-1 d-flex flex-row ga-2">
+                
+                <v-text-field
+                    v-model="searchInput"
+                    label="Nummern von Trakten eingeben"
+                    placeholder="Z.B. 45675, 45676, 45677 oder 45675 45676 45677"
+                    type="text"
+                    rounded="xl"
+                    variant="solo"
+                    density="comfortable"
+                    autocomplete="off"
+                    @keydown.enter.prevent="addToSelection"
+                    @click:append-inner="addToSelection"
+                >
+                    <template v-slot:prepend-inner>
+                        <v-icon>mdi-numeric</v-icon>
+                    </template>
+                    <template v-slot:details>
+                        Manuelle Eingabe (mehrere Nummern mit Komma oder Leerzeichen getrennt)
+                    </template>
+                </v-text-field>
+                <v-btn
+                    append-icon="mdi-arrow-left-bottom"
+                    @click="addToSelection"
+                    rounded="xl"
+                >
+                    Hinzufügen
+                </v-btn>
+            </div>
+            <div>
+                <v-file-input
+                    accept=".csv, text/plain"
+                    label="Datei auswählen"
+                    @change="handleFileUpload"
+                    class="ma-2"
+                    rounded="xl"
+                    variant="solo"
+                    density="compact"
+                    prepend-icon="mdi-file-delimited"
+                >
+                    <template v-slot:details>
+                        Komma separierte Liste (.csv/.txt) mit Trakt-Namen
+                    </template>
+                </v-file-input>
+            </div>
+        </div>
+        <div>
+            <div v-if="selectedClusterIdsInput.length > 0">
+                <div class="d-flex flex-wrap align-center ga-2 mb-2">
+                    <v-chip
+                        v-for="(id, index) in selectedClusterIdsInput"
+                        :key="id"
+                        closable
+                        variant="tonal"
+                        @click:close="removeFromSelection(index)"
+                    >
+                        {{ id }}
+                    </v-chip>
+                </div>
+                
+                <!-- Aktions-Buttons -->
+                <v-card-actions>
+                    <v-btn
+                        variant="flat"
+                        prepend-icon="mdi-delete"
+                        @click="clearSelection"
+                        rounded="xl"
+                    >
+                        Vorauswahl entfernen
+                    </v-btn>
+                    <v-spacer></v-spacer>
+                    <v-btn
+                        color="primary"
+                        variant="elevated"
+                        prepend-icon="mdi-check"
+                        @click="selectFromInputList"
+                        rounded="xl"
+                    >
+                        Auswählen ({{ selectedClusterIdsInput.length }})
+                    </v-btn>
+                </v-card-actions>
+            </div>
+        </div>
+    </v-card>
+    
     <v-card v-if="!loading" class="position-fixed bottom-0 left-0 w-100" style="z-index: 12; border-top: 1px solid rgba(150, 150, 150, 0.12);">
         <v-card-text>
             <v-row class="ma-1">
