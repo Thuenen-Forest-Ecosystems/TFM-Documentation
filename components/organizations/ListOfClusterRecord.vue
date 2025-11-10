@@ -1494,9 +1494,9 @@
             selectedClusterIdsInput.value.push(...validNumbers);
             searchInput.value = ''; // Clear input after adding
             
-            snackbarText.value = `${validNumbers.length} Trakt${validNumbers.length > 1 ? 'e' : ''} zur Auswahl hinzugefügt.`;
-            snackbarColor.value = 'success';
-            snackbar.value = true;
+            //snackbarText.value = `${validNumbers.length} Trakt${validNumbers.length > 1 ? 'e' : ''} zur Auswahl hinzugefügt.`;
+            //snackbarColor.value = 'success';
+            //snackbar.value = true;
         }
         
         // Show warnings for invalid inputs
@@ -1672,6 +1672,7 @@
                         :key="id"
                         closable
                         variant="tonal"
+                        :color="rowData.some(row => row.cluster_name === id) ? 'success' : 'error'"
                         @click:close="removeFromSelection(index)"
                     >
                         {{ id }}
