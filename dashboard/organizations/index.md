@@ -191,7 +191,6 @@ layout: home
         }
 
         records.value = await fetchAllDataPaginated('view_records_details', organizationId, companyType)
-        console.log('Loaded records:', records.value);
 
         if (records.value && records.value.length > 0) {
 
