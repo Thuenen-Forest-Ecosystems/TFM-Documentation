@@ -64,8 +64,17 @@
             //_getOrganizationById(data.organization_id);
         });
     }
+
+    const isAdminOfAtLeastOneOrganization = () => {
+        // is_organization_admin true in any of organizationsAccess
+        for (let i = 0; i < organizationsAccess.value.length; i++) {
+            if (organizationsAccess.value[i].is_organization_admin) {
+                return true;
+            }
+        }
+        return false;
+    };
     async function _getOrganizations(userId){
-        
         await supabase.from('users_permissions').select("*, organizations(*)").eq('user_id', userId).then(({ data, error }) => {
             if (error) {
                 console.error(error);
@@ -75,7 +84,6 @@
             data = data.filter(permission => !permission.organizations.deleted);
             organizationsAccess.value = data;
         });
-
     }
 
     onMounted(async () => {
@@ -140,15 +148,18 @@
     </v-list>
 </v-card>
 
-## Inventuren
-<v-card variant="tonal" title="Kohlenstoffinventur 2027">
-    <v-list>
-        <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
-            <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
-            <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
-        </v-list-item>
-    </v-list>
-</v-card>
+<div v-if="isAdminOfAtLeastOneOrganization()">
+    <h2>Inventuren</h2>
+    <v-card variant="tonal" title="Kohlenstoffinventur 2027">
+        <v-list>
+            <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
+                <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
+                <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
+            </v-list-item>
+        </v-list>
+    </v-card>
+</div>
+
 <LoginForm/>
 
 <Support/>

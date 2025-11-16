@@ -217,9 +217,6 @@
                 </v-list-item>
         </v-list>
     </div>
-    <div v-else>
-        <p>No organization selected.</p>
-    </div>
 
     <DialogEmail 
         v-model="emailDialog"
