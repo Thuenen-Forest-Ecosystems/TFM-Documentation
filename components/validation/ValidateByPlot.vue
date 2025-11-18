@@ -82,7 +82,7 @@
             <v-expansion-panel-text>
                 <v-list lines="two">
                     <v-list-item v-for="(error, index) in validationErrors" :key="index">
-                        <v-list-item-title>{{ error.message }}</v-list-item-title>
+                        <v-list-item-title class="text-wrap">{{ error.message }}</v-list-item-title>
                         <v-list-item-subtitle>Schema Path: {{ error.schemaPath }}</v-list-item-subtitle>
                         <template v-slot:append>
                             <v-btn
@@ -107,7 +107,7 @@
                                 </template>
                             </v-tooltip>
                         </template>
-                        <v-list-item-title>{{ error.error.note }}</v-list-item-title>
+                        <v-list-item-title class="text-wrap">{{ error.error.note }}</v-list-item-title>
                         <v-list-item-subtitle>{{ error.error.text }}</v-list-item-subtitle>
                         <template v-slot:append>
                             <v-btn
