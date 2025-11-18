@@ -36,6 +36,12 @@
         }
     }
 
+    const toLogin = () => {
+        if (typeof window !== 'undefined') {
+            window.location.href = withBase('/authentication/sign-in');
+        }
+    }
+
     const onSubmit = async () => {
         if (password.value !== password_repeat.value) {
             error.value = 'Passwörter stimmen nicht überein.';
@@ -88,6 +94,13 @@
     <div v-if="authErrors">
         <h1>Authentifizierungsfehler</h1><br/>
         <p>{{authErrors}}</p>
+
+        <v-alert>
+            <p>
+                Nutzen Sie "Passwort vergessen", um sich ein Passwort zu erstellen.
+            </p>
+            <v-btn text color="primary" rounded="xl" @click="toLogin()">Zum Login</v-btn>
+        </v-alert>
     </div>
     <div v-else>
         <h1>Konto erstellen</h1><br/>
