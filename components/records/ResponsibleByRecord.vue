@@ -18,6 +18,8 @@
         troop: '-'
     });
 
+    const troopMembers = ref([]);
+
     onMounted(async () => {
 
         // Fetch all organization names in a single query
@@ -57,6 +59,20 @@
                 };
             }
         }
+
+        // Fetch troop member profiles
+        if (props.record.current_troop_members && props.record.current_troop_members.length > 0) {
+            const { data: memberData, error: memberError } = await supabase
+                .from('users_profile')
+                .select('id, email, user_name')
+                .in('id', props.record.current_troop_members);
+
+            if (memberError) {
+                console.error('Error fetching troop members:', memberError);
+            } else {
+                troopMembers.value = memberData || [];
+            }
+        }
     });
 </script>
 
@@ -93,10 +109,24 @@
         <v-col cols="12" sm="6" md="3">
             <v-card
                 variant="tonal"
-                class="text-center pa-2" 
+                class="pa-2" 
                 subtitle="Trupp" 
                 :title="organizationNames.troop"
-            ></v-card>
+            >
+                <v-card-text v-if="troopMembers.length > 0">
+                    <v-list density="compact" class="pa-0">
+                        <v-list-item
+                            v-for="member in troopMembers"
+                            :key="member.id"
+                            class="px-0"
+                            density="compact"
+                        >
+                            <v-list-item-title class="text-body-2">{{ member.user_name || member.email }}</v-list-item-title>
+                            <v-list-item-subtitle v-if="member.user_name" class="text-caption">{{ member.email }}</v-list-item-subtitle>
+                        </v-list-item>
+                    </v-list>
+                </v-card-text>
+            </v-card>
         </v-col>
     </v-row>
 </template>

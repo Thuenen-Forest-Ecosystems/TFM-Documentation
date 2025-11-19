@@ -25,6 +25,8 @@ layout: home
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     const organizationId = urlParams.get('organization');
 
+    const isAdmin = ref(false);
+    const allPermissions = ref([]);
     const permission = ref({});
 
     const user = ref({});
@@ -46,6 +48,18 @@ layout: home
         if (error) {
             console.error('Error fetching organization:', error);
             return null;
+        }
+        return data;
+    };
+    const _getTroopsByOrganizationIdAndUserId = async (organizationId) => {
+        const { data, error } = await supabase
+            .from('troop')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .contains('user_ids', [user.value.id]); // user_ids is array
+        if (error) {
+            console.error('Error fetching troops:', error);
+            return [];
         }
         return data;
     };
@@ -76,6 +90,7 @@ layout: home
                 return;
             }
 
+            allPermissions.value = permissionData;
             permission.value = permissionData[0] || {};
 
             if (permission.value.organization_id) {
@@ -87,7 +102,17 @@ layout: home
                 console.warn('No organization ID found in permissions.');
             }
         }
-        await _requestPlots(currentOrganization.value.type, currentOrganization.value.id);
+        // Check if at least one permission with organization_id equals organizationId is_organization_admin equals true
+        isAdmin.value = allPermissions.value.some(perm => perm.organization_id === organizationId && perm.is_organization_admin);
+
+        let troopIds = [];
+        if(!isAdmin.value) {
+            permission.value = allPermissions.value.find(perm => perm.organization_id === organizationId && !perm.is_organization_admin) || {};
+            const troops = await _getTroopsByOrganizationIdAndUserId(organizationId);
+            troopIds = troops.map(troop => troop.id);
+        }
+
+        await _requestPlots(currentOrganization.value.type, currentOrganization.value.id, troopIds);
         loadingClusters.value = false;
     });
     const _getChildOrganizationType = () => {
@@ -102,12 +127,10 @@ layout: home
 
     const toEditOrganization = (organization) => {
         window.location.href = withBase('/dashboard/organizations/administration?organization=' + organization.id);
-    }
-
-
+    };
 
     // Globaly load records
-    async function fetchAllDataPaginated(tableName, organizationId, companyType) {
+    async function fetchAllDataPaginated(tableName, organizationId, companyType, troopFilter = null) {
         let allData = [];
         let currentPage = 0;
         const pageSize = 10000; // Choose an appropriate page size
@@ -116,7 +139,7 @@ layout: home
             const start = currentPage * pageSize;
             const end = start + pageSize - 1;
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from(tableName)
                 .select(`
                     cluster_id,
@@ -152,8 +175,14 @@ layout: home
                     grid_density
                 `)
                 .eq(companyType, organizationId)
-                .order('cluster_id', { ascending: true })
-                .range(start, end); // <<-- deterministic order
+                .order('cluster_id', { ascending: true });
+
+            // Conditionally add troop filter
+            if (troopFilter && troopFilter.length > 0) {
+                query = query.in('responsible_troop', troopFilter);
+            }
+
+            const { data, error } = await query.range(start, end);
 
             if (error) {
                 console.error('Error fetching paginated data:', error);
@@ -170,9 +199,9 @@ layout: home
 
         return allData;
     }
-    async function _requestPlots(organizationType, organizationId) {
+    async function _requestPlots(organizationType, organizationId, troopIds = []) {
 
-        let companyType = null; //'responsible_state'; // responsible_administration
+        let companyType = null;
 
         switch (organizationType) {
             case 'root':
@@ -190,10 +219,9 @@ layout: home
             return;
         }
 
-        records.value = await fetchAllDataPaginated('view_records_details', organizationId, companyType)
+        records.value = await fetchAllDataPaginated('view_records_details', organizationId, companyType, troopIds);
 
         if (records.value && records.value.length > 0) {
-
             snackbarText.value = `${records.value.length} Datensätze erfolgreich geladen.`;
             snackbarColor.value = 'success';
             snackbar.value = true;
@@ -221,7 +249,8 @@ layout: home
 
 <v-toolbar color="transparent" flat>
     <v-toolbar-title>
-        {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}
+        {{ currentOrganization.name || currentOrganization.entityName || 'Organization Details' }}<br/>
+        <small>{{ currentOrganization.type == 'root' ? 'Bundesinventurleitung' : currentOrganization.type == 'country' ? 'Landesinventurleitung' : 'Dienstleister' }}</small>
     </v-toolbar-title>
         <v-btn v-if="permission.is_organization_admin" variant="outlined" @click="toEditOrganization(currentOrganization)" rounded="xl">
             <template v-slot:prepend>

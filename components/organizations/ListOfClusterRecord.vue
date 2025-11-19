@@ -1612,7 +1612,7 @@
             <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Hilfe" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
         </div>
     </div>-->
-    <v-card variant="tonal" class="mt-2 pa-2">
+    <v-card variant="outlined" class="mt-2 pa-2" rounded="lg">
         <v-toolbar color="transparent">
             <v-toolbar-title>Vorauswahl von Trakten treffen</v-toolbar-title>
             <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Anleitung GIS" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
@@ -1752,7 +1752,7 @@
                 <v-spacer></v-spacer>
                 <div v-if="selectedRows.length > 0">
                     <v-btn
-                        v-if="props.organization_type !== 'provider' || usersPermissions.find(perm => perm.is_organization_admin)"
+                        v-if="props.organization_type !== 'provider' && usersPermissions.find(perm => perm.is_organization_admin)"
                         class="mx-2"
                         variant="elevated"
                         prepend-icon="mdi-security"
@@ -1763,7 +1763,6 @@
                         Verantwortlichkeit ändern
                     </v-btn>
                     <v-btn
-                        v-if="usersPermissions.find(perm => perm.is_organization_admin)"
                         class="mx-2"
                         variant="elevated"
                         prepend-icon="mdi-bookmark-check"

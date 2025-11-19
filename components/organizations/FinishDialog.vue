@@ -1,143 +1,181 @@
 <script setup>
-import { computed, onMounted, ref, getCurrentInstance, watch } from 'vue';
+    import { computed, onMounted, ref, getCurrentInstance, watch } from 'vue';
 
-const instance = getCurrentInstance();
-const supabase = instance.appContext.config.globalProperties.$supabase;
+    const instance = getCurrentInstance();
+    const supabase = instance.appContext.config.globalProperties.$supabase;
 
-const props = defineProps({
-    modelValue: {
-        type: Boolean,
-        required: true,
-    },
-    organizationId: {
-        type: String,
-        required: true,
-    },
-    organizationType: {
-        type: String,
-        required: true,
-    },
-    selectedRows: {
-        type: Array,
-        required: false,
-        default: () => [],
-    },
-});
+    const props = defineProps({
+        modelValue: {
+            type: Boolean,
+            required: true,
+        },
+        organizationId: {
+            type: String,
+            required: true,
+        },
+        organizationType: {
+            type: String,
+            required: true,
+        },
+        selectedRows: {
+            type: Array,
+            required: false,
+            default: () => [],
+        },
+    });
 
-const emit = defineEmits(['update:modelValue', 'close', 'confirm']);
+    const emit = defineEmits(['update:modelValue', 'close', 'confirm']);
 
-const isEnabled = ref(false);
-const additionalNote = ref('');
+    const isAdmin = ref(false);
 
-const snackbar = ref(false);
-const snackbarText = ref('');
-const snackbarColor = ref('success');
+    const isEnabled = ref(false);
+    const additionalNote = ref('');
 
-const modelValue = computed({
-    get: () => props.modelValue,
-    set: (value) => emit('update:modelValue', value),
-});
+    const snackbar = ref(false);
+    const snackbarText = ref('');
+    const snackbarColor = ref('success');
 
-const notValidRows = computed(() => {
-    if (!props.selectedRows || props.selectedRows.length === 0) {
-        return [];
+    const modelValue = computed({
+        get: () => props.modelValue,
+        set: (value) => emit('update:modelValue', value),
+    });
+
+    const notValidRows = computed(() => {
+        if (!props.selectedRows || props.selectedRows.length === 0) {
+            return [];
+        }
+        return props.selectedRows.filter(row => !row.is_valid);
+    });
+    async function getUsersPermissions() {
+        const { data, error } = await supabase.auth.getSession()
+        if (data.session) {
+            var userId = data.session.user.id;
+        
+            const { data: permissionsData, error: permissionsError } = await supabase
+                .from('users_permissions')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('organization_id', props.organizationId);
+
+            if (permissionsError) {
+                console.error('Error fetching user permissions:', permissionsError);
+                return null;
+            }
+            return permissionsData;
+        } else {
+            console.error('No active session found.');
+            return null;
+        }
     }
-    return props.selectedRows.filter(row => !row.is_valid);
-});
 
-const targetOrganization = ref(null);
-onMounted(() => {
-    switch (props.organizationType) {
-        case 'country':
-            targetOrganization.value = 'Bundesinventurleitung';
-            break;
-        case 'provider':
-            targetOrganization.value = 'Landesinventurleitung';
-            break;
-        default:
-            console.warn('Unknown organization type:', props.organizationType);
-    }
-});
+    const targetOrganization = ref(null);
+    onMounted(async () => {
+        const permissions = await getUsersPermissions();
+        // find in permissions where is_organization_admin is true
+        isAdmin.value = permissions?.some(permission => permission.is_organization_admin);
 
-function closeDialog() {
-    emit('update:modelValue', false);
-}
-
-async function setAsFinished() {
-    try {
-        const updatedValues = { note: additionalNote.value || null };
         switch (props.organizationType) {
             case 'country':
-                //updatedValues.responsible_troop = null;
-                //updatedValues.responsible_provider = null;
-                updatedValues.completed_at_state = new Date();
-                //updatedValues.completed_at_administration = null;
+                targetOrganization.value = 'Bundesinventurleitung';
                 break;
             case 'provider':
-                updatedValues.completed_at_troop = new Date();
-                //updatedValues.completed_at_administration = null;
-                //updatedValues.completed_at_state = null;
-                break;
-            case 'root':
-                //updatedValues.responsible_troop = null;
-                //updatedValues.responsible_provider = null;
-                //updatedValues.responsible_state = null;
-                updatedValues.completed_at_administration = new Date();
+                targetOrganization.value = 'Landesinventurleitung';
                 break;
             default:
                 console.warn('Unknown organization type:', props.organizationType);
         }
+    });
 
-        let query = supabase
-            .schema('public')
-            .from('records')
-            .update(updatedValues)
-            .in('cluster_id', props.selectedRows.map(row => row.cluster_id));
+    function closeDialog() {
+        emit('update:modelValue', false);
+    }
 
-        // Add condition for `completed_at_state` when organizationType is 'root'
-        if (props.organizationType === 'root') {
-            query = query.not('completed_at_state', 'is', null);
-            query = query.not('completed_at_troop', 'is', null);
-        } else if (props.organizationType === 'country') {
-            query = query.not('completed_at_troop', 'is', null);
-        }
+    async function setAsFinished() {
+        try {
+            const updatedValues = { note: additionalNote.value || null };
+            if(isAdmin.value){
+                switch (props.organizationType) {
+                    case 'country':
+                        //updatedValues.responsible_troop = null;
+                        //updatedValues.responsible_provider = null;
+                        updatedValues.completed_at_state = new Date();
+                        //updatedValues.completed_at_administration = null;
+                        break;
+                    case 'provider':
+                        updatedValues.completed_at_troop = new Date();
+                        //updatedValues.completed_at_administration = null;
+                        //updatedValues.completed_at_state = null;
+                        break;
+                    case 'root':
+                        //updatedValues.responsible_troop = null;
+                        //updatedValues.responsible_provider = null;
+                        //updatedValues.responsible_state = null;
+                        updatedValues.completed_at_administration = new Date();
+                        break;
+                    default:
+                        console.warn('Unknown organization type:', props.organizationType);
+                }
+            }else{
+                updatedValues.completed_at_troop = new Date();
+            }
 
-        query = query.select();
+            let query = supabase
+                .schema('public')
+                .from('records')
+                .update(updatedValues)
+                .in('cluster_id', props.selectedRows.map(row => row.cluster_id));
 
-        console.log(query);
+            // Add condition for `completed_at_state` when organizationType is 'root'
+            if(isAdmin.value) {
+                if (props.organizationType === 'root') {
+                    query = query.not('completed_at_state', 'is', null);
+                    query = query.not('completed_at_troop', 'is', null);
+                } else if (props.organizationType === 'country') {
+                    query = query.not('completed_at_troop', 'is', null);
+                }
+            }else{
+                console.log('Adding null filters for non-admin user');
+                query = query.is('completed_at_state', null);
+                query = query.is('completed_at_administration', null);
+                query = query.is('completed_at_troop', null);
+            }
 
-        const { data, error } = await query;
+            query = query.select();
 
-        if (error) {
+            console.log(query);
+
+            const { data, error } = await query;
+
+            if (error) {
+                snackbarText.value = 'Fehler beim Aktualisieren der Datensätze: ' + error.message;
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+                return;
+            }
+
+            snackbarText.value = `${data.length} Datensätze erfolgreich aktualisiert.`;
+            snackbarColor.value = 'success';
+            snackbar.value = true;
+
+            emit('confirm', data);
+
+            closeDialog();
+        } catch (error) {
             snackbarText.value = 'Fehler beim Aktualisieren der Datensätze: ' + error.message;
             snackbarColor.value = 'error';
             snackbar.value = true;
-            return;
-        }
-
-        snackbarText.value = `${data.length} Datensätze erfolgreich aktualisiert.`;
-        snackbarColor.value = 'success';
-        snackbar.value = true;
-
-        emit('confirm', data);
-
-        closeDialog();
-    } catch (error) {
-        snackbarText.value = 'Fehler beim Aktualisieren der Datensätze: ' + error.message;
-        snackbarColor.value = 'error';
-        snackbar.value = true;
-    }
-}
-
-watch(
-    () => props.modelValue,
-    (newVal) => {
-        if (!newVal) {
-            isEnabled.value = false;
-            additionalNote.value = '';
         }
     }
-);
+
+    watch(
+        () => props.modelValue,
+        (newVal) => {
+            if (!newVal) {
+                isEnabled.value = false;
+                additionalNote.value = '';
+            }
+        }
+    );
 </script>
 
 <template>

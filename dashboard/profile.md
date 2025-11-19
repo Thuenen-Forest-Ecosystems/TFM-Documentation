@@ -22,7 +22,7 @@
     const data = ref({});
     const access_token = ref('');
     const jwtPayload = ref({});
-    const is_admin = ref(false);
+    //const is_admin = ref(false);
     const state_responsible = ref(null);
     const troop_id = ref(null);
     const state_responsible_name = ref(null);
@@ -125,7 +125,6 @@
             </template>
             <template v-slot:append>
                 <v-btn
-                    v-if="users_profile['is_organization_admin']"
                     icon="mdi-chevron-right"
                     variant="text"
                 ></v-btn>
@@ -139,7 +138,6 @@
             </template>
             <template v-slot:append>
                 <v-btn
-                    v-if="users_profile['is_organization_admin']"
                     icon="mdi-chevron-right"
                     variant="text"
                 ></v-btn>
@@ -148,13 +146,19 @@
     </v-list>
 </v-card>
 
-<div v-if="isAdminOfAtLeastOneOrganization()">
+<div>
     <h2>Inventuren</h2>
     <v-card variant="tonal" title="Kohlenstoffinventur 2027">
         <v-list>
             <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
                 <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
                 <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
+                <template v-slot:append>
+                    <v-btn
+                        icon="mdi-chevron-right"
+                        variant="text"
+                    ></v-btn>
+                </template>
             </v-list-item>
         </v-list>
     </v-card>
