@@ -362,9 +362,14 @@
                         pinned: 'right',
                         headerTooltip: "records.completed_at_troop",
                         tooltipField: "completed_at_troop",
-                        cellDataType: "dateTime",
+                        cellDataType: "date",
                         filter: "agDateColumnFilter",
-                        valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
+                        valueGetter: (params) => {
+                            if (!params.data.completed_at_troop) return null;
+                            const date = new Date(params.data.completed_at_troop);
+                            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                        },
+                        valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
                     },
                 ]
             },
@@ -374,9 +379,14 @@
                 filter: true,
                 sortable: true,
                 tooltipField: "updated_at",
-                cellDataType: "dateTime",
+                cellDataType: "date",
                 filter: "agDateColumnFilter",
-                valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
+                valueGetter: (params) => {
+                    if (!params.data.updated_at) return null;
+                    const date = new Date(params.data.updated_at);
+                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                },
+                valueFormatter: (params) => params.data.updated_at ? params.data.updated_at.toLocaleString() : '',
             },
             {
                 field: "responsible_state",
@@ -529,9 +539,14 @@
                 sortable: true,
                 headerTooltip: "records.completed_at_state",
                 tooltipField: "completed_at_state",
-                cellDataType: "dateTime",
+                cellDataType: "date",
                 filter: "agDateColumnFilter",
-                valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
+                valueGetter: (params) => {
+                    if (!params.data.completed_at_state) return null;
+                    const date = new Date(params.data.completed_at_state);
+                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                },
+                valueFormatter: (params) => params.data.completed_at_state ? params.data.completed_at_state.toLocaleString() : '',
             },
             {
                 field: 'completed_at_administration',
@@ -540,9 +555,14 @@
                 sortable: true,
                 headerTooltip: "records.completed_at_administration",
                 tooltipField: "completed_at_administration",
-                cellDataType: "dateTime",
+                cellDataType: "date",
                 filter: "agDateColumnFilter",
-                valueFormatter: (params) => Date.parse(params.value) ? new Date(params.value).toLocaleString() : params.value,
+                valueGetter: (params) => {
+                    if (!params.data.completed_at_administration) return null;
+                    const date = new Date(params.data.completed_at_administration);
+                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                },
+                valueFormatter: (params) => params.data.completed_at_administration ? params.data.completed_at_administration.toLocaleString() : '',
             }
         ]
     }
@@ -625,10 +645,10 @@
 
                 validity: record.is_valid ? (record.is_plausible ? true : false) : false,
 
-                updated_at: record.updated_at,
-                completed_at_state: record.completed_at_state,
-                completed_at_administration: record.completed_at_administration,
-                completed_at_troop: record.completed_at_troop,
+                updated_at: record.updated_at ? new Date(record.updated_at) : null,
+                completed_at_state: record.completed_at_state ? new Date(record.completed_at_state) : null,
+                completed_at_administration: record.completed_at_administration ? new Date(record.completed_at_administration) : null,
+                completed_at_troop: record.completed_at_troop ? new Date(record.completed_at_troop) : null,
 
                 
                 note: record.note,
