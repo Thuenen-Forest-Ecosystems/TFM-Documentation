@@ -1457,6 +1457,34 @@
         return;
     }
 
+    // Map drawer resizing
+    const mapDrawerWidth = ref(600);
+    const isResizing = ref(false);
+
+    function startResize(event) {
+        isResizing.value = true;
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+        event.preventDefault();
+    }
+
+    function handleResize(event) {
+        if (!isResizing.value) return;
+        
+        const newWidth = window.innerWidth - event.clientX;
+        
+        // Set min and max width constraints
+        if (newWidth >= 300 && newWidth <= 1200) {
+            mapDrawerWidth.value = newWidth;
+        }
+    }
+
+    function stopResize() {
+        isResizing.value = false;
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+    }
+
     function addToSelection() {
         const input = searchInput.value.trim();
         
@@ -1835,11 +1863,29 @@
     <v-navigation-drawer
         location="right"
         v-model="mapDialog"
-        width="600"
+        :width="mapDrawerWidth"
         floating
         style="z-index: 11;"
         class="mt-16"
     >   
+        <!-- Resize Handle -->
+        <div
+            @mousedown="startResize"
+            style="
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 6px;
+                cursor: ew-resize;
+                background: rgba(var(--v-theme-primary), 0.9);
+                z-index: 13;
+                transition: background 0.2s;
+            "
+            @mouseenter="$event.target.style.background = 'rgba(var(--v-theme-primary), 0.9)'"
+            @mouseleave="$event.target.style.background = isResizing ? 'rgba(var(--v-theme-primary), 0.9)' : 'rgba(var(--v-theme-primary), 0.9)'"
+        ></div>
+        
         <v-btn icon="mdi-close" @click="_toggleMap" class="ma-2 position-absolute top-0 start-0" style="z-index: 12;" density="compact"></v-btn>
         <GeoJsonMap
             :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
@@ -1880,10 +1926,7 @@
 </template>
 
 <style>
-    /*.VPNavBar[data-v-84a11e99]:not(.has-sidebar) {
-        background-color: var(--vp-nav-bg-color);
-    }
-    .v-navigation-drawer__scrim {
-       display: none;
-    }*/
+.v-navigation-drawer__scrim {
+    display: none !important;
+}
 </style>
