@@ -256,15 +256,20 @@
                 field: 'state_by_user', // Custom cell renderer
                 headerName: ' ',
                 pinned: 'left',
-                width: 60,
+                width: 70,
                 sortable: true,
                 sort: 'asc',
-                //filter: 'statusFilter',
-                sortingOrder: ['asc', 'desc'],
+                filter: 'statusFilter',
+                filterParams: {
+                    values: workflows.map(wf => wf.id),
+                    workflows: workflows
+                },
+                //sortingOrder: ['asc', 'desc'],
                 tooltipValueGetter: (params) => workflows.find(wf => wf.id === params.value)?.tooltip || params.value,
-
+                valueGetter: (params) => params.data?.state_by_user,
                 cellRenderer: (params) => {
-                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflows.find(wf => wf.id === params.value)?.searchText || 'transparent'};"></span></div>`;
+                    const workflow = workflows.find(wf => wf.id === params.value);
+                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflow?.searchText || 'transparent'};" title="${workflow?.tooltip || ''}"></span></div>`;
                 }
             },
             /*{ 
@@ -407,7 +412,7 @@
             { 
                 field: "plot_name",
                 headerName: "Ecke",
-                filter: false,
+                filter: true,
                 sortable: true,
                 pinned: 'left',
                 headerTooltip: "inventory_archive.plot.plot_name",
@@ -576,7 +581,7 @@
 
             if (entry) {
                 // Return the German name or the raw value
-                return `${entry.name_de}  (${code})`;
+                return `${code} | ${entry.name_de}`;
             }
             // If no entry found, return the raw value
             return `no lookup value | ${code} (${tableName})`;
@@ -1338,7 +1343,7 @@
         
         const entry = lookupMap.get(code.toString());
         if (entry) {
-            return `${entry.name_de} (${code})`;
+            return `${code} | ${entry.name_de}`;
         }
         
         return `no lookup value | ${code} (${tableName})`;

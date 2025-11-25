@@ -1,21 +1,33 @@
 <script setup>
-    import { onMounted, ref } from 'vue';
+    import { onMounted, ref, computed } from 'vue';
 
     const filterParams = ref(null);
-    const selectedColors = ref([]);
+    const selectedWorkflowIds = ref([]);
 
     const props = defineProps({
         params: Object
     });
 
-    //const params = ref(null);
-
-    // Update colorOptions to match the actual hex values from your data
-    const colorOptions = [
-        { value: 'red', label: 'Red', color: 'red' },
-        { value: 'green', label: 'Green', color: 'green' },    // This should match your hardcoded 'green'
-        { value: 'yellow', label: 'Yellow', color: 'yellow' }
-    ];
+    // Build color options from workflows passed via filterParams
+    const colorOptions = computed(() => {
+        if (!filterParams.value?.workflows) return [];
+        
+        // Group workflows by color
+        const colorMap = new Map();
+        filterParams.value.workflows.forEach(workflow => {
+            const color = workflow.searchText;
+            if (!colorMap.has(color)) {
+                colorMap.set(color, {
+                    color: color,
+                    label: color.charAt(0).toUpperCase() + color.slice(1),
+                    workflowIds: []
+                });
+            }
+            colorMap.get(color).workflowIds.push(workflow.id);
+        });
+        
+        return Array.from(colorMap.values());
+    });
 
     onMounted(() => {
         console.log('onMounted called with props.params:', props.params); // Debug log
@@ -23,20 +35,19 @@
     });
 
     function isFilterActive() {
-        return selectedColors.value.length > 0;
+        return selectedWorkflowIds.value.length > 0;
     }
 
     function doesFilterPass(node) {
-        console.log('doesFilterPass called with node:', node); // Debug log
         if (!isFilterActive()) {
             return true;
         }
 
         const cellValue = node.data[filterParams.value.colDef.field];
-        console.log('Filtering - cellValue:', cellValue, 'selectedColors:', selectedColors.value); // Debug log
+        console.log('Filtering - cellValue:', cellValue, 'selectedWorkflowIds:', selectedWorkflowIds.value); // Debug log
 
-        // Ensure cellValue is compared as a string
-        return selectedColors.value.includes(cellValue?.toString());
+        // Compare workflow IDs (cellValue should be a workflow ID like 0, 1, 2, etc.)
+        return selectedWorkflowIds.value.includes(cellValue);
     }
 
     function getModel() {
@@ -44,24 +55,40 @@
             return null;
         }
         return { 
-            filterType: 'color',
-            values: selectedColors.value 
+            filterType: 'workflow',
+            values: selectedWorkflowIds.value 
         };
     }
 
     function setModel(model) {
         if (model && model.values) {
-            selectedColors.value = [...model.values];
+            selectedWorkflowIds.value = [...model.values];
         } else {
-            selectedColors.value = [];
+            selectedWorkflowIds.value = [];
         }
     }
 
     function onFilterChanged() {
-        console.log('onFilterChanged called, selectedColors:', selectedColors.value, filterParams.value); // Debug log
+        console.log('onFilterChanged called, selectedWorkflowIds:', selectedWorkflowIds.value); // Debug log
         if (filterParams.value && filterParams.value.filterChangedCallback) {
             filterParams.value.filterChangedCallback();
         }
+    }
+
+    function toggleColor(colorOption) {
+        colorOption.workflowIds.forEach(id => {
+            const index = selectedWorkflowIds.value.indexOf(id);
+            if (index > -1) {
+                selectedWorkflowIds.value.splice(index, 1);
+            } else {
+                selectedWorkflowIds.value.push(id);
+            }
+        });
+        onFilterChanged();
+    }
+
+    function isColorSelected(colorOption) {
+        return colorOption.workflowIds.some(id => selectedWorkflowIds.value.includes(id));
     }
 
 </script>
@@ -73,16 +100,8 @@
             <v-list density="compact" class="pa-0">
                 <v-list-item
                     v-for="option in colorOptions"
-                    :key="option.value"
-                    @click="() => {
-                        const index = selectedColors.indexOf(option.value);
-                        if (index > -1) {
-                            selectedColors.splice(index, 1);
-                        } else {
-                            selectedColors.push(option.value);
-                        }
-                        onFilterChanged();
-                    }"
+                    :key="option.color"
+                    @click="() => toggleColor(option)"
                     class="px-1"
                 >
                     <template v-slot:prepend>
@@ -93,11 +112,11 @@
                         ></v-avatar>
                     </template>
                     
-                    <v-list-item-title>{{ option.label }}</v-list-item-title>
+                    <!--<v-list-item-title>{{ option.label }}</v-list-item-title>-->
                     
                     <template v-slot:append>
                         <v-checkbox-btn
-                            :model-value="selectedColors.includes(option.value)"
+                            :model-value="isColorSelected(option)"
                             color="primary"
                             density="compact"
                         ></v-checkbox-btn>

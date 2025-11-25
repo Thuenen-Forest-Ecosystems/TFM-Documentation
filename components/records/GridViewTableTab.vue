@@ -87,6 +87,10 @@
             // Get groupBy configuration
             const groupBy = formConfig?.groupBy || null;
 
+            // Check if the property is numeric (number or integer) but not an enum
+            const isNumeric = !hasEnum && (property.type === 'number' || property.type === 'integer' || 
+                (Array.isArray(property.type) && (property.type.includes('number') || property.type.includes('integer'))));
+
             return {
                 headerName: property.title || key,
                 field: key,
@@ -95,6 +99,7 @@
                 hide, // Set hide to true if display is false
                 pinned, // AG Grid supports 'left' or 'right'
                 headerTooltip: property.description || '', // Add tooltip if description exists
+                cellClass: isNumeric ? 'ag-right-aligned-cell' : '',
                 valueFormatter: params => {
                     let value = params.value;
 
@@ -111,7 +116,7 @@
 
                     // Append raw value in parentheses if different from displayed value
                     if (hasEnum && hasNameDe && property.enum.includes(params.value) && value !== params.value) {
-                        value = `${value} (${params.value})`;
+                        value = `${params.value} | ${value}`;
                     }
 
                     return value;

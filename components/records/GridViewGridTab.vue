@@ -91,7 +91,7 @@
         if (property.enum && Array.isArray(property.enum)) {
             const enumIndex = property.enum.indexOf(value);
             if (enumIndex !== -1 && property['$tfm']?.name_de) {
-                return property['$tfm'].name_de[enumIndex] + (value ? ` (${value})` : ''); // Use the German name (or adjust as needed)
+                return (value ? ` ${value} | ` : '') +property['$tfm'].name_de[enumIndex]; // Use the German name (or adjust as needed)
             }
         }
 
