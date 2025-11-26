@@ -182,7 +182,7 @@
         suppressRowHoverHighlight: false,
         suppressCellFocus: true,
         columnHoverHighlight: true,
-        suppressMovableColumns: true,
+        suppressMovableColumns: false,
         tooltipShowDelay: 500,
         /*rowSelection: {
             mode: 'multiRow',
@@ -328,6 +328,15 @@
                 width: 95,
             },
             {
+                field: "responsible_provider",
+                headerName: "Dienstleister",
+                filter: true,
+                sortable: true,
+                tooltipField: "responsible_provider",
+                pinned: 'right',
+                //type: "string",
+            },
+            {
                 headerName: 'Trupps',
                 children: [
                     {
@@ -379,47 +388,38 @@
                 ]
             },
             {
-                field: "updated_at",
-                headerName: "letzte Änderung",
+                field: "forest_status_bwi2022",
+                headerName: "Wald Status (BWI 2022)",
                 filter: true,
                 sortable: true,
-                tooltipField: "updated_at",
-                cellDataType: "date",
-                filter: "agDateColumnFilter",
-                valueGetter: (params) => {
-                    if (!params.data.updated_at) return null;
-                    const date = new Date(params.data.updated_at);
-                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                },
-                valueFormatter: (params) => params.data.updated_at ? params.data.updated_at.toLocaleString() : '',
+                headerTooltip: "inventory_archive.plot.forest_status",
+                tooltipField: "forest_status_bwi2022"
             },
             {
-                field: "responsible_state",
-                headerName: "Landesinventurleitung",
+                field: "accessibility",
+                headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
                 filter: true,
                 sortable: true,
-                tooltipField: "responsible_state",
-                //type: "string",
+                headerTooltip: "inventory_archive.plot.accessibility",
+                tooltipField: "accessibility"
             },
             {
-                field: "responsible_provider",
-                headerName: "Dienstleister",
+                field: "property_type",
+                headerName: "Eigentumsart",
                 filter: true,
                 sortable: true,
-                tooltipField: "responsible_provider",
                 //type: "string",
+                headerTooltip: "inventory_archive.plot.property_type",
+                tooltipField: "property_type"
             },
-            { 
-                field: "plot_name",
-                headerName: "Ecke",
+            {
+                field: "forest_office",
+                headerName: "Forstamt",
                 filter: true,
                 sortable: true,
-                pinned: 'left',
-                headerTooltip: "inventory_archive.plot.plot_name",
-                width: 80,
-                //type: "number"
+                headerTooltip: "inventory_archive.plot.forest_status",
+                tooltipField: "forest_office"
             },
-
             {
                 field: "cluster_status",
                 headerName: "Trakt Status",
@@ -439,21 +439,28 @@
                 //type: "string",
             },
             {
+                field: "updated_at",
+                headerName: "letzte Änderung",
+                filter: true,
+                sortable: true,
+                tooltipField: "updated_at",
+                cellDataType: "date",
+                filter: "agDateColumnFilter",
+                valueGetter: (params) => {
+                    if (!params.data.updated_at) return null;
+                    const date = new Date(params.data.updated_at);
+                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                },
+                valueFormatter: (params) => params.data.updated_at ? params.data.updated_at.toLocaleString() : '',
+            },
+            {
                 field: "state_responsible",
-                headerName: "Verantwortlichkeit",
+                headerName: "Verantwortlichkeit 2022",
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.state_responsible",
                 tooltipField: "state_responsible",
                 //type: "string",
-            },
-            {
-                field: "forest_status_bwi2022",
-                headerName: "Wald Status (BWI 2022)",
-                filter: true,
-                sortable: true,
-                headerTooltip: "inventory_archive.plot.forest_status",
-                tooltipField: "forest_status_bwi2022"
             },
             {
                 field: "forest_status_ci2017",
@@ -472,14 +479,6 @@
                 tooltipField: "forest_status_ci2012"
             },
             {
-                field: "forest_office",
-                headerName: "Forstamt",
-                filter: true,
-                sortable: true,
-                headerTooltip: "inventory_archive.plot.forest_status",
-                tooltipField: "forest_office"
-            },
-            {
                 field: "growth_district",
                 headerName: "Wuchsbezirk",
                 filter: true,
@@ -496,12 +495,13 @@
                 tooltipField: "ffh_forest_type"
             },
             {
-                field: "accessibility",
-                headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
+                field: "grid_density",
+                headerName: "Rasterdichte",
                 filter: true,
+                tooltipField: "grid_density",
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.accessibility",
-                tooltipField: "accessibility"
+                //type: "string",
+                headerTooltip: "inventory_archive.cluster.grid_density",
             },
             {
                 field: "federal_state",
@@ -513,29 +513,31 @@
                 tooltipField: "federal_state"
             },
             {
-                field: "property_type",
-                headerName: "Eigentumsart",
-                filter: true,
-                sortable: true,
-                //type: "string",
-                headerTooltip: "inventory_archive.plot.property_type",
-                tooltipField: "property_type"
-            },
-            {
-                field: "grid_density",
-                headerName: "Rasterdichte",
-                filter: true,
-                tooltipField: "grid_density",
-                sortable: true,
-                //type: "string",
-                headerTooltip: "inventory_archive.cluster.grid_density",
-            },
-            {
                 field: "states_affected",
                 headerName: "Betroffene Bundesländer", // Affected States
                 filter: true,
                 sortable: true,
                 headerTooltip: "inventory_archive.cluster.states_affected"
+            },
+            {
+                field: "responsible_state",
+                headerName: "Landesinventurleitung",
+                filter: true,
+                sortable: true,
+                tooltipField: "responsible_state",
+                //type: "string",
+            },
+
+            
+            { 
+                field: "plot_name",
+                headerName: "Ecke",
+                filter: true,
+                sortable: true,
+                pinned: 'left',
+                headerTooltip: "inventory_archive.plot.plot_name",
+                width: 80,
+                //type: "number"
             },
             {
                 field: 'completed_at_state',
@@ -1201,10 +1203,35 @@
 
     function onGridReady(params) {
         nextTick(() => {
+            // Restore grid state from localStorage
+            const savedState = localStorage.getItem('agGridState_' + props.organization_type);
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    currentGrid.value.api.applyColumnState({ state: state.columnState, applyOrder: true });
+                    if (state.filterModel) {
+                        currentGrid.value.api.setFilterModel(state.filterModel);
+                    }
+                } catch (e) {
+                    console.error('Error restoring grid state:', e);
+                }
+            }
+            
             setTimeout(() => {
                 updateDisplayedRows(); // Initial update of displayed rows
             }, 100);
         });
+    }
+    
+    function saveGridState() {
+        if (!currentGrid.value?.api) return;
+        
+        const state = {
+            columnState: currentGrid.value.api.getColumnState(),
+            filterModel: currentGrid.value.api.getFilterModel()
+        };
+        
+        localStorage.setItem('agGridState_' + props.organization_type, JSON.stringify(state));
     }
     function onFilterChanged(filter) {
         if (!currentGrid.value || !currentGrid.value.api) {
@@ -1214,7 +1241,15 @@
         filteredRows.value = currentGrid.value.api.getFilterModel();
         
         updateDisplayedRows();
-        
+        saveGridState(); // Save state when filter changes
+    }
+    
+    function onSortChanged() {
+        saveGridState(); // Save state when sort changes
+    }
+    
+    function onColumnMoved() {
+        saveGridState(); // Save state when columns are reordered
     }
     function updateDisplayedRows() {
         console.log('Updating displayed rows');
@@ -1671,6 +1706,8 @@
         v-if="!loading"
         @selection-changed="onSelectionChanged"
         @filter-changed="onFilterChanged"
+        @sort-changed="onSortChanged"
+        @column-moved="onColumnMoved"
         @grid-ready="onGridReady"
         :gridOptions="gridOptions"
         :theme="currentTheme"
