@@ -200,8 +200,8 @@
         },
         defaultColDef: {
             initialWidth: 215,
-            wrapHeaderText: true,
-            autoHeaderHeight: true,
+            wrapHeaderText: false,
+            autoHeaderHeight: false
         },
     }
     async function saveTroopResponsible(column, value, id){
@@ -945,17 +945,21 @@
 
     function onSelectionChanged(event) {
         loadingSelection.value = true;
-        selectedRows.value = currentGrid.value.api.getSelectedRows();
         
-        // Create a Set of selected plot_ids for fast lookup
-        const selectedPlotIds = new Set(selectedRows.value.map(row => row.plot_id));
+        // Use requestAnimationFrame to avoid blocking UI
+        requestAnimationFrame(() => {
+            selectedRows.value = currentGrid.value.api.getSelectedRows();
+            
+            // Create a Set of selected plot_ids for fast lookup
+            const selectedPlotIds = new Set(selectedRows.value.map(row => row.plot_id));
 
-        // Update each feature's isSelected property
-        geojsonFeatureCollection.value.features.forEach(feature => {
-            feature.properties.isSelected = selectedPlotIds.has(feature.properties.plot_id);
+            // Update each feature's isSelected property
+            geojsonFeatureCollection.value.features.forEach(feature => {
+                feature.properties.isSelected = selectedPlotIds.has(feature.properties.plot_id);
+            });
+            
+            loadingSelection.value = false;
         });
-        loadingSelection.value = false;
-        return;
     }
 
     async function addToLos(){
@@ -1482,6 +1486,37 @@
         return;
     }
 
+    function _handlePolygonSelection(selectedFeatures) {
+        if (!currentGrid.value?.api || !selectedFeatures || selectedFeatures.length === 0) return;
+        
+        // Get plot IDs from selected features and convert to Set for O(1) lookup
+        const plotIdSet = new Set(selectedFeatures.map(feature => feature.plot_id));
+        
+        // Use AG Grid's efficient batch selection API
+        const nodesToToggle = [];
+        
+        currentGrid.value.api.forEachNode((node) => {
+            if (plotIdSet.has(node.data.plot_id)) {
+                nodesToToggle.push(node);
+            }
+        });
+        
+        // Batch toggle using AG Grid's setNodesSelected (much faster than individual setSelected)
+        if (nodesToToggle.length > 0) {
+            // Determine if we should select or deselect based on first node
+            const shouldSelect = !nodesToToggle[0].isSelected();
+            
+            // Use AG Grid's batch API - this is orders of magnitude faster
+            currentGrid.value.api.setNodesSelected({
+                nodes: nodesToToggle,
+                newValue: shouldSelect
+            });
+            
+            // Trigger selection changed after batch operation
+            onSelectionChanged();
+        }
+    }
+
     // Map drawer resizing
     const mapDrawerWidth = ref(600);
     const isResizing = ref(false);
@@ -1916,6 +1951,7 @@
             :geojson="geojsonFeatureCollection" style="height: 100%; width: 100%;"
             :modelValue="mapDialog"
             @update:selected="_selectedOnMap"
+            @polygonSelection="_handlePolygonSelection"
             />
     </v-navigation-drawer>
     <div v-if="selectedCluster">

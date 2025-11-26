@@ -32,7 +32,9 @@
         defaultColDef: {
             minWidth: 100,
             resizable: true,
-            suppressMovable: true
+            suppressMovable: true,
+            wrapHeaderText: false,
+            autoHeaderHeight: false
         },
         columnDefs: [],
         rowData: []
