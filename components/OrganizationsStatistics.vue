@@ -252,7 +252,7 @@
                     <v-card class="ma-2 text-center">
                         <v-card-text>
                             <p class="text-h3">{{ countUniqueTroops }}</p>
-                            <p class="text-caption">Trupps beschäftigt</p>
+                            <p class="text-caption">zugewiesene Trupps</p>
                         </v-card-text>
                     </v-card>
                 </v-col>
