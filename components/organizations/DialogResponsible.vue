@@ -84,7 +84,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         }
 
         if(props.selectedRows && props.selectedRows.length > 0){
-            troopAlreadySet.value = props.selectedRows.filter(row => row.troop_id !== null).length;
+            troopAlreadySet.value = props.selectedRows.filter(row => row.responsible_troop !== null).length;
         }else{
             troopAlreadySet.value = 0;
         }
