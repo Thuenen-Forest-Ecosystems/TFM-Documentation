@@ -1877,7 +1877,7 @@
                 <v-spacer></v-spacer>
                 <div v-if="selectedRows.length > 0">
                     <v-btn
-                        v-if="props.organization_type !== 'provider' && usersPermissions.find(perm => perm.is_organization_admin)"
+                        v-if="usersPermissions.find(perm => perm.is_organization_admin)"
                         class="mx-2"
                         variant="elevated"
                         prepend-icon="mdi-security"

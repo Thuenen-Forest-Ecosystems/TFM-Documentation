@@ -5,7 +5,9 @@ layout: home
 ---
 
 <script setup>
-    import { onMounted, ref, getCurrentInstance } from 'vue';
+    import { onMounted, onUnmounted, ref, getCurrentInstance } from 'vue';
+    import { onBeforeRouteLeave } from 'vue-router';
+
     import Firewall from '../../components/Firewall.vue';
     import { withBase } from "vitepress";
 
@@ -64,7 +66,16 @@ layout: home
         return data;
     };
 
+    function handleBeforeUnload(e) {
+        const message = 'Es werden gerade Daten verarbeitet. Möchten Sie die Seite wirklich verlassen?';
+
+        e.preventDefault();
+        e.returnValue = message; // Required for Chrome
+        return message;
+    }
+
     onMounted(async () => {
+
         loadingClusters.value = true;
         currentOrganization.value = await _getOrganizationById(organizationId);
 
@@ -114,7 +125,19 @@ layout: home
 
         await _requestPlots(currentOrganization.value.type, currentOrganization.value.id, troopIds);
         loadingClusters.value = false;
+
+
+        //window.addEventListener('beforeunload', handleBeforeUnload);
+
     });
+    onUnmounted(() => {
+        //window.removeEventListener('beforeunload', handleBeforeUnload);
+    });
+    /*onBeforeRouteLeave((to, from, next) => {
+        return false;
+        next();
+    });*/
+
     const _getChildOrganizationType = () => {
         if (currentOrganization.value.type === 'root') {
             return 'country';
