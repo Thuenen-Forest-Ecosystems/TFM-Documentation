@@ -1,6 +1,3 @@
-
-
-
 <script setup>
     import LoginForm from '../components/LoginForm.vue';
     import Credentials from '../components/Credentials.vue';
@@ -11,6 +8,7 @@
     import Firewall from '../components/Firewall.vue';
     import Support from '../components/Support.vue';
     import VimeoPlayer from '../components/VimeoPlayer.vue';
+    import InstallationApp from '../components/InstallationApp.vue';
 
     import { format, render, cancel, register } from 'timeago.js';
     import de from 'timeago.js/lib/lang/de';
@@ -162,6 +160,12 @@
             </v-list-item>
         </v-list>
     </v-card>
+</div>
+
+<v-divider></v-divider>
+
+<div class="my-4">
+    <InstallationApp/>
 </div>
 
 <LoginForm/>
