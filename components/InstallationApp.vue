@@ -8,7 +8,7 @@
                 <v-expansion-panel-text>
                     <ol>
                         <li>Gehe zu <v-btn href="https://github.com/Thuenen-Forest-Ecosystems/TFM-client-app/releases/latest" target="_blank">Releases</v-btn></li>
-                        <li>Lade TFM-Setup.exe herunter</li>
+                        <li>Lade TFM-Setup.exe herunter, bei Rückfrage der Datei vertrauen</li>
                         <li>Doppelklick auf TFM-Setup.exe</li>
                         <li>Folge den Anweisungen des Installationsassistenten</li>
                         <li>Such die Anwendung "Install SSL Certificates" und führe diese aus. (dieser SSchritt muss nur einmal durchgeführt werden)</li>
