@@ -193,7 +193,7 @@
         </div>
 
         <v-toolbar class="gb-transparent  mt-4">
-            <v-toolbar-title>WebSocket (PowerSync)</v-toolbar-title>
+            <v-toolbar-title>WebSocket</v-toolbar-title>
             <template v-slot:append>
                 <v-progress-circular v-if="wsLoading" indeterminate></v-progress-circular>
                 <v-btn v-if="!wsLoading" @click="wsHealthTest" icon="mdi-reload"></v-btn>
