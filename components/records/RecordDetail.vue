@@ -21,6 +21,7 @@
     const toggle_data_view = ref(0);
 
     const schema = computed(() => {
+        if (props.schema) return props.schema; // use prop schema if available
         if (props.record && props.record.tfm && props.record.tfm.schema) {
             return props.record.tfm.schema;
         }

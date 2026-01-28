@@ -1,7 +1,7 @@
 
 <script setup>
 
-    import { onMounted, ref, getCurrentInstance, watch, shallowRef } from 'vue';
+    import { onMounted, ref, getCurrentInstance, watch, shallowRef, computed } from 'vue';
     import Firewall from '../../components/Firewall.vue';
     import ValidateByPlot from '../../components/validation/ValidateByPlot.vue';
     import RecordToDo from '../../components/records/RecordToDo.vue';
@@ -19,6 +19,7 @@
     });
     
     const selectedVersion = ref(null);
+    const validatorCache = new Map();
 
     const props = defineProps({
         cluster: {
@@ -41,19 +42,17 @@
     });
 
     onMounted(async () => {
-        
         if (props.clusterId) {
             initialLoading.value = true;
-            await fetchSchemaFromSupabaseStorage();
-            await fetchPlausibilityFromSupabaseStorage();
+            // Schema and Plausibility will be fetched via watch(selectedVersion)
+            // initiated by VersionSelection component emitting initial value
             await fetchRecordsByCluster(props.clusterId);
             initialLoading.value = false;
         }
     });
     
     watch(selectedVersion, (newVersion) => {
-        fetchSchemaFromSupabaseStorage();
-        // Trigger any additional logic here
+        loadValidationResources();
     });
 
     const sheet = shallowRef(false)
@@ -73,6 +72,9 @@
     const toggle_data_view = ref(0);
 
     const selectedHistoryPerTab = ref({});
+
+    // Create a computed property for the currently active record
+    const activeRecord = computed(() => selectedHistoryPerTab.value[tab.value]);
 
     async function fetchRecordsByCluster(_clusterId) {
         const { data, error } = await supabase
@@ -95,58 +97,84 @@
             records.value = data.sort((a, b) => a.plot_name - b.plot_name);
         }
     }
-    async function fetchPlausibilityFromSupabaseStorage() {
-
-        const { data, error } = await supabase
-            .storage
-            .from('validation')
-            .download('v31/bundle.umd.js');
-
-        if (error) {
-            console.error('Error fetching plausibility:', error);
-            return;
-        }
-
-        try {
-            const plausibilityTxt = await data.text();
-            eval(plausibilityTxt);
-
-            tfm.value = new TFM();
-
-        } catch (error) {
-            console.error('Error parsing plausibility:', error);
-        }
-    }
+    
     const loadingVersion = ref(false);
-    async function fetchSchemaFromSupabaseStorage() {
-        if (!selectedVersion.value || !selectedVersion.value.directory) {
+
+    async function loadValidationResources() {
+        const versionDir = selectedVersion.value?.directory;
+        if (!versionDir) {
             console.warn('No version selected, skipping schema fetch.', selectedVersion.value);
             schema.value = null;
             validate.value = null;
+            tfm.value = null;
             return;
         }
+
+        if (validatorCache.has(versionDir)) {
+            console.log('Use cached validator', versionDir);
+            const cached = validatorCache.get(versionDir);
+            schema.value = cached.schema;
+            validate.value = cached.validate;
+            tfm.value = cached.tfm;
+            return;
+        }
+
         loadingVersion.value = true;
-        const { data, error } = await supabase
-            .storage
-            .from('validation')
-            .download(`${selectedVersion.value.directory}/validation.json`);
-        loadingVersion.value = false;
-        if (error) {
-            console.error('Error fetching schema:', error);
+        console.log('Loading resources for:', selectedVersion.value);
+        
+        const [schemaResult, plausibilityResult] = await Promise.all([
+            supabase.storage.from('validation').download(`${versionDir}/validation.json`),
+            supabase.storage.from('validation').download(`${versionDir}/bundle.umd.js`)
+        ]);
+        
+        if (schemaResult.error || plausibilityResult.error) {
+            loadingVersion.value = false;
+            console.error('Error fetching validation resources:', schemaResult.error || plausibilityResult.error);
             return;
         }
 
         try {
-            const schemaTxt = await data.text();
+            const schemaTxt = await schemaResult.data.text();
+            const plausibilityTxt = await plausibilityResult.data.text();
+
             const schemaJson = JSON.parse(schemaTxt);
-            schema.value = schemaJson.properties?.plot?.items || null;
+            const schemaItems = schemaJson.properties?.plot?.items || null;
 
-            validate.value = ajv.compile(schema.value);
+            // allow UI to update
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-            console.log('Loaded schema and compiled validator:', schema.value, validate.value);
+            const compiledValidate = ajv.compile(schemaItems);
+
+            // Evaluate Plausibility bundle
+            // NOTE: eval executes in the current scope. We rely on the bundle assigning to window.TFM or similar if it's UMD.
+            // If the bundle contains `class TFM {}`, repeatedly evaluating it might call errors if let/const are used at top level.
+            // Assuming the bundle is well-behaved or we accept the risk of re-definition.
+            // UMD usually checks if defined.
+            // If TFM is properly exported, we can instantiate it.
+            
+            // To be safe against "Identifier 'TFM' has already been declared" if using let/const/class globally in eval:
+            // We can try-catch the eval or just proceed. 
+            // Since we trust the bundle format to be UMD/IIFE usually.
+            
+            eval(plausibilityTxt);
+            const tfmInstance = new TFM();
+            
+            validatorCache.set(versionDir, {
+                schema: schemaItems,
+                validate: compiledValidate,
+                tfm: tfmInstance
+            });
+
+            schema.value = schemaItems;
+            validate.value = compiledValidate;
+            tfm.value = tfmInstance;
+
+            loadingVersion.value = false;
+            console.log('Loaded schema and compiled validator + TFM');
 
         } catch (error) {
-            console.error('Error parsing schema:', error);
+            loadingVersion.value = false;
+            console.error('Error parsing/compiling validation resources:', error);
         }
     }
 
@@ -193,22 +221,11 @@
             </v-tabs>
             </div>
         </v-card>
-        <v-tabs-window v-model="tab">
-            <v-tabs-window-item
-                v-for="record in records"
-                :key="record.id"
-                :value="record.id"
-            >
-                <!--<div class="full-height d-flex">
-                    <v-navigation-drawer  :width="420" expand-on-hover
-                        permanent
-                        rail>
-                        <History :plot_id="record.plot_id" @select:record="onHistorySelect" />
-                    </v-navigation-drawer>
-                </div>-->
-
-                <!-- only show history for active tab -->
-                <v-bottom-sheet v-if="tab === record.id" v-model="sheet" :fullscreen="false" >
+        
+        <div v-if="activeRecord" :key="activeRecord.id">
+                
+                <!-- History -->
+                <v-bottom-sheet v-model="sheet" :fullscreen="false" >
                     <v-toolbar flat density="compact">
                         <v-toolbar-title>History</v-toolbar-title>
                         <template v-slot:append>
@@ -217,23 +234,9 @@
                     </v-toolbar>
                     <v-card>
                         <div class="ma-0 pa-0 overflow-x-auto">
-                            <HistoryHorizonatal :plot_id="record.plot_id" @select:record="onHistorySelect" :selected="selectedHistoryPerTab[tab]" />
+                            <HistoryHorizonatal :plot_id="activeRecord.plot_id" @select:record="onHistorySelect" :selected="activeRecord" />
                         </div>
                     </v-card>
-                    <!--<v-expansion-panels>
-                        <v-expansion-panel>
-                            <v-expansion-panel-title>
-                                <v-icon>mdi-history</v-icon>
-                                <span class="ml-2">History</span>
-                            </v-expansion-panel-title>
-                            <v-expansion-panel-text class="ma-0 pa-0">
-                                <div class="ma-0 pa-0 overflow-x-auto">
-                                    <HistoryHorizonatal :plot_id="record.plot_id" @select:record="onHistorySelect" />
-                                </div>
-                                
-                            </v-expansion-panel-text>
-                        </v-expansion-panel>
-                    </v-expansion-panels>-->
                 </v-bottom-sheet>
                 <v-fab
                     icon="mdi-history"
@@ -244,7 +247,7 @@
                 ></v-fab>
                 
                 <RecordToDo
-                    :record="selectedHistoryPerTab[tab]"
+                    :record="activeRecord"
                     :organizationId="props.organizationId"
                     :organizationType="props.organizationType"
                     @update:record="onUpdateRecord"
@@ -252,40 +255,36 @@
 
                 <!-- Display record.note -->
                  <v-alert
-                    v-if="selectedHistoryPerTab[tab] && selectedHistoryPerTab[tab].note && selectedHistoryPerTab[tab].note.trim() !== ''"
+                    v-if="activeRecord && activeRecord.note && activeRecord.note.trim() !== ''"
                     class="ma-3"
                     density="compact"
-                    :text="selectedHistoryPerTab[tab].note"
+                    :text="activeRecord.note"
                     title="Nachricht"
                     icon="mdi-message"
                 ></v-alert>
 
                 <v-card title="Zuständigkeiten" variant="tonal" class="ma-3">
 
-                    <ResponsibleByRecord :record="selectedHistoryPerTab[tab]" class="ma-1" />
+                    <ResponsibleByRecord :record="activeRecord" class="ma-1" />
                 </v-card>
 
-                <v-card variant="tonal" v-if="selectedHistoryPerTab[tab]" class="ma-3">
+                <v-card variant="tonal" v-if="activeRecord" class="ma-3">
                     <v-toolbar color="transparent">
                         <v-toolbar-title>Validation</v-toolbar-title>
                         <template v-slot:append>
                             <VersionSelection v-model="selectedVersion" :is_loading="loadingVersion" />
                         </template>
                     </v-toolbar>
-                    <v-card-text v-if="selectedHistoryPerTab[tab] && validate && tfm">
-                        <ValidateByPlot :record="selectedHistoryPerTab[tab]" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                    <v-card-text v-if="activeRecord && validate && tfm">
+                        <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" />
                     </v-card-text>
                 </v-card>
 
                 <v-card variant="tonal" class="ma-3">
-                    <RecordDetail :record="selectedHistoryPerTab[tab]" :schema="schema"/>
+                    <RecordDetail :record="activeRecord" :schema="schema"/>
                 </v-card>
+        </div>
 
-                <v-card class="ma-3">
-                    <DetailAdministration v-if="selectedHistoryPerTab[tab]" :record="selectedHistoryPerTab[tab]" />
-                </v-card>
-            </v-tabs-window-item>
-        </v-tabs-window>
         <!--Loader-->
         <v-progress-circular
             indeterminate

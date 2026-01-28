@@ -75,7 +75,7 @@
         validation();
     });*/
 
-    watch(() => props.record, (newRecord, oldRecord) => {
+    watch(() => [props.record, props.validate, props.tfm], (newVals) => {
             validation(); // Call your validation logic or any other function
         },
         { deep: true } // Enables deep watching for nested properties

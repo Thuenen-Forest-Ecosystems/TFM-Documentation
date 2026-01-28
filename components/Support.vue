@@ -55,7 +55,17 @@
 
             <v-list-subheader class="text-h8">Technisch</v-list-subheader>
 
-            <template v-for="value in supportProfiles" :key="value?.email || Math.random()">
+            <v-list-item 
+                @click="openMail('bwi-support@thuenen.de')"
+            >
+                <v-list-item-title>BWI Support</v-list-item-title>
+                <v-list-item-subtitle>bwi-support@thuenen.de</v-list-item-subtitle>
+                <template v-slot:append>
+                    <v-icon>mdi-email</v-icon>
+                </template>
+            </v-list-item>
+
+            <!--<template v-for="value in supportProfiles" :key="value?.email || Math.random()">
                 <v-list-item 
                     v-if="value && value.email"
                     @click="openMail(value.email)"
@@ -66,7 +76,7 @@
                         <v-icon>mdi-email</v-icon>
                     </template>
                 </v-list-item>
-            </template>
+            </template>-->
         </v-list>
       </v-navigation-drawer>
     </div>
