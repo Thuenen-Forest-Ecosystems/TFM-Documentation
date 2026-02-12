@@ -7,8 +7,12 @@
   //import de from 'timeago.js/lib/lang/de';
   //register('de', de);
   import TestStats from '../../components/TestStats.vue';
+  
 </script>
 # Statistiken
+
+<!-- <OrganisationSelection /> -->
+
 <v-app class="bg-transparent">
   <TestStats />
 </v-app>
