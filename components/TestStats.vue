@@ -22,6 +22,25 @@ const MyColDefs = ref([
   { field: "count",headerName: "Anzahl", filter: "agNumberColumnFilter", type: 'rightAligned' }
 ]);
 
+// 1. Grid API Ref erstellen
+const gridApi = ref(null);
+
+// 2. Funktion beim Initialisieren des Grids
+const onGridReady = (params) => {
+  gridApi.value = params.api;
+};
+
+// 3. Export Funktion
+function onBtnExport() {
+  if (gridApi.value) {
+    gridApi.value.exportDataAsCsv({
+      fileName: `export_statistik_${steps.value}.csv`
+    });
+  } else {
+    console.error("Grid API ist noch nicht bereit.");
+  }
+}
+
 // Functions
 // get data
 async function _getData() {
@@ -187,8 +206,17 @@ watch(selectedOrganisations, async (newselectedOrganisations) => {
       style = " height: 500px; width: 100%"
       :paginationAutoPageSize="true"
       :pagination="true"
-      :autoSizeStrategy="autoSizeStrategy">
+      :autoSizeStrategy="autoSizeStrategy"
+      @grid-ready="onGridReady">
     </ag-grid-vue>
   </v-card>
+        <v-btn 
+        color="primary" 
+        prepend-icon="mdi-download" 
+        @click="onBtnExport"
+        :disabled="!tabledata.value || tabledata.value.length === 0"
+      >
+        CSV Export
+      </v-btn>
 
 </template>
