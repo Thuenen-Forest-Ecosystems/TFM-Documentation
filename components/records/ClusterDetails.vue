@@ -59,6 +59,8 @@
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
+    const url = instance.appContext.config.globalProperties.$url;
+    const apikey = instance.appContext.config.globalProperties.$apikey;
 
 
     const tfm = ref(null);
@@ -157,7 +159,9 @@
             // Since we trust the bundle format to be UMD/IIFE usually.
             
             eval(plausibilityTxt);
-            const tfmInstance = new TFM();
+            console.log('URL and APIKEY for TFM instantiation:', url, apikey);
+            console.log(url, apikey);
+            const tfmInstance = new TFM(url, apikey); // Assuming TFM is globally available after eval
             
             validatorCache.set(versionDir, {
                 schema: schemaItems,
