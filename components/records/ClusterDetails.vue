@@ -209,6 +209,9 @@
 
     function onHistorySelect(record, event) {
         selectedHistoryPerTab.value[tab.value] = record;
+        // Reset selectedVersion to null when switching records
+        // This allows VersionSelection to select the new record's default schema
+        selectedVersion.value = null;
         //sheet.value = false; // Close the bottom sheet after selection
     }
      watch(tab, (newTabValue) => {
@@ -286,11 +289,16 @@
                     <v-toolbar color="transparent">
                         <v-toolbar-title>Validation</v-toolbar-title>
                         <template v-slot:append>
-                            <VersionSelection v-model="selectedVersion" :is_loading="loadingVersion" />
+                            <VersionSelection 
+                                v-model="selectedVersion" 
+                                :is_loading="loadingVersion" 
+                                :default_schema_id="activeRecord?.schema_id_validated_by"
+                                :key="activeRecord?.id"
+                            />
                         </template>
                     </v-toolbar>
                     <v-card-text v-if="activeRecord && validate && tfm">
-                        <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                        <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" :key="activeRecord.id" />
                     </v-card-text>
                 </v-card>
 

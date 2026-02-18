@@ -1,5 +1,5 @@
 <script setup>
-    import { onMounted, ref, watch, getCurrentInstance } from 'vue';
+    import { onMounted, ref, watch, getCurrentInstance, computed } from 'vue';
     import localize from 'ajv-i18n';
 
     const instance = getCurrentInstance();
@@ -24,6 +24,70 @@
             required: true
         }
     });
+
+    // Parse saved acknowledged errors from database
+    const savedAcknowledgedErrors = computed(() => {
+        const errorMap = new Map();
+        
+        // Parse validation_errors
+        if (props.record.validation_errors) {
+            try {
+                const parsed = JSON.parse(props.record.validation_errors);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(err => {
+                        const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
+                        errorMap.set(key, err);
+                    });
+                }
+            } catch (e) {
+                console.error('Error parsing validation_errors:', e);
+            }
+        }
+        
+        // Parse plausibility_errors
+        if (props.record.plausibility_errors) {
+            try {
+                const parsed = JSON.parse(props.record.plausibility_errors);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(err => {
+                        const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
+                        errorMap.set(key, err);
+                    });
+                }
+            } catch (e) {
+                console.error('Error parsing plausibility_errors:', e);
+            }
+        }
+        
+        return errorMap;
+    });
+
+    // Normalize path: treat null and empty string as equivalent ('root')
+    function normalizePath(path) {
+        if (path == null || path === '') return 'root';
+        return path;
+    }
+
+    // Build error key using same logic as Flutter app
+    function getErrorKey(instancePath, schemaPath, message, source) {
+        return `${normalizePath(instancePath)}-${normalizePath(schemaPath)}-${message}-${source}`;
+    }
+
+    // Get saved note for a given error with fallback matching
+    function getSavedNote(instancePath, schemaPath, message, source) {
+        // Try exact match first
+        const exactKey = getErrorKey(instancePath, schemaPath, message, source);
+        let savedError = savedAcknowledgedErrors.value.get(exactKey);
+        
+        // Fallback: try with normalized 'root' path for backward compatibility
+        // This handles cases where old saves had empty instancePath but current validation has populated paths
+        if (!savedError && instancePath && instancePath !== '' && instancePath !== 'root') {
+            const fallbackKey = getErrorKey('', schemaPath, message, source);
+            savedError = savedAcknowledgedErrors.value.get(fallbackKey);
+        }
+        
+        return savedError?.note || null;
+    }
     /*async function validationOnline(){
         console.log(props.record)
         const { data, error } = await supabase.functions.invoke('validation', {
@@ -49,8 +113,6 @@
             return;
         }
 
-        console.log('🔍 Starting validation for record:', props.record.id || 'unknown');
-
         validationErrors.value = [];
         plausibilityErrors.value = [];
 
@@ -59,14 +121,8 @@
         validationErrors.value = props.validate.errors ? [...props.validate.errors] : [];
         localize.de(validationErrors.value);
 
-        console.log('✓ Schema validation complete:', {
-            isValid: isValid.value,
-            errorCount: validationErrors.value.length
-        });
 
         try {
-            console.log('🔄 Running plausibility checks...');
-            console.log('TFM validationSchema exists:', !!props.tfm.validationSchema);
             
             const result = await props.tfm.runPlots(
                 [props.record.properties],  // Must be an array
@@ -77,12 +133,6 @@
             // Ensure result is always an array (handle null/undefined returns)
             plausibilityErrors.value = Array.isArray(result) ? result : [];
             
-            console.log('✓ Plausibility checks complete:', {
-                resultType: typeof result,
-                isArray: Array.isArray(result),
-                errorCount: plausibilityErrors.value.length,
-                errors: plausibilityErrors.value.slice(0, 3) // Show first 3 errors
-            });
         } catch (error) {
             console.error('❌ Error during plausibility validation:', error);
             console.log('Record properties:', props.record.properties);
@@ -92,11 +142,6 @@
         } finally {
             isValidating.value = false;
         }
-        console.log('🏁 Validation finished:', {
-            schemaValid: isValid.value,
-            schemaErrors: validationErrors.value.length,
-            plausibilityErrors: plausibilityErrors.value.length
-        });
     }
 
     /*watch([props.record, props.validate, props.tfm], (newRecord, newValidate, newTfm) => {
@@ -104,13 +149,6 @@
     });*/
 
     watch(() => [props.record, props.validate, props.tfm], (newVals, oldVals) => {
-            console.log('📦 Validation props changed:', {
-                recordChanged: newVals[0] !== oldVals?.[0],
-                validateChanged: newVals[1] !== oldVals?.[1],
-                tfmChanged: newVals[2] !== oldVals?.[2],
-                hasValidate: !!newVals[1],
-                hasTfm: !!newVals[2]
-            });
             validation(); // Call your validation logic or any other function
         },
         { deep: true } // Enables deep watching for nested properties
@@ -127,10 +165,17 @@
         <v-expansion-panel :disabled="validationErrors.length == 0">
             <v-expansion-panel-title>Fehler Validierung ({{ validationErrors.length }})</v-expansion-panel-title>
             <v-expansion-panel-text>
-                <v-list lines="two">
+                <v-list lines="three">
                     <v-list-item v-for="(error, index) in validationErrors" :key="index">
                         <v-list-item-title class="text-wrap">{{ error.message }}</v-list-item-title>
-                        <v-list-item-subtitle>Schema Path: {{ error.schemaPath }}</v-list-item-subtitle>
+                        <v-list-item-subtitle>
+                            <div>Schema Path: {{ error.schemaPath }}</div>
+                            <div v-if="getSavedNote(error.instancePath, error.schemaPath, error.message, 'ajv')" class="mt-2">
+                                <v-chip size="small" color="info" prepend-icon="mdi-note-text">
+                                    Notiz: {{ getSavedNote(error.instancePath, error.schemaPath, error.message, 'ajv') }}
+                                </v-chip>
+                            </div>
+                        </v-list-item-subtitle>
                         <template v-slot:append>
                             <v-btn
                                 color="grey-lighten-1"
@@ -145,7 +190,7 @@
         <v-expansion-panel :disabled="!plausibilityErrors || plausibilityErrors.length === 0">
             <v-expansion-panel-title>Fehler Plausibilität ({{ plausibilityErrors?.length || 0 }})</v-expansion-panel-title>
             <v-expansion-panel-text>
-                <v-list lines="two" v-if="plausibilityErrors && plausibilityErrors.length > 0">
+                <v-list lines="three" v-if="plausibilityErrors && plausibilityErrors.length > 0">
                     <v-list-item v-for="(error, index) in plausibilityErrors" :key="index">
                         <template v-slot:prepend>
                             <v-tooltip :text="error.error.type === 'error' ? `Fehler: ${error.error.code}` : `Warnung: ${error.error.code}`">
@@ -155,7 +200,14 @@
                             </v-tooltip>
                         </template>
                         <v-list-item-title class="text-wrap">{{ error.error.note }}</v-list-item-title>
-                        <v-list-item-subtitle>{{ error.error.text }}</v-list-item-subtitle>
+                        <v-list-item-subtitle>
+                            <div>{{ error.error.text }}</div>
+                            <div v-if="getSavedNote(error.instancePath, null, error.error.text, 'tfm')" class="mt-2">
+                                <v-chip size="small" color="info" prepend-icon="mdi-note-text">
+                                    Notiz: {{ getSavedNote(error.instancePath, null, error.error.text, 'tfm') }}
+                                </v-chip>
+                            </div>
+                        </v-list-item-subtitle>
                         <template v-slot:append>
                             <v-btn
                                 color="grey-lighten-1"
