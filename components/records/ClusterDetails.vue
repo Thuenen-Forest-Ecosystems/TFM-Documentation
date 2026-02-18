@@ -51,9 +51,10 @@
         }
     });
     
-    watch(selectedVersion, (newVersion) => {
+    watch(selectedVersion, (newVersion, oldVersion) => {
+        console.log('Version changed from', oldVersion, 'to', newVersion);
         loadValidationResources();
-    });
+    }, { immediate: true });
 
     const sheet = shallowRef(false)
 
@@ -113,11 +114,13 @@
         }
 
         if (validatorCache.has(versionDir)) {
-            console.log('Use cached validator', versionDir);
+            console.log('✅ Using cached validator for:', versionDir);
             const cached = validatorCache.get(versionDir);
             schema.value = cached.schema;
             validate.value = cached.validate;
             tfm.value = cached.tfm;
+            console.log('Restored from cache - schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value);
+            loadingVersion.value = false;
             return;
         }
 
@@ -142,10 +145,17 @@
             const schemaJson = JSON.parse(schemaTxt);
             const schemaItems = schemaJson.properties?.plot?.items || null;
 
+            console.log('📋 Schema loaded:', {
+                hasPlotSchema: !!schemaItems,
+                schemaKeys: schemaItems ? Object.keys(schemaItems).slice(0, 5) : [],
+                fullSchemaKeys: Object.keys(schemaJson)
+            });
+
             // allow UI to update
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const compiledValidate = ajv.compile(schemaItems);
+            console.log('✓ AJV validator compiled for:', versionDir);
 
             // Evaluate Plausibility bundle
             // NOTE: eval executes in the current scope. We rely on the bundle assigning to window.TFM or similar if it's UMD.
@@ -159,10 +169,10 @@
             // Since we trust the bundle format to be UMD/IIFE usually.
             
             eval(plausibilityTxt);
-            console.log('URL and APIKEY for TFM instantiation:', url, apikey);
-            console.log(url, apikey);
-            const tfmInstance = new TFM(url, apikey); // Assuming TFM is globally available after eval
             
+            // TODO: Fetch lookup tables (tableData) if needed by TFM
+            // For now, pass empty object as third parameter
+            const tfmInstance = new TFM(url+'/', apikey);
             validatorCache.set(versionDir, {
                 schema: schemaItems,
                 validate: compiledValidate,
@@ -174,7 +184,7 @@
             tfm.value = tfmInstance;
 
             loadingVersion.value = false;
-            console.log('Loaded schema and compiled validator + TFM');
+            console.log('✅ All resources loaded for', versionDir, '- schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value, 'tfm.validationSchema:', !!tfm.value?.validationSchema);
 
         } catch (error) {
             loadingVersion.value = false;

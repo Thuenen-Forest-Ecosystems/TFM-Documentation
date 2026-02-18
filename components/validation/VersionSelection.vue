@@ -65,6 +65,7 @@
         }
 
         if (versions.value.length > 0 && !props.modelValue) {
+            console.log('📌 VersionSelection: Emitting initial version:', versions.value[0]);
             emit('update:modelValue', versions.value[0]);
         }
     });
@@ -81,6 +82,7 @@
             const fullObject = versions.value.find(v => v.id === value);
             
             if (fullObject && (!props.modelValue || props.modelValue.id !== fullObject.id)) {
+                console.log('🔄 VersionSelection: User selected new version:', fullObject);
                 emit('update:modelValue', fullObject);
             }
         }
