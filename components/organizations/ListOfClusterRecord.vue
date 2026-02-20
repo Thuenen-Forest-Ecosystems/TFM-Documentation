@@ -269,7 +269,9 @@
                 valueGetter: (params) => params.data?.state_by_user,
                 cellRenderer: (params) => {
                     const workflow = workflows.find(wf => wf.id === params.value);
-                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span style="width: 15px; height: 15px; border-radius:100%; background-color: ${workflow?.searchText || 'transparent'};" title="${workflow?.tooltip || ''}"></span></div>`;
+                    const color = workflow?.searchText || 'transparent';
+                    const icon = color === 'red' ? 'mdi-close-octagon' : color === 'yellow' ? 'mdi-alert' : color === 'green' ? 'mdi-check' : '';
+                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${workflow?.tooltip || ''}"></span></div>`;
                 }
             },
             /*{ 

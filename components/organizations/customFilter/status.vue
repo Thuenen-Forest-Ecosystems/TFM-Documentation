@@ -105,11 +105,10 @@
                     class="px-1"
                 >
                     <template v-slot:prepend>
-                        <v-avatar 
-                            size="20" 
+                        <v-icon 
                             :color="option.color"
                             class="me-3"
-                        ></v-avatar>
+                        >{{ option.color === 'red' ? 'mdi-close-octagon' : option.color === 'yellow' ? 'mdi-alert' : 'mdi-check' }}</v-icon>
                     </template>
                     
                     <!--<v-list-item-title>{{ option.label }}</v-list-item-title>-->
