@@ -1,18 +1,14 @@
 <script setup>
-  // Imports 
-  //import { ref, onMounted, getCurrentInstance, computed, watch } from 'vue';
-  //import { createClient } from '@supabase/supabase-js';
-  //import { withBase } from 'vitepress';
-  //import { format, render, cancel, register } from 'timeago.js';
-  //import de from 'timeago.js/lib/lang/de';
-  //register('de', de);
-  import TestStats from '../../components/TestStats.vue';
-  
+    //Imports 
+    import { ref, onMounted, getCurrentInstance, computed, watch } from 'vue';
+    import StatsSelect from '../../components/statistics/StatsSelect.vue';
 </script>
+
 # Statistiken
 
-<!-- <OrganisationSelection /> -->
+Hier werden Statistiken zur Auswahl angezeigt
 
 <v-app class="bg-transparent">
-  <TestStats />
+  <StatsSelect />
 </v-app>
+

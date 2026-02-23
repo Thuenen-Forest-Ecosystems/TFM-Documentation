@@ -10,6 +10,8 @@ import { ref, onMounted, getCurrentInstance, computed, watch, inject, onUnmounte
 import { AllCommunityModule, ModuleRegistry, colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 import { AgGridVue } from "ag-grid-vue3";
 import * as echarts from 'echarts';
+import { useData } from 'vitepress';
+const { isDark } = useData();
 
 // Register AG Grid Modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -19,7 +21,13 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const darkTheme = themeQuartz.withPart(colorSchemeDark);
 const lightTheme = themeQuartz.withPart(colorSchemeLight);
 const globalIsDark = inject('globalIsDark'); // Injected from VitePress layout
-const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
+//const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
+// Nutze computed, damit sich der Wert bei Änderung von globalIsDark aktualisiert
+const currentTheme = computed(() => {
+  return isDark?.value 
+    ? themeQuartz.withPart(colorSchemeDark) 
+    : themeQuartz.withPart(colorSchemeLight);
+});
 
 /** @section Reactive State */
 const instance = getCurrentInstance();
@@ -30,12 +38,6 @@ const tabledata = ref([]);               // Aggregated data for Grid & Chart
 const steps = ref('Monat');              // Time step: 'Tag' | 'Woche' | 'Monat'
 const organisationsList = ref([]);       // Available orgs for the user
 const selectedOrganisations = ref([]);   // User selection (UUIDs)
-const availableStats = ref([              // Placeholder for different statistical types
-  { label: '1. Statistik', value: '1' },
-  { label: '2. Statistik', value: '2' },
-  { label: '3. Statistik', value: '3' }
-]);
-const selectedStat = ref([]);            // Placeholder for statistical sub-selection
 
 /** @section Chart & Grid References */
 const chartContainer = ref(null);        // DOM ref for ECharts
@@ -95,7 +97,34 @@ const updateChart = async () => {
       data: data.map(d => d.count),
       type: 'bar',
       itemStyle: { color: '#1976D2' }
-    }]
+    }],
+
+toolbox: {
+          show: true,
+          feature: {
+            saveAsImage: {
+              show: true, // Enable export to image functionality
+              title: 'Save as Image', // Customize the tooltip title
+              name: `CI-Statistik_GruppeX_StatY_nach${steps.value}_${new Date().toISOString().slice(0,10)}`,
+              backgroundColor: 'White', // Set background color for the exported image
+              pixelRatio: 2
+            }
+          },
+          right: '30px',
+          top: '10px'
+        },
+        // Add export component
+        export: {
+          show: true,
+          title: 'Export', // Customize the tooltip title
+          name: 'chart',
+          pixelRatio: 2,
+          textStyle: {
+            fontSize: 14,
+            color: '#primary' // Use primary color for export text
+          }
+        },
+
   };
 
   myChart.setOption(option, true);
@@ -173,6 +202,11 @@ async function _getOrganizations(userId) {
     .select("*, organizations(*)")
     .eq('user_id', userId);
 
+/*   const { data, error } =await supabase
+    .from('users_permissions')
+    .select("*, organizations(*)")
+    .eq('user_id', "afb591e9-30fa-4442-87da-499b48d91991"); // Faked user ID for testing
+ */
   if (error) {
     console.error("Org Fetch Error:", error);
     return;
@@ -195,6 +229,7 @@ onMounted(async () => {
     await _getData();
     await _accRecords(steps.value);
     window.addEventListener('resize', () => myChart?.resize());
+    console.log("instance", instance);
   }
 });
 
@@ -205,6 +240,11 @@ onUnmounted(() => {
 
 // --- WATCHERS ---
 
+// Teste, ob dieser Wert reagiert:
+watch(isDark, (val) => {
+  console.log('VitePress Dark Mode ist jetzt:', val)
+}, { immediate: true })
+
 /** @description Watch for time interval changes */
 watch(steps, async (val) => {
   await _accRecords(val);
@@ -212,6 +252,7 @@ watch(steps, async (val) => {
 
 /** @description Watch for organization selection changes to refetch data */
 watch(selectedOrganisations, async () => {
+  console.log("Selected Orgs:", selectedOrganisations.value);
   await _getData();
   await _accRecords(steps.value);
 });
@@ -226,26 +267,15 @@ const onGridReady = (params) => { gridApi.value = params.api; };
 
 /** @description Export to CSV Utility */
 function onBtnExport() {
-  gridApi.value?.exportDataAsCsv({ fileName: `export_${steps.value}.csv` });
+  gridApi.value?.exportDataAsCsv({ fileName: `CI-Statistik_GruppeX_StatY_nach${steps.value}_${new Date().toISOString().slice(0,10)}.csv` });
 }
+
+watch(globalIsDark, (val) => console.log('Dark Mode ist:', val))
 
 </script>
 
 
 <template>
-  <!-- SECTION: Statistics Selection (Placeholder) -->
-  <v-card>
-    <!-- Descriptive title for the statistical type selection -->
-    <v-card-title>Statistik auswählen (noch ohne Funktion):</v-card-title>
-    <!-- Select dropdown to choose different types of statistics; currently linked to availableStats -->
-    <v-select
-      v-model="selectedStat"
-      :items="availableStats"
-      item-title="label"
-      item-value="value"
-    />
-  </v-card>
-
   <!-- SECTION: Organization Selection -->
   <v-card>
     <!-- Selection for organizations with a note about the faked user ID for testing -->
@@ -315,6 +345,7 @@ function onBtnExport() {
       :paginationAutoPageSize="true"
       :pagination="true"
       :autoSizeStrategy="autoSizeStrategy"
+      :key="isDark"
       :theme="currentTheme"
       @grid-ready="onGridReady">
     </ag-grid-vue>
