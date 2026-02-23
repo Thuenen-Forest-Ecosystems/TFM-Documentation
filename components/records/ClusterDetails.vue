@@ -51,14 +51,17 @@
         }
     });
     
-    watch(selectedVersion, (newVersion) => {
+    watch(selectedVersion, (newVersion, oldVersion) => {
+        console.log('Version changed from', oldVersion, 'to', newVersion);
         loadValidationResources();
-    });
+    }, { immediate: true });
 
     const sheet = shallowRef(false)
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
+    const url = instance.appContext.config.globalProperties.$url;
+    const apikey = instance.appContext.config.globalProperties.$apikey;
 
 
     const tfm = ref(null);
@@ -111,11 +114,13 @@
         }
 
         if (validatorCache.has(versionDir)) {
-            console.log('Use cached validator', versionDir);
+            console.log('✅ Using cached validator for:', versionDir);
             const cached = validatorCache.get(versionDir);
             schema.value = cached.schema;
             validate.value = cached.validate;
             tfm.value = cached.tfm;
+            console.log('Restored from cache - schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value);
+            loadingVersion.value = false;
             return;
         }
 
@@ -140,10 +145,17 @@
             const schemaJson = JSON.parse(schemaTxt);
             const schemaItems = schemaJson.properties?.plot?.items || null;
 
+            console.log('📋 Schema loaded:', {
+                hasPlotSchema: !!schemaItems,
+                schemaKeys: schemaItems ? Object.keys(schemaItems).slice(0, 5) : [],
+                fullSchemaKeys: Object.keys(schemaJson)
+            });
+
             // allow UI to update
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const compiledValidate = ajv.compile(schemaItems);
+            console.log('✓ AJV validator compiled for:', versionDir);
 
             // Evaluate Plausibility bundle
             // NOTE: eval executes in the current scope. We rely on the bundle assigning to window.TFM or similar if it's UMD.
@@ -157,8 +169,10 @@
             // Since we trust the bundle format to be UMD/IIFE usually.
             
             eval(plausibilityTxt);
-            const tfmInstance = new TFM();
             
+            // TODO: Fetch lookup tables (tableData) if needed by TFM
+            // For now, pass empty object as third parameter
+            const tfmInstance = new TFM(url+'/', apikey);
             validatorCache.set(versionDir, {
                 schema: schemaItems,
                 validate: compiledValidate,
@@ -170,7 +184,7 @@
             tfm.value = tfmInstance;
 
             loadingVersion.value = false;
-            console.log('Loaded schema and compiled validator + TFM');
+            console.log('✅ All resources loaded for', versionDir, '- schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value, 'tfm.validationSchema:', !!tfm.value?.validationSchema);
 
         } catch (error) {
             loadingVersion.value = false;
@@ -195,6 +209,9 @@
 
     function onHistorySelect(record, event) {
         selectedHistoryPerTab.value[tab.value] = record;
+        // Reset selectedVersion to null when switching records
+        // This allows VersionSelection to select the new record's default schema
+        selectedVersion.value = null;
         //sheet.value = false; // Close the bottom sheet after selection
     }
      watch(tab, (newTabValue) => {
@@ -272,11 +289,16 @@
                     <v-toolbar color="transparent">
                         <v-toolbar-title>Validation</v-toolbar-title>
                         <template v-slot:append>
-                            <VersionSelection v-model="selectedVersion" :is_loading="loadingVersion" />
+                            <VersionSelection 
+                                v-model="selectedVersion" 
+                                :is_loading="loadingVersion" 
+                                :default_schema_id="activeRecord?.schema_id_validated_by"
+                                :key="activeRecord?.id"
+                            />
                         </template>
                     </v-toolbar>
                     <v-card-text v-if="activeRecord && validate && tfm">
-                        <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" />
+                        <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" :key="activeRecord.id" />
                     </v-card-text>
                 </v-card>
 
