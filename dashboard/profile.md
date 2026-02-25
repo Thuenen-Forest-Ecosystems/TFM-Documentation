@@ -143,8 +143,8 @@
         </v-list-item>
     </v-list>
 </v-card>
-
-<div v-if="isAdminOfAtLeastOneOrganization()">
+<!--  v-if="isAdminOfAtLeastOneOrganization()" -->
+<div>
     <h2>Inventuren</h2>
     <v-card variant="tonal" title="Kohlenstoffinventur 2027">
         <v-list>

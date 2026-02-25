@@ -33,6 +33,7 @@
     "ajv-i18n": "^4.2.0",
     "echarts": "^6.0.0",
     "handsontable": "^16.0.1",
+    "jszip": "^3.10.1",
     "maplibre-gl": "^5.7.1",
     "maplibre-gl-draw": "^1.6.9",
     "pinia": "^3.0.3",

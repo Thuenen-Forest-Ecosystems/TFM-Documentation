@@ -12,6 +12,7 @@
     import HistoryHorizonatal from './HistoryHorizonatal.vue';
     import DetailAdministration from './DetailAdministration.vue';
     import ResponsibleByRecord from './ResponsibleByRecord.vue';
+    import RecordMessages from './RecordMessages.vue';
 
     const ajv = new Ajv({
         allErrors: true,
@@ -57,6 +58,7 @@
     }, { immediate: true });
 
     const sheet = shallowRef(false)
+    const messagesDialog = ref(false)
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -78,6 +80,26 @@
 
     // Create a computed property for the currently active record
     const activeRecord = computed(() => selectedHistoryPerTab.value[tab.value]);
+
+    // Check if the active record is a historical snapshot (not the current record)
+    const isHistoricalRecord = computed(() => {
+        if (!activeRecord.value) return false;
+        return !records.value.some(r => r.id === activeRecord.value.id);
+    });
+
+    function formatDate(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function goToCurrentRecord() {
+        const currentRecord = records.value.find(r => r.id === tab.value);
+        if (currentRecord) {
+            onHistorySelect(currentRecord, null);
+        }
+    }
 
     async function fetchRecordsByCluster(_clusterId) {
         const { data, error } = await supabase
@@ -208,11 +230,16 @@
     
 
     function onHistorySelect(record, event) {
+        const currentRecord = activeRecord.value;
         selectedHistoryPerTab.value[tab.value] = record;
-        // Reset selectedVersion to null when switching records
-        // This allows VersionSelection to select the new record's default schema
-        selectedVersion.value = null;
-        //sheet.value = false; // Close the bottom sheet after selection
+        // Only reset selectedVersion when switching to a genuinely different record.
+        // HistoryHorizonatal re-emits the same record after background enrichment
+        // (adding troopData, updatedByProfile, etc.), which must NOT reset the version
+        // the user already selected or that was just loaded.
+        if (!currentRecord || currentRecord.id !== record.id) {
+            selectedVersion.value = null;
+            sheet.value = false; // Close the dialog when switching records
+        }
     }
      watch(tab, (newTabValue) => {
         const selectedRecord = records.value.find(r => r.id === newTabValue);
@@ -239,29 +266,42 @@
             </div>
         </v-card>
         
-        <div v-if="activeRecord" :key="activeRecord.id">
+        <div v-if="activeRecord" :key="activeRecord.id" :style="isHistoricalRecord ? 'padding-bottom: 80px;' : ''">
                 
-                <!-- History -->
-                <v-bottom-sheet v-model="sheet" :fullscreen="false" >
-                    <v-toolbar flat density="compact">
-                        <v-toolbar-title>History</v-toolbar-title>
-                        <template v-slot:append>
-                            <v-btn text @click="sheet = false">Close</v-btn>
-                        </template>
-                    </v-toolbar>
+                <!-- History Dialog -->
+                <v-dialog v-model="sheet" max-width="900" scrollable eager>
                     <v-card>
-                        <div class="ma-0 pa-0 overflow-x-auto">
-                            <HistoryHorizonatal :plot_id="activeRecord.plot_id" @select:record="onHistorySelect" :selected="activeRecord" />
-                        </div>
+                        <v-toolbar flat density="compact">
+                            <v-toolbar-title>History</v-toolbar-title>
+                            <template v-slot:append>
+                                <v-btn icon="mdi-close" variant="text" @click="sheet = false" />
+                            </template>
+                        </v-toolbar>
+                        <v-card-text class="pa-0">
+                            <HistoryHorizonatal :plot_id="activeRecord.plot_id" @select:record="onHistorySelect" @update:record="onUpdateRecord" :selected="activeRecord" />
+                        </v-card-text>
                     </v-card>
-                </v-bottom-sheet>
-                <v-fab
-                    icon="mdi-history"
-                    small
-                    class="ma-4 position-fixed bottom-0 right-0 z-index-1000"
-                    style="z-index:1005;"
-                    @click="sheet = !sheet"
-                ></v-fab>
+                </v-dialog>
+
+                <!-- Record Messages-->
+                <!-- Record Messages Dialog -->
+                <RecordMessages v-model="messagesDialog" :recordsId="activeRecord.id" />
+
+                 <div class="ma-4 position-fixed d-flex flex-column ga-2" style="bottom: 0; right: 0; z-index: 1005;">
+                    <v-fab
+                        icon="mdi-message"
+                        small
+                        @click="messagesDialog = !messagesDialog"
+                    ></v-fab>
+
+                    <!-- History FAB (only when viewing current record) -->
+                    <v-fab
+                        v-if="!isHistoricalRecord"
+                        icon="mdi-history"
+                        small
+                        @click="sheet = !sheet"
+                    ></v-fab>
+                 </div>
                 
                 <RecordToDo
                     :record="activeRecord"
@@ -293,7 +333,7 @@
                                 v-model="selectedVersion" 
                                 :is_loading="loadingVersion" 
                                 :default_schema_id="activeRecord?.schema_id_validated_by"
-                                :key="activeRecord?.id"
+                                :key="activeRecord?.id + '_' + activeRecord?.sortByDate"
                             />
                         </template>
                     </v-toolbar>
@@ -325,4 +365,5 @@
         left: 50%;
         transform: translate(-50%, -50%);
     }
+
 </style>
