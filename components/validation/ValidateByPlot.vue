@@ -193,11 +193,6 @@
                             </div>
                         </v-list-item-subtitle>
                         <template v-slot:append>
-                            <v-btn
-                                color="grey-lighten-1"
-                                icon="mdi-information"
-                                variant="text"
-                            ></v-btn>
                         </template>
                     </v-list-item>
                 </v-list>
@@ -225,11 +220,6 @@
                             </div>
                         </v-list-item-subtitle>
                         <template v-slot:append>
-                            <v-btn
-                                color="grey-lighten-1"
-                                icon="mdi-information"
-                                variant="text"
-                            ></v-btn>
                         </template>
                     </v-list-item>
                 </v-list>
