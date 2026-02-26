@@ -28,35 +28,38 @@
     // Parse saved acknowledged errors from database
     const savedAcknowledgedErrors = computed(() => {
         const errorMap = new Map();
+
+        function parseField(field) {
+            if (!field) return null;
+            if (Array.isArray(field)) return field;
+            if (typeof field === 'string') {
+                try {
+                    const parsed = JSON.parse(field);
+                    return Array.isArray(parsed) ? parsed : null;
+                } catch (e) {
+                    console.error('Error parsing JSON field:', e);
+                    return null;
+                }
+            }
+            return null;
+        }
         
         // Parse validation_errors
-        if (props.record.validation_errors) {
-            try {
-                const parsed = JSON.parse(props.record.validation_errors);
-                if (Array.isArray(parsed)) {
-                    parsed.forEach(err => {
-                        const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
-                        errorMap.set(key, err);
-                    });
-                }
-            } catch (e) {
-                console.error('Error parsing validation_errors:', e);
-            }
+        const validationErrs = parseField(props.record.validation_errors);
+        if (validationErrs) {
+            validationErrs.forEach(err => {
+                const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
+                errorMap.set(key, err);
+            });
         }
         
         // Parse plausibility_errors
-        if (props.record.plausibility_errors) {
-            try {
-                const parsed = JSON.parse(props.record.plausibility_errors);
-                if (Array.isArray(parsed)) {
-                    parsed.forEach(err => {
-                        const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
-                        errorMap.set(key, err);
-                    });
-                }
-            } catch (e) {
-                console.error('Error parsing plausibility_errors:', e);
-            }
+        const plausibilityErrs = parseField(props.record.plausibility_errors);
+        if (plausibilityErrs) {
+            plausibilityErrs.forEach(err => {
+                const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
+                errorMap.set(key, err);
+            });
         }
         
         return errorMap;
@@ -84,6 +87,17 @@
         if (!savedError && instancePath && instancePath !== '' && instancePath !== 'root') {
             const fallbackKey = getErrorKey('', schemaPath, message, source);
             savedError = savedAcknowledgedErrors.value.get(fallbackKey);
+        }
+
+        // Fallback: match by message + source only, ignoring instancePath/schemaPath
+        // This handles plausibility errors where the live result has no instancePath
+        if (!savedError) {
+            for (const err of savedAcknowledgedErrors.value.values()) {
+                if (err.message === message && err.source === source) {
+                    savedError = err;
+                    break;
+                }
+            }
         }
         
         return savedError?.note || null;
@@ -132,6 +146,8 @@
             
             // Ensure result is always an array (handle null/undefined returns)
             plausibilityErrors.value = Array.isArray(result) ? result : [];
+
+            console.log(plausibilityErrors.value);
             
         } catch (error) {
             console.error('❌ Error during plausibility validation:', error);
