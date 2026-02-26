@@ -47,7 +47,9 @@ export default defineConfig({
             { text: 'By Location', link: '/api/inventory_archive' },
             { text: 'Aggregation', link: '/api/inventory_aggregation' },
             { text: 'Loop for bigger datasets', link: '/api/inventory_loop' },
-            { text: 'Map application example', link: '/api/map_example' }
+            { text: 'Map application example', link: '/api/map_example' },      
+            { text: 'Map application example 2', link: '/api/map_example2' }
+
 
           ]
         },
