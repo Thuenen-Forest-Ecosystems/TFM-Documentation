@@ -1,5 +1,5 @@
 <script setup>
-    import { onMounted, ref, watch, getCurrentInstance } from 'vue';
+    import { onMounted, ref, watch, computed, getCurrentInstance } from 'vue';
     import { getOrganizationById, getTroopById, workflowFromRecord } from '../Utils';
 
     const instance = getCurrentInstance();
@@ -24,11 +24,46 @@
 
     const loading = ref(false);
 
-    const emit = defineEmits(['select:record']);
+    const emit = defineEmits(['select:record', 'update:record']);
+
+    const restoreItem = ref(null);
+    const showConfirmDialog = ref(false);
+    const restoring = ref(false);
+    const restoreError = ref(null);
+
+    // Whether the currently active item is a historical snapshot
+    const isHistorical = computed(() => {
+        return activeItem.value && latestPlot.value && activeItem.value !== latestPlot.value;
+    });
+
+    function goToLatest() {
+        if (latestPlot.value) {
+            emitActiveItem(latestPlot.value);
+        }
+    }
 
 
     function sortPlotData() {
         plotData.value.sort((a, b) => a.sortByDate - b.sortByDate);
+    }
+
+    const userProfileCache = new Map();
+
+    async function getUserProfile(userId) {
+        if (!userId) return null;
+        if (userProfileCache.has(userId)) return userProfileCache.get(userId);
+        const { data, error } = await supabase
+            .from('users_profile')
+            .select('id, email, user_name')
+            .eq('id', userId)
+            .single();
+        if (error) {
+            console.error('Error fetching user profile:', error);
+            userProfileCache.set(userId, null);
+            return null;
+        }
+        userProfileCache.set(userId, data);
+        return data;
     }
 
     const addAsyncDataToItems = async (items) => {
@@ -38,16 +73,16 @@
             }
 
             if (item.responsible_provider) {
-                // If troopData is still null but responsible_troop exists, fetch it
                 item.providerData = await getOrganizationById(supabase, item.responsible_provider);
             }
             if (item.responsible_state) {
-                // If troopData is still null but responsible_troop exists, fetch it
                 item.stateData = await getOrganizationById(supabase, item.responsible_state);
             }
             if (item.responsible_administration) {
-                // If troopData is still null but responsible_troop exists, fetch it
                 item.administrationData = await getOrganizationById(supabase, item.responsible_administration);
+            }
+            if (item.updated_by) {
+                item.updatedByProfile = await getUserProfile(item.updated_by);
             }
 
             return item;
@@ -122,6 +157,12 @@
         loading.value = false;
     });
 
+    function formatDate(date) {
+        const d = new Date(date);
+        return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+
     function isDifferent(item1, item2) {
         return JSON.stringify(item1) !== JSON.stringify(item2);
     }
@@ -132,133 +173,215 @@
         emit('select:record', item);
     }
 
+    function confirmRestore(item) {
+        restoreItem.value = item;
+        restoreError.value = null;
+        showConfirmDialog.value = true;
+    }
+
+    async function executeRestore() {
+        if (!restoreItem.value || !latestPlot.value) return;
+
+        restoring.value = true;
+        restoreError.value = null;
+
+        const item = restoreItem.value;
+        const { data, error } = await supabase
+            .from('records')
+            .update({
+                properties: item.properties,
+                completed_at_troop: item.completed_at_troop,
+                completed_at_state: item.completed_at_state,
+                completed_at_administration: item.completed_at_administration,
+                responsible_administration: item.responsible_administration,
+                responsible_state: item.responsible_state,
+                responsible_provider: item.responsible_provider,
+                responsible_troop: item.responsible_troop,
+            })
+            .eq('plot_id', latestPlot.value.plot_id)
+            .select()
+            .single();
+
+        restoring.value = false;
+
+        if (error) {
+            console.error('Error restoring record:', error);
+            restoreError.value = error.message || 'Fehler beim Zurücksetzen';
+            return;
+        }
+
+        showConfirmDialog.value = false;
+
+        // Refresh the history list
+        plotData.value = [];
+        latestPlot.value = null;
+        loading.value = true;
+        await getLatest(props.plot_id);
+        loading.value = false;
+
+        // Emit the updated record to parent
+        emit('update:record', data);
+    }
+
 </script>
 
 
 
 <template>
-    <v-timeline
-        direction="horizontal" line-inset="12"
-        v-bind="$attrs"
-        align="center" density="compact" class="ma-2">
-        <v-timeline-item
-            size="small"
+    <v-list v-bind="$attrs" class="pa-0">
+        <v-progress-linear v-if="loading" indeterminate color="primary" />
+
+        <v-list-item
             v-for="(item, index) in plotData"
             :key="index"
-            :dot-color="item.is_valid ? 'primary' : 'red'"
+            :active="activeItem === item"
             @click="emitActiveItem(item)"
-            class="clickable-timeline-item"
-            :fill-dot="activeItem === item"
+            class="history-list-item"
+            :border="true"
         >
-          
-            <v-menu open-on-hover>
-                <template v-slot:activator="{ props }">
-                    <div v-bind="props" >
-                        <p class="mb-2 text-center" style="white-space: nowrap;">
-                            {{ new Date(item.sortByDate).toLocaleDateString() }} {{ new Date(item.sortByDate).toLocaleTimeString() }}
-                        </p>
-                        <!--<strong v-else>Aktueller Status</strong>-->
+            <template v-slot:prepend>
+                <v-icon
+                    :icon="item === latestPlot ? 'mdi-star' : 'mdi-history'"
+                    size="small"
+                    class="me-2"
+                />
+            </template>
 
-                        <v-chip class="mb-2 text-caption">
-                            {{ workflowFromRecord(item).title }}
-                        </v-chip>
-                    </div>
-                </template>
+            <!-- 25.02.2026 17:33 -->
 
-                <v-card>
-                    <v-card variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_troop, plotData[index - 1]?.responsible_troop) ||  isDifferent(item.completed_at_troop, plotData[index - 1]?.completed_at_troop)">
-                    <template v-slot:title>
-                        {{item.troopData ? (item.troopData?.name ? item.troopData.name : 'no name') : (item.responsible_troop ? item.responsible_troop : '-') }}
-                    </template>
-                    <template v-slot:subtitle >
-                        {{ item.troopData ? (item.troopData.is_control_troop ? 'Kontrolltrupp' : `Aufnahmetrupp`) : 'Trupp' }}
-                    </template>
+            <v-list-item-title class="d-flex align-center ga-2 flex-wrap">
+                <span>{{ formatDate(item.sortByDate) }}</span>
+                <v-chip size="x-small" variant="outlined" v-if="item === latestPlot">aktuell</v-chip>
+                <v-chip v-if="item.updatedByProfile" size="x-small" variant="tonal" prepend-icon="mdi-pencil">
+                    {{ item.updatedByProfile.user_name || item.updatedByProfile.email }}
+                </v-chip>
+                <v-chip v-else-if="item.updated_by" size="x-small" variant="tonal" prepend-icon="mdi-pencil" class="text-disabled">
+                    {{ item.updated_by.substring(0, 8) }}…
+                </v-chip>
+            </v-list-item-title>
 
-                    <v-card-text>
-                        <v-chip :color="item.completed_at_troop ? 'green' : 'yellow'">
-                            <span v-if="item.completed_at_troop">
-                                {{ new Date(item.completed_at_troop).toLocaleDateString() }}
-                                {{ new Date(item.completed_at_troop).toLocaleTimeString() }}
-                            </span>
-                            <span v-else>
-                                offen
-                            </span>
-                        </v-chip>
-                    </v-card-text>
-                    <!--<template v-slot:append>
-                        <v-chip v-if="item.troopData">
-                            {{ item.troopData.is_control_troop ? 'KT' : `AT` }}
-                        </v-chip>
-                    </template>-->
-                </v-card>
-                
+            <v-list-item-subtitle class="d-flex align-center ga-2 flex-wrap mt-1">
+                <v-chip size="x-small" label>
+                    {{ workflowFromRecord(item).title }}
+                </v-chip>
+                <span v-if="item.troopData" class="text-caption">
+                    {{ item.troopData.name || 'no name' }}
+                    ({{ item.troopData.is_control_troop ? 'KT' : 'AT' }})
+                </span>
+                <span v-if="item.providerData" class="text-caption">
+                    {{ item.providerData.name }}
+                </span>
+                <span v-if="item.stateData" class="text-caption">
+                    {{ item.stateData.name }}
+                </span>
+            </v-list-item-subtitle>
 
-                <v-card title="Dienstleister" variant="tonal" class="mb-1" v-if="!plotData[index - 1] || isDifferent(item.responsible_provider, plotData[index - 1]?.responsible_provider)">
-                    <template v-slot:title>
-                        {{ item.providerData ? item.providerData.name : (item.responsible_provider ? item.responsible_provider : '-') }}
-                    </template>
-                    <template v-slot:subtitle>
-                        Dienstleister
-                    </template>
-                </v-card>
-
-                <v-card title="Landesinventurleitung" variant="tonal" class="pa-2" v-if="!plotData[index - 1] || isDifferent(item.responsible_state, plotData[index - 1]?.responsible_state) ||  isDifferent(item.completed_at_state, plotData[index - 1]?.completed_at_state)">
-                    <template v-slot:title>
-                        {{ item.stateData ? item.stateData.name : (item.responsible_state ? item.responsible_state : '-') }}
-                    </template>
-                    <template v-slot:subtitle>
-                        Landesinventurleitung
-                    </template>
-                    <v-card-text>
-                        <v-chip :color="item.completed_at_state ? 'green' : 'yellow'">
-                            <span v-if="item.completed_at_state">
-                                {{ new Date(item.completed_at_state).toLocaleDateString() }}
-                                {{ new Date(item.completed_at_state).toLocaleTimeString() }}
-                            </span>
-                            <span v-else>
-                                offen
-                            </span>
-                        </v-chip>
-                    </v-card-text>
-                </v-card>
-                </v-card>
-            </v-menu>
-            
-        </v-timeline-item>
-        <v-timeline-item
-            v-if="latestPlot"
-            size="small">
-            <div class="d-flex flex-column">
-                <div class="text-caption">
-                    erstellt
+            <template v-slot:append>
+                <div class="d-flex align-center ga-2">
+                    <!--<v-btn
+                        v-if="item !== latestPlot"
+                        size="small"
+                        variant="tonal"
+                        color="warning"
+                        prepend-icon="mdi-restore"
+                        @click.stop="confirmRestore(item)"
+                    >
+                        Zurücksetzen
+                    </v-btn>-->
+                    <v-chip v-if="activeItem === item" color="primary" size="small" variant="elevated">
+                        <v-icon start icon="mdi-check" /> Ausgewählt
+                    </v-chip>
                 </div>
-                <strong class="me-4">{{ new Date(latestPlot.created_at).toLocaleDateString() }}</strong>
-            </div>
-        </v-timeline-item>
-    </v-timeline>
+            </template>
+        </v-list-item>
+
+        <v-list-item v-if="latestPlot" disabled class="text-caption">
+            <template v-slot:prepend>
+                <v-icon icon="mdi-creation" size="small" class="me-2" />
+            </template>
+            <v-list-item-title class="text-caption">
+                Erstellt am {{ formatDate(latestPlot.created_at) }}
+            </v-list-item-title>
+        </v-list-item>
+    </v-list>
+
+    <!-- Historical data bottom sheet (teleported to body so it's visible when dialog is closed) -->
+    <Teleport to="body">
+        <v-slide-y-reverse-transition>
+            <v-sheet
+                v-if="isHistorical"
+                class="history-bottom-sheet"
+                color="warning"
+                elevation="8"
+            >
+                <div class="d-flex align-center justify-space-between flex-wrap ga-2 pa-3">
+                    <div class="d-flex align-center ga-2">
+                        <v-icon icon="mdi-history" />
+                        <div>
+                            <div class="font-weight-medium">Historischer Datensatz</div>
+                            <div class="text-caption">
+                                Stand vom {{ formatDate(activeItem.sortByDate || activeItem.created_at) }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-center ga-2">
+                        <v-btn
+                            variant="outlined"
+                            size="small"
+                            prepend-icon="mdi-restore"
+                            rounded="xl"
+                            @click="confirmRestore(activeItem)"
+                        >
+                            Zurücksetzen
+                        </v-btn>
+                        <v-btn
+                            variant="outlined"
+                            size="small"
+                            rounded="xl"
+                            @click="goToLatest"
+                        >
+                            Aktuellen Status anzeigen
+                        </v-btn>
+                    </div>
+                </div>
+            </v-sheet>
+        </v-slide-y-reverse-transition>
+    </Teleport>
+
+    <!-- Restore Confirmation Dialog -->
+    <v-dialog v-model="showConfirmDialog" max-width="500" persistent>
+        <v-card>
+            <v-card-title>Zurücksetzen bestätigen</v-card-title>
+            <v-card-text>
+                <p>Soll der aktuelle Datensatz mit dem Stand vom
+                    <strong>{{ restoreItem ? formatDate(restoreItem.sortByDate) : '' }}</strong>
+                    überschrieben werden?
+                </p>
+                <p class="text-caption mt-2">Diese Aktion erstellt automatisch einen neuen Eintrag in der Historie.</p>
+                <v-alert v-if="restoreError" type="error" density="compact" class="mt-3">{{ restoreError }}</v-alert>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer />
+                <v-btn variant="text" @click="showConfirmDialog = false" :disabled="restoring">Abbrechen</v-btn>
+                <v-btn color="warning" variant="flat" @click="executeRestore" :loading="restoring" prepend-icon="mdi-restore">Zurücksetzen</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 </template>
 
 <style scoped>
-    .clickable-timeline-item {
-        position: relative;
+    .history-list-item {
         cursor: pointer;
         transition: background-color 0.2s ease;
     }
+</style>
 
-    .clickable-timeline-item:hover {
-        background-color: rgba(0, 0, 0, 0.04);
-        border-radius: 4px;
-    }
-
-    .creation-timeline-item {
-        opacity: 0.7;
-    }
-    .popout-card {
-        position: absolute;
-        bottom: 100%; /* Adjust as needed */
-        left: 100%; /* Position to the right of the timeline item */
-        z-index: 100;
-        width: 250px; /* Adjust width as needed */
-        transition: opacity 0.2s ease;
+<style>
+    .history-bottom-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2501;
     }
 </style>
