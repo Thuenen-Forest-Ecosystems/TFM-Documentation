@@ -9,9 +9,9 @@
 const availableStats = ref([
   {
     "id": "g1",
-    "name": "1. Gruppe",
+    "name": "1. Truppstatistiken",
     "stats": [
-      { "id": "s1", "name": "Stat1.1" },
+      { "id": "s1", "name": "1. Kumulative Leistung pro Inventurtrupp" },
       { "id": "s2", "name": "Stat1.2" }
     ]
   },
