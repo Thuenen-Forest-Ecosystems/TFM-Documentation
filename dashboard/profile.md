@@ -88,6 +88,7 @@
         const { data, error } = await supabase.auth.getSession()
         if (data.session) {
             user.value = data.session.user;
+            console.log('User:', user.value);
             _getUsersProfile(data.session.user.id);
             _getOrganizations(data.session.user.id);
             console.log('User Profile:', user.value['confirmed_at'], format(user['confirmed_at'], 'de'));
@@ -110,7 +111,7 @@
 
 # Profil
 
-<v-card variant="tonal" class="my-4" :title="user['email']" :subtitle="'Registriert:'+format(user['confirmed_at'], 'de')">
+<v-card variant="tonal" class="my-4" :title="user['email']" :subtitle="'Registriert: '+format(user['confirmed_at'], 'de')">
     <template v-slot:append>
         <VimeoPlayer vimeoId="1129523554" :btnTitle="'Tutorial'" title="Profil verwalten" :iconOnly="false" />
     </template>
