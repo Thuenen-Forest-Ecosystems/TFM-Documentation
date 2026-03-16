@@ -203,112 +203,51 @@ async function _transformData(steps = mysteps.value) {
     return map
   })
 
-// ... existing imports / data ...
+  // -----------------------------------------------------------------
+  // 2️⃣ Aggregate per troop + period (Tag / Woche / Monat)
+  // -----------------------------------------------------------------
+  const aggregation = my_data.value.reduce((acc, item) => {
+    const period = getPeriod(item.updated_at);
+    const troop = troopIdToName.value?.[item.responsible_troop] || 'unknown';
+    const status = item.properties?.forest_status;
+    const accessibility = item.properties?.accessibility;
 
-// -----------------------------------------------------------------
-// 2️⃣ Aggregate per troop + period (Tag / Woche / Monat) – now cumulative
-// -----------------------------------------------------------------
-const aggregation = my_data.value.reduce((acc, item) => {
-  const period = getPeriod(item.updated_at);
-  const troop = troopIdToName.value?.[item.responsible_troop] || 'unknown';
-  const status = item.properties?.forest_status;
-  const accessibility = item.properties?.accessibility;
+    // key combines troop and period → unique bucket
+    const key = `${troop}_${period}`;
 
-  // key combines troop and period → unique bucket
-  const key = `${troop}_${period}`;
+    if (!acc[key]) {
+      acc[key] = {
+        troop,
+        [periodKey]: period,   // dynamic column name/value
+        SUMME_all: 0,
+        NHB_all: 0,
+        HB_all: 0,
+        BLOESSE_all: 0,
+        BHB_all: 0,
 
-  if (!acc[key]) {
-    acc[key] = {
-      troop,
-      [periodKey]: period,   // dynamic column name/value
-      SUMME_all: 0,
-      NHB_all: 0,
-      HB_all: 0,
-      BLOESSE_all: 0,
-      BHB_all: 0,
-
-      SUMME_bg: 0,
-      NHB_bg: 0,
-      HB_bg: 0,
-      BLOESSE_bg: 0,
-      BHB_bg: 0
-    };
-  }
-
-  // ---- counting logic ----
-  if ([3, 4, 5].includes(status)) acc[key].SUMME_all++;
-  if (status === 4) acc[key].NHB_all++;
-  if (status === 3 || status === 5) acc[key].HB_all++;
-  if (status === 3) acc[key].BLOESSE_all++;
-  if (status === 5) acc[key].BHB_all++;
-
-  if ([3, 4, 5].includes(status) && accessibility === 1) acc[key].SUMME_bg++;
-  if (status === 4 && accessibility === 1) acc[key].NHB_bg++;
-  if ((status === 3 || status === 5) && accessibility === 1) acc[key].HB_bg++;
-  if (status === 3 && accessibility === 1) acc[key].BLOESSE_bg++;
-  if (status === 5 && accessibility === 1) acc[key].BHB_bg++;
-
-  return acc;
-}, {});
-
-// ---------------------------------------------------------------
-// 3️⃣ Turn per‑period values into cumulative values (running total)
-// ---------------------------------------------------------------
-(() => {
-  // Gather all unique periods and sort them chronologically.
-  const periods = Array.from(new Set(
-    Object.values(aggregation).map(b => b[periodKey])
-  )).sort((a, b) => a.localeCompare(b)); // assumes ISO‑like strings
-
-  // Keep a running total object for each troop.
-  const runningTotals = {};
-
-  periods.forEach(period => {
-    // For each troop that has a bucket in this period…
-    Object.keys(aggregation).forEach(key => {
-      const bucket = aggregation[key];
-      if (bucket[periodKey] !== period) return; // only current period
-
-      const troop = bucket.troop;
-      if (!runningTotals[troop]) {
-        runningTotals[troop] = {
-          SUMME_all: 0, NHB_all: 0, HB_all: 0, BLOESSE_all: 0, BHB_all: 0,
-          SUMME_bg: 0,  NHB_bg: 0,  HB_bg: 0,  BLOESSE_bg: 0,  BHB_bg: 0
-        };
-      }
-
-      // Add previous totals to current bucket (cumulative)
-      const prev = runningTotals[troop];
-      bucket.SUMME_all   += prev.SUMME_all;
-      bucket.NHB_all     += prev.NHB_all;
-      bucket.HB_all      += prev.HB_all;
-      bucket.BLOESSE_all+= prev.BLOESSE_all;
-      bucket.BHB_all     += prev.BHB_all;
-
-      bucket.SUMME_bg    += prev.SUMME_bg;
-      bucket.NHB_bg      += prev.NHB_bg;
-      bucket.HB_bg       += prev.HB_bg;
-      bucket.BLOESSE_bg += prev.BLOESSE_bg;
-      bucket.BHB_bg      += prev.BHB_bg;
-
-      // Update running totals for the next period
-      runningTotals[troop] = {
-        SUMME_all:   bucket.SUMME_all,
-        NHB_all:     bucket.NHB_all,
-        HB_all:      bucket.HB_all,
-        BLOESSE_all:bucket.BLOESSE_all,
-        BHB_all:     bucket.BHB_all,
-        SUMME_bg:    bucket.SUMME_bg,
-        NHB_bg:      bucket.NHB_bg,
-        HB_bg:       bucket.HB_bg,
-        BLOESSE_bg:  bucket.BLOESSE_bg,
-        BHB_bg:      bucket.BHB_bg
+        SUMME_bg: 0,
+        NHB_bg: 0,
+        HB_bg: 0,
+        BLOESSE_bg: 0,
+        BHB_bg: 0
       };
-    });
-  });
-})();
+    }
 
+    // ---- counting logic ----
+    if ([3, 4, 5].includes(status)) acc[key].SUMME_all++;
+    if (status === 4) acc[key].NHB_all++;
+    if (status === 3 || status === 5) acc[key].HB_all++;
+    if (status === 3) acc[key].BLOESSE_all++;
+    if (status === 5) acc[key].BHB_all++;
 
+    if ([3, 4, 5].includes(status) && accessibility === 1) acc[key].SUMME_bg++;
+    if (status === 4 && accessibility === 1) acc[key].NHB_bg++;
+    if ((status === 3 || status === 5) && accessibility === 1) acc[key].HB_bg++;
+    if (status === 3 && accessibility === 1) acc[key].BLOESSE_bg++;
+    if (status === 5 && accessibility === 1) acc[key].BHB_bg++;
+
+    return acc;
+  }, {});
 
   // -----------------------------------------------------------------
   // 3️⃣ Convert aggregation object → sorted array for the grid
@@ -478,7 +417,8 @@ function onBtnExport2() {
     <v-card-title>Begehbare Traktecken</v-card-title>
 
     <ag-grid-vue v-if="selectedOrganisations.length > 0"
-      :rowData="tabledata" :columnDefs="MyColDefs2"
+      :rowData="tabledata"
+      :columnDefs="MyColDefs2"
       :style="{ height: gridHeight }"
       style="width: 100%"
       :paginationAutoPageSize="true"

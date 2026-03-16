@@ -12,12 +12,12 @@ const availableStats = ref([
     "name": "1. Truppstatistiken",
     "stats": [
       { "id": "s1", "name": "1. Kumulative Leistung pro Inventurtrupp" },
-      { "id": "s2", "name": "Stat1.2" }
+      { "id": "s2", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" }
     ]
   },
   {
     "id": "g2",
-    "name": "2. Gruppe",
+    "name": "2. Gruppe (noch leer)",
     "stats": [
       { "id": "s1", "name": "Stat2.1"},
       { "id": "s2", "name": "Stat2.2"},
@@ -79,14 +79,13 @@ watch(selectedStatsGrp, (newGroup) => {
       :disabled="availableElements[0] === ''"
     />
   </v-card>
-  <div>
-    <!-- Hier könnte die Ausgabe der ausgewählten Statistik erfolgen -->
+<!--   <div>
     <p>nur für debug</p> 
     <p>Ausgewählte Gruppe: {{ selectedStatsGrp ? selectedStatsGrp.name : 'Keine Gruppe ausgewählt' }}</p>
     <p>Ausgewählte Statistik: {{ selectedStatInGrp ? selectedStatInGrp.name : 'Keine Statistik ausgewählt' }}</p>
     <p>Ausgewählte Gruppe (Nr.): {{ selectedStatsGrp ? selectedStatsGrp.id : 'Keine Gruppe ausgewählt' }}</p>
     <p>Ausgewählte Statistik (Nr.): {{ selectedStatInGrp ? selectedStatInGrp.id : 'Keine Statistik ausgewählt' }}</p>
-  </div>
+  </div> -->
   <v-btn 
     color="primary" 
     prepend-icon="mdi-forward"
