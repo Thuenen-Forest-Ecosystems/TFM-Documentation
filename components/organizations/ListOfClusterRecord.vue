@@ -203,6 +203,19 @@
             wrapHeaderText: false,
             autoHeaderHeight: false
         },
+        postSortRows: (params) => {
+            const selected = [];
+            const unselected = [];
+            params.nodes.forEach(node => {
+                if (node.isSelected()) {
+                    selected.push(node);
+                } else {
+                    unselected.push(node);
+                }
+            });
+            params.nodes.length = 0;
+            params.nodes.push(...selected, ...unselected);
+        },
     }
     async function saveTroopResponsible(column, value, id){
         const {data, error} = await supabase
@@ -961,6 +974,9 @@
             geojsonFeatureCollection.value.features.forEach(feature => {
                 feature.properties.isSelected = selectedPlotIds.has(feature.properties.plot_id);
             });
+            
+            // Re-sort so selected rows float to the top via postSortRows
+            currentGrid.value.api.refreshClientSideRowModel('sort');
             
             loadingSelection.value = false;
         });
