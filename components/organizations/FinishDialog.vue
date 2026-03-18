@@ -131,7 +131,7 @@
                     query = query.not('completed_at_state', 'is', null);
                     query = query.not('completed_at_troop', 'is', null);
                 } else if (props.organizationType === 'country') {
-                    query = query.not('completed_at_troop', 'is', null);
+                    //query = query.not('completed_at_troop', 'is', null);
                 }
             }else{
                 console.log('Adding null filters for non-admin user');
