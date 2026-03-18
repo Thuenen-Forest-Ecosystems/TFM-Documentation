@@ -266,6 +266,7 @@ function refreshLayer() {
             filter: ["all", [">=", ["zoom"], 10], ["<", ["zoom"], 14]],
             layout: {
                 'text-field': ['get', 'cluster_name'],
+                'text-font': ['Open Sans Regular'],
                 'text-allow-overlap': false,
                 'symbol-placement': 'point',
                 'text-size': 14,
@@ -287,6 +288,7 @@ function refreshLayer() {
             filter: [">=", ["zoom"], 14],
             layout: {
                 'text-field': ['concat', ['get', 'cluster_name'], ' - ', ['get', 'plot_name']],
+                'text-font': ['Open Sans Regular'],
                 'text-allow-overlap': true,
                 'text-size': 15,
                 'text-anchor': 'center',
