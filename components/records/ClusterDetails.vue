@@ -13,6 +13,7 @@
     import DetailAdministration from './DetailAdministration.vue';
     import ResponsibleByRecord from './ResponsibleByRecord.vue';
     import RecordMessages from './RecordMessages.vue';
+    import PositionMap from './PositionMap.vue';
 
     const ajv = new Ajv({
         allErrors: true,
@@ -341,6 +342,7 @@
                         <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" :key="activeRecord.id" />
                     </v-card-text>
                 </v-card>
+                <PositionMap :record="activeRecord" />
 
                 <v-card variant="tonal" class="ma-3">
                     <RecordDetail :record="activeRecord" :schema="schema"/>
