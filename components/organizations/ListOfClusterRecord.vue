@@ -269,7 +269,7 @@
                 field: 'state_by_user', // Custom cell renderer
                 headerName: ' ',
                 pinned: 'left',
-                width: 70,
+                width: 170,
                 sortable: true,
                 sort: 'asc',
                 filter: 'statusFilter',
