@@ -18,12 +18,14 @@
     const positionMedian = computed(() => {
         const p = position.value?.position_median;
         if (p?.coordinates && p.coordinates.length === 2) return p.coordinates;
+        if (p?.longitude != null && p?.latitude != null) return [p.longitude, p.latitude];
         return null;
     });
 
     const positionMean = computed(() => {
         const p = position.value?.position_mean;
         if (p?.coordinates && p.coordinates.length === 2) return p.coordinates;
+        if (p?.longitude != null && p?.latitude != null) return [p.longitude, p.latitude];
         return null;
     });
 
@@ -41,8 +43,20 @@
     const pdop = computed(() => position.value?.pdop_mean);
     const satellites = computed(() => position.value?.satellites_count_mean);
     const measurementCount = computed(() => position.value?.measurement_count);
+    const totalRecordedCount = computed(() => position.value?.total_recorded_count);
     const device = computed(() => position.value?.device_gnss);
     const quality = computed(() => position.value?.quality);
+    const overallQuality = computed(() => position.value?.overall_quality);
+    const meanAccuracy = computed(() => position.value?.mean_accuracy);
+    const rtcmAge = computed(() => position.value?.rtcm_age);
+    const detailedQuality = computed(() => position.value?.detailed_quality);
+    const startMeasurement = computed(() => position.value?.start_measurement);
+    const stopMeasurement = computed(() => position.value?.stop_measurement);
+
+    function formatTime(iso) {
+        if (!iso) return null;
+        return new Date(iso).toLocaleString();
+    }
 
     const style = {
         version: 8,
@@ -148,53 +162,77 @@
             </v-alert>
         </v-card-text>
         <template v-else>
-            <div ref="mapContainer" class="position-map"></div>
+            <v-row no-gutters>
+                <v-col cols="12" md="8">
+                    <div ref="mapContainer" class="position-map"></div>
+                </v-col>
+                <v-col cols="12" md="4">
+                    <v-card-text>
+                        <div class="d-flex flex-wrap ga-4">
+                            <div class="d-flex align-center ga-2" v-if="positionMedian">
+                                <v-icon color="blue-darken-3" size="small">mdi-map-marker</v-icon>
+                                <span class="text-caption">Median</span>
+                            </div>
+                            <div class="d-flex align-center ga-2" v-if="positionMean">
+                                <v-icon color="orange-darken-3" size="small">mdi-map-marker</v-icon>
+                                <span class="text-caption">Mittel</span>
+                            </div>
+                            <div class="d-flex align-center ga-2" v-if="plotCoordinates">
+                                <v-icon color="green-darken-3" size="small">mdi-map-marker</v-icon>
+                                <span class="text-caption">Soll-Position</span>
+                            </div>
+                        </div>
 
-            <v-card-text>
-                <div class="d-flex flex-wrap ga-4">
-                    <div class="d-flex align-center ga-2" v-if="positionMedian">
-                        <v-icon color="blue-darken-3" size="small">mdi-map-marker</v-icon>
-                        <span class="text-caption">Median</span>
-                    </div>
-                    <div class="d-flex align-center ga-2" v-if="positionMean">
-                        <v-icon color="orange-darken-3" size="small">mdi-map-marker</v-icon>
-                        <span class="text-caption">Mittel</span>
-                    </div>
-                    <div class="d-flex align-center ga-2" v-if="plotCoordinates">
-                        <v-icon color="green-darken-3" size="small">mdi-map-marker</v-icon>
-                        <span class="text-caption">Soll-Position</span>
-                    </div>
-                </div>
-
-                <v-table density="compact" class="mt-2">
-                    <tbody>
-                        <tr v-if="hdop != null">
-                            <td class="text-caption font-weight-medium">HDOP</td>
-                            <td class="text-caption">{{ hdop }}</td>
-                        </tr>
-                        <tr v-if="pdop != null">
-                            <td class="text-caption font-weight-medium">PDOP</td>
-                            <td class="text-caption">{{ pdop }}</td>
-                        </tr>
-                        <tr v-if="satellites != null">
-                            <td class="text-caption font-weight-medium">Satelliten</td>
-                            <td class="text-caption">{{ satellites }}</td>
-                        </tr>
-                        <tr v-if="measurementCount != null">
-                            <td class="text-caption font-weight-medium">Messungen</td>
-                            <td class="text-caption">{{ measurementCount }}</td>
-                        </tr>
-                        <tr v-if="device">
-                            <td class="text-caption font-weight-medium">GNSS-Gerät</td>
-                            <td class="text-caption">{{ device }}</td>
-                        </tr>
-                        <tr v-if="quality != null">
-                            <td class="text-caption font-weight-medium">Qualität</td>
-                            <td class="text-caption">{{ quality }}</td>
-                        </tr>
-                    </tbody>
-                </v-table>
-            </v-card-text>
+                        <v-table density="compact" class="mt-2">
+                            <tbody>
+                                <tr v-if="meanAccuracy != null">
+                                    <td class="text-caption font-weight-medium">Mittl. Genauigkeit</td>
+                                    <td class="text-caption">{{ meanAccuracy.toFixed(1) }} cm</td>
+                                </tr>
+                                <tr v-if="hdop != null">
+                                    <td class="text-caption font-weight-medium">HDOP</td>
+                                    <td class="text-caption">{{ hdop.toFixed(2) }}</td>
+                                </tr>
+                                <tr v-if="pdop != null">
+                                    <td class="text-caption font-weight-medium">PDOP</td>
+                                    <td class="text-caption">{{ pdop.toFixed(2) }}</td>
+                                </tr>
+                                <tr v-if="satellites != null">
+                                    <td class="text-caption font-weight-medium">Satelliten (Ø)</td>
+                                    <td class="text-caption">{{ satellites }}</td>
+                                </tr>
+                                <tr v-if="measurementCount != null">
+                                    <td class="text-caption font-weight-medium">Messungen</td>
+                                    <td class="text-caption">
+                                        {{ measurementCount }}
+                                        <span v-if="totalRecordedCount != null && totalRecordedCount !== measurementCount" class="text-medium-emphasis"> / {{ totalRecordedCount }}</span>
+                                    </td>
+                                </tr>
+                                <tr v-if="rtcmAge != null">
+                                    <td class="text-caption font-weight-medium">RTCM-Alter</td>
+                                    <td class="text-caption">{{ rtcmAge }}</td>
+                                </tr>
+                                <tr v-if="startMeasurement">
+                                    <td class="text-caption font-weight-medium">Messbeginn</td>
+                                    <td class="text-caption">{{ formatTime(startMeasurement) }}</td>
+                                </tr>
+                                <tr v-if="stopMeasurement">
+                                    <td class="text-caption font-weight-medium">Messende</td>
+                                    <td class="text-caption">{{ formatTime(stopMeasurement) }}</td>
+                                </tr>
+                                <tr v-if="device">
+                                    <td class="text-caption font-weight-medium">GNSS-Gerät</td>
+                                    <td class="text-caption">{{ device }}</td>
+                                </tr>
+                                <tr v-if="quality != null">
+                                    <td class="text-caption font-weight-medium">Qualitätscode</td>
+                                    <td class="text-caption">{{ quality }}</td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </v-card-text>
+                </v-col>
+            </v-row>
         </template>
     </v-card>
 </template>
@@ -203,5 +241,16 @@
     .position-map {
         width: 100%;
         height: 350px;
+        min-height: 250px;
+    }
+
+    :deep(.maplibregl-popup-content) {
+        color: #333;
+        background: #fff;
+    }
+
+    :deep(.maplibregl-popup-tip) {
+        border-top-color: #fff;
+        border-bottom-color: #fff;
     }
 </style>
