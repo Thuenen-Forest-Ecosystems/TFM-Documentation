@@ -345,7 +345,7 @@
                     </v-card-text>
                 </v-card>
                 <v-card variant="tonal" class="ma-3">
-                    <RecordDetail :record="activeRecord" :schema="schema" :style-map="styleMap" />
+                    <RecordDetail :record="activeRecord" :schema="schema" :style-map="styleMap" :validate="validate" :tfm="tfm" />
                 </v-card>
         </div>
 
