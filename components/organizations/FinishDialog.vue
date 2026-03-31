@@ -96,7 +96,7 @@
             if(isAdmin.value){
                 switch (props.organizationType) {
                     case 'country':
-                        //updatedValues.responsible_troop = null;
+                        updatedValues.responsible_troop = null;
                         //updatedValues.responsible_provider = null;
                         updatedValues.completed_at_state = new Date();
                         //updatedValues.completed_at_administration = null;
@@ -107,7 +107,7 @@
                         //updatedValues.completed_at_state = null;
                         break;
                     case 'root':
-                        //updatedValues.responsible_troop = null;
+                        updatedValues.responsible_troop = null;
                         //updatedValues.responsible_provider = null;
                         //updatedValues.responsible_state = null;
                         updatedValues.completed_at_administration = new Date();

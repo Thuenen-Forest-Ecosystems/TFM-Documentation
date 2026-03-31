@@ -1906,6 +1906,7 @@
                         Verantwortlichkeit ändern
                     </v-btn>
                     <v-btn
+                        v-if="props.organization_type !== 'provider'"
                         class="mx-2"
                         variant="elevated"
                         prepend-icon="mdi-bookmark-check"
