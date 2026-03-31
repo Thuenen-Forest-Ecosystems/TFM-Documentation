@@ -1,7 +1,7 @@
 <script setup>
     import maplibregl from 'maplibre-gl';
     import 'maplibre-gl/dist/maplibre-gl.css';
-    import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
+    import { onMounted, onBeforeUnmount, ref, watch, computed, nextTick } from 'vue';
 
     const props = defineProps({
         record: {
@@ -87,6 +87,7 @@
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
         map.on('load', () => {
+            map.resize();
             addMarkers();
         });
     }
@@ -127,18 +128,20 @@
         }
     }
 
-    onMounted(() => {
+    onMounted(async () => {
         if (hasPosition.value) {
+            await nextTick();
             initMap();
         }
     });
 
-    watch(() => props.record?.id, () => {
+    watch(() => props.record?.id, async () => {
         if (map) {
             map.remove();
             map = null;
         }
         if (hasPosition.value) {
+            await nextTick();
             setTimeout(() => initMap(), 50);
         }
     });

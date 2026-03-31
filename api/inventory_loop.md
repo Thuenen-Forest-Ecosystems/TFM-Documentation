@@ -9,6 +9,7 @@
 Here we show conceptually how to get a simple list of some clusters and then use this list to fetch all (or at least many) details of the clusters and possibly also their dependend objects (plots, trees, ...) as structured data trees in a loop. This avoids requesting big data sets at once and therefore hitting limits per call.
 
 This concept can also be applied to other sets of objects such as plots with their trees or similar.
+
 ## General approach
 
 ### Step 1
@@ -20,22 +21,23 @@ The following example calls the API to retrieve a list of clusternames (the clus
 ::: code-group
 
 ```txt-vue{2} [REQUEST]
-curl -X GET "{{ url }}/rest/v1/cluster?select=cluster_name&cluster_name=lt.10"  
-    -H "Accept-Profile: inventory_archive" 
+curl -X GET "{{ url }}/rest/v1/cluster?select=cluster_name&cluster_name=lt.10"
+    -H "Accept-Profile: inventory_archive"
     -H "apikey: {{ apikey }}"
 ```
 
 ```JSON [RESPONSE]
-[{"cluster_name":1}, 
- {"cluster_name":2}, 
- {"cluster_name":3}, 
- {"cluster_name":4}, 
- {"cluster_name":5}, 
- {"cluster_name":6}, 
- {"cluster_name":7}, 
- {"cluster_name":8}, 
+[{"cluster_name":1},
+ {"cluster_name":2},
+ {"cluster_name":3},
+ {"cluster_name":4},
+ {"cluster_name":5},
+ {"cluster_name":6},
+ {"cluster_name":7},
+ {"cluster_name":8},
  {"cluster_name":9}]
 ```
+
 :::
 
 ### Step 2
@@ -47,9 +49,11 @@ The following example retrieves a quite complete dataset for cluster "8" includi
 CAVEAT: In bash there might be a need to escape the "!" (changing it to "\\!"), because "!" might interpreted as a special character in bash.
 
 ::: code-group
+
 ```txt-vue{2} [REQUEST]
 curl -X GET "{{ url }}/rest/v1/cluster?cluster_name=eq.8&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))" -H "Accept: application/vnd.pgrst.object+json" -H "Accept-Profile: inventory_archive" -H "apikey: {{ apikey }}"
 ```
+
 ```JSON [RESPONSE]
 [{
   "intkey": "-8-",
@@ -880,9 +884,11 @@ curl -X GET "{{ url }}/rest/v1/cluster?cluster_name=eq.8&select=*,plot!fk_plot_c
   }]
 }]
 ```
+
 :::
 
 By looping over the cluster_name list above we can get data for all clusters in the list.
+
 ## Examples in different languages
 
 ::: code-group
@@ -891,7 +897,7 @@ By looping over the cluster_name list above we can get data for all clusters in 
 
 <!--
 This example shows conceptually how to:
-- get a list of clusters and 
+- get a list of clusters and
 - retrieve the json tree of the data belonging to thie clusters in the list
   from different related tables (plots, trees, ...)
 In order to make it work as simple as possible it combines the javascript
@@ -921,7 +927,7 @@ the file with a web browser.
         const base_url = "{{ url }}/rest/v1/";
         // API call for the list of clusters
         const list_endpoint = `${base_url}cluster?select=cluster_name&cluster_name=lt.${samples}`;
-        // stub for API call for details  
+        // stub for API call for details
         const detail_endpoint = `${base_url}cluster?cluster_name=eq.`;
         // headers for Auth and database scheme to use
         const headers = {
@@ -1009,15 +1015,15 @@ the file with a web browser.
 ```R-vue [Plain R]
 # This example in plain R (best run in RStudio) shows conceptually
 # how to:
-# - get a list of clusters and 
+# - get a list of clusters and
 # - retrieve the json tree of the data belonging to the clusters in
 #   the list from different related tables (plots, trees, ...)
 # - show the retrieved json tree as expandable view
 
 # Install necessary packages if not already installed
-if (!require(httr)) install.packages("httr", dependencies=TRUE)
-if (!require(jsonlite)) install.packages("jsonlite", dependencies=TRUE)
-if (!require(listviewer)) install.packages("listviewer", dependencies=TRUE)
+if (!require(httr)) install.packages("httr", dependencies = TRUE)
+if (!require(jsonlite)) install.packages("jsonlite", dependencies = TRUE)
+if (!require(listviewer)) install.packages("listviewer", dependencies = TRUE)
 
 # Load necessary packages
 library(httr)
@@ -1028,15 +1034,15 @@ library(listviewer)
 # Number of clusters to fetch (10 might be enough for the example)
 samples <- 10
 # API base url
-base_url <- "{{ url }}/rest/v1/"
+base_url <- "https://ci.thuenen.de/rest/v1/"
 # API call for the list of clusters
-list_endpoint <- paste0("cluster?select=cluster_name&cluster_name=lt.",samples)
+list_endpoint <- paste0("cluster?select=cluster_name&cluster_name=lt.", samples)
 # stub for API call for details
 detail_endpoint <- "cluster?cluster_name=eq."
 # headers for Auth and database scheme to use
-headers = c(
-  'apikey' = '{{apikey}}',
-  'Accept-Profile' = 'inventory_archive'
+headers <- c(
+  "apikey" = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU",
+  "Accept-Profile" = "inventory_archive"
 )
 
 # Here starts the magic...
@@ -1052,15 +1058,25 @@ get_list <- function() {
 
 # Helper function to call the second endpoint and get details for a specific cluster
 get_details <- function(item_id) {
-  response <- GET(paste0(base_url, detail_endpoint, item_id,"&select=*,plot!fk_plot_cluster(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))"), add_headers(headers))
+  response <- GET(
+    paste0(base_url, "cluster"),
+    query = list(
+      cluster_name = paste0("eq.", item_id),
+      select = "*,plot(*,tree(*),deadwood(*),regeneration(*),structure_lt4m(*),edges(*))"
+    ),
+    add_headers(headers)
+  )
   if (status_code(response) == 200) {
     return(content(response, as = "parsed", type = "application/json"))
   } else {
-    stop(paste("Failed to retrieve details for item:", item_id))
+    stop(paste(
+      "Failed to retrieve details for item:", item_id,
+      "- HTTP", status_code(response), "-", content(response, as = "text")
+    ))
   }
 }
 
-#MAIN
+# MAIN
 # Note start time
 start_time <- Sys.time()
 
@@ -1069,14 +1085,14 @@ items_list <- get_list()
 
 # measuring times just to test performance
 start_time_details <- Sys.time()
-print(paste("Downloadzeit Traktliste:",round(start_time_details - start_time, 2),"sec."))
+print(paste("Downloadzeit Traktliste:", round(start_time_details - start_time, 2), "sec."))
 
 # Initialize an empty list to store the details
 details_list <- list()
 
 # Iterate over the clusters list and collect details
 for (item in items_list) {
-  item_id <- item$cluster_name  # Assuming the ID field is 'id' in your JSON response
+  item_id <- item$cluster_name # Assuming the ID field is 'id' in your JSON response
   item_details <- get_details(item_id)
   # Append the details to the list
   details_list <- append(details_list, item_details)
@@ -1084,21 +1100,21 @@ for (item in items_list) {
 
 # measuring times just to test performance
 start_time_view <- Sys.time()
-print(paste("Downloadzeit Details:", round(start_time_view - start_time_details, 2),"sec."))
+print(paste("Downloadzeit Details:", round(start_time_view - start_time_details, 2), "sec."))
 
 # Show the result as expandable view
 listviewer::jsonedit(details_list)
 
 # measuring times just to test performance
 end_time <- Sys.time()
-print(paste("View generiert in:",round(end_time - start_time_view, 2),"sec."))
+print(paste("View generiert in:", round(end_time - start_time_view, 2), "sec."))
 # Have fun!
 ```
 
 ```R-vue [Shiny R]
 # This example of a Shiny R app shows conceptually how to:
 # - after pressing a button get a list of clusters,
-# - let the users select a number of elements from the list and 
+# - let the users select a number of elements from the list and
 # - after pressing a second button retrieve the json tree of the data
 #   belonging to the clusters in the selection from different related
 #   tables (plots, trees, ...) and
@@ -1106,7 +1122,7 @@ print(paste("View generiert in:",round(end_time - start_time_view, 2),"sec."))
 # It basically converts the plain R example into a "shiny UI".
 # Hint: In this example we add a second loop in order to fill the list
 #       of clusters stepwise (with the use of the "limit" and "offset"
-#       functionality of the API). 
+#       functionality of the API).
 # Caveat:
 # - Ensure to have necessary packages installed!
 
@@ -1156,7 +1172,7 @@ get_list <- function() {
     data <- get_list_part(offset)
     if (!is.null(data)) {
       all_data <- c(all_data, data)
-      
+
       print(paste("Fetched data for offset", offset))
     }
   }
@@ -1177,7 +1193,7 @@ get_details <- function(item_id) {
 ui <- fluidPage(
   # Add title panel
   titlePanel("BWI API Data Retrieval"),
-  
+
   # Add sidebar layout
   sidebarLayout(
     # Define sidebar panel
@@ -1191,7 +1207,7 @@ ui <- fluidPage(
       # Add verbatim text output for timing information
       verbatimTextOutput("timingOutput")
     ),
-    
+
     # Define main panel
     mainPanel(
       # Add UIOutput to display downloaded data
@@ -1204,53 +1220,53 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Initialize reactiveValues
   RV <- reactiveValues(items_list = NULL, selected_items = NULL)
-  
+
   observeEvent(input$downloadButton, {
     # Note start time
     start_time <- Sys.time()
-    
+
     # Get the list of items
     items_list <- get_list()
-    
+
     start_time_details <- Sys.time()
     print(paste("Downloadzeit Traktliste:", round(start_time_details - start_time, 2), "sec."))
-    
+
     # Store the items list in reactiveValues
     RV$items_list <- items_list
-    
+
     # Update the UI with the dropdown for item selection
     output$itemSelector <- renderUI({
-     
+
         selectInput("itemSelector", "Select clusters", choices = sapply(items_list, function(item) item$cluster_name), multiple = TRUE)
     })
-    
+
     output$timingOutput <- renderText({
       paste("Downloadzeit Traktliste:", round(start_time_details - start_time, 2), "sec.")
     })
   })
-  
+
   observeEvent(input$downloadSelectedButton, {
     # Note start time
     start_time <- Sys.time()
-    
+
     # Get selected items
     selected_items <- input$itemSelector
-    
+
     # Initialize an empty list to store the details
     details_list <- list()
-    
+
     start_time_details <- Sys.time()
     print(paste("Downloadzeit Details:", round(start_time_details - start_time, 2), "sec."))
-    
+
     # Iterate over the selected items and collect details
     for (item_id in selected_items) {
       item_details <- get_details(item_id)
       details_list <- append(details_list, item_details)
     }
-    
+
     start_time_view <- Sys.time()
     print(paste("Downloadzeit Details:", round(start_time_view - start_time_details, 2), "sec."))
-    
+
     output$dataDisplay <- renderUI({
       withProgress(message = 'Viewing data, please wait...', value = 0, {
         for (i in 1:10) {
@@ -1264,7 +1280,7 @@ server <- function(input, output, session) {
         )
       })
     })
-    
+
     output$timingOutput <- renderText({
       paste("Downloadzeit Details:", round(start_time_view - start_time_details, 2), "sec.")
     })
@@ -1279,7 +1295,7 @@ shinyApp(ui = ui, server = server)
 ```python-vue
 import pandas as pd
 import requests
-import time 
+import time
 
 class BearerAuth(requests.auth.AuthBase):
     def __init__(self, token, profile):
@@ -1289,14 +1305,14 @@ class BearerAuth(requests.auth.AuthBase):
         r.headers["apikey"] = self.token
         r.headers["Accept-Profile"] = self.profile
         return r
-    
+
 class RequestHandler():
     def __init__(self, baseUrl, token=None, profile=None, endPoint=None):
         self.baseUrl = baseUrl
         self.token = token
         self.profile = profile
         self.set_endpoint(endPoint)
-    
+
     def set_endpoint(self, endPoint):
         self.endPoint = endPoint
 
@@ -1304,7 +1320,7 @@ class RequestHandler():
         if(not self.set_endpoint):
             return
         self.response = requests.get(self.baseUrl+self.endPoint, auth=BearerAuth(self.token, self.profile))
-    
+
     def check_status(self):
         if(self.response.status_code in [200]):
             self._isAuthorized = True
@@ -1499,4 +1515,5 @@ Sub ImportDataIntoExcel()
 End Sub
 ' Have fun ;)...
 ```
+
 :::
