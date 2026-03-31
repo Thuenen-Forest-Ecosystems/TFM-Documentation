@@ -74,16 +74,17 @@
 
     // Build a filtered schema from a style-map form item's properties list.
     // Always returns a filtered schema - never falls back to the full schema.
-    function getFormSchema(formItem) {
-        if (!props.schema?.properties) return { ...(props.schema || {}), properties: {} };
+    function getFormSchema(formItem, baseSchema = null) {
+        const schema = baseSchema || props.schema;
+        if (!schema?.properties) return { ...(schema || {}), properties: {} };
         const fieldKeys = (formItem.properties || []).map(p => p.name).filter(Boolean);
-        if (fieldKeys.length === 0) return props.schema;
+        if (fieldKeys.length === 0) return schema;
         const filteredProps = Object.fromEntries(
             fieldKeys
-                .filter(key => props.schema.properties[key])
-                .map(key => [key, props.schema.properties[key]])
+                .filter(key => schema.properties[key])
+                .map(key => [key, schema.properties[key]])
         );
-        return { ...props.schema, properties: filteredProps };
+        return { ...schema, properties: filteredProps };
     }
 
     // Resolve data for a dotted property path like "subplots_relative_position.items"
@@ -154,11 +155,11 @@
                     <v-card v-if="item.type === 'card'" variant="tonal" class="ma-2">
                         <v-card-title v-if="item.label" class="text-subtitle-2 pa-3">{{ item.label }}</v-card-title>
                         <template v-for="formItem in (item.items || [])" :key="formItem.id">
-                            <!-- Form with property path → render as table (e.g. subplots_relative_position.items) -->
-                            <GridViewTableTab
+                            <!-- Form with property path → render as form with nested data -->
+                            <GridViewGridTab
                                 v-if="formItem.type === 'form' && formItem.property"
-                                :data="getNestedData(formItem.property)"
-                                :schema="getNestedSchema(formItem.property)"
+                                :data="getNestedData(formItem.property)?.[0] || {}"
+                                :schema="getFormSchema(formItem, getNestedSchema(formItem.property))"
                             />
                             <!-- Normal form -->
                             <GridViewGridTab
