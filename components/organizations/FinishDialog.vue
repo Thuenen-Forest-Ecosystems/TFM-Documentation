@@ -91,13 +91,21 @@
     }
 
     async function setAsFinished() {
+        // provider should not be able to set completed
+        if (!isAdmin.value && props.organizationType === 'provider') {
+            snackbarText.value = 'Du hast keine Berechtigung, diese Aktion durchzuführen.';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+            return;
+        }
+
         try {
             const updatedValues = { note: additionalNote.value || null };
             if(isAdmin.value){
                 switch (props.organizationType) {
                     case 'country':
                         updatedValues.responsible_troop = null;
-                        //updatedValues.responsible_provider = null;
+                        updatedValues.responsible_provider = null;
                         updatedValues.completed_at_state = new Date();
                         //updatedValues.completed_at_administration = null;
                         break;
@@ -108,8 +116,8 @@
                         break;
                     case 'root':
                         updatedValues.responsible_troop = null;
-                        //updatedValues.responsible_provider = null;
-                        //updatedValues.responsible_state = null;
+                        updatedValues.responsible_provider = null;
+                        updatedValues.responsible_state = null;
                         updatedValues.completed_at_administration = new Date();
                         break;
                     default:
