@@ -35,3 +35,7 @@ The API is the easiest way to access the data. You can access the  RESTful API w
 ::: warning Limitations
 API Requests are limited by time and the amount of data that can be retrieved in a single request. The API should only be used for filtered queries and not for bulk data extraction.
 :::
+
+::: tip Update (2026/04/20)
+Derived data for the inventory cycle 2022 is now available in the schema "derived_tmp".
+:::
