@@ -149,7 +149,7 @@
     <h2>Inventuren</h2>
     <v-card variant="tonal" title="Kohlenstoffinventur 2027">
         <v-list>
-            <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
+            <v-list-item v-for="permission in organizationsAccess" :key="permission.id" :disabled="!permission.is_organization_admin" @click="_toOrganization(permission.organizations.id)">
                 <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
                 <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
                 <template v-slot:append>
