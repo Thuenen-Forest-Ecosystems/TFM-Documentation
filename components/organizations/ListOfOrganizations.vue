@@ -308,7 +308,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
     <div v-else >
         <v-toolbar color="transparent">
             <v-btn icon="mdi-domain" variant="text"></v-btn>
-            <v-toolbar-title>Organisationen</v-toolbar-title>
+            <v-toolbar-title>Organisationen e</v-toolbar-title>
             <!-- Only if Admin -->
             <v-btn rounded="xl" variant="tonal" @click="_addOrganization" v-if="props.is_admin">
                 neu
@@ -373,7 +373,7 @@ import DialogEditOrganization from './DialogEditOrganization.vue';
             <v-card-text>
                 <v-list v-if="userPermissions.map(permission => permission.organization_id).includes(organization.id)">
                     <div v-for="permission in userPermissions || []" :key="permission.id">
-                        <v-list-item :key="permission.id" prepend-icon="mdi-account" v-if="permission?.organization_id === organization?.id">
+                        <v-list-item :key="permission.id" :prepend-icon="permission.is_organization_admin ? 'mdi-shield-account' : 'mdi-account'" v-if="permission?.organization_id === organization?.id">
                             <v-list-item-title>{{ userProfiles.find(user => user && user.id === permission.user_id)?.email || 'Einladung noch nicht bestätigt.' }}</v-list-item-title>
                             <template v-slot:append>
                                 <v-btn v-if="props.is_admin" icon="mdi-delete" variant="text" @click="(e) => _removeUserPermission(e, permission.user_id, permission.organization_id)"></v-btn>

@@ -100,6 +100,20 @@
         }
 
         try {
+            // Check session before proceeding
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !sessionData.session) {
+                console.error('Session error:', sessionError);
+                snackbarText.value = 'Sitzung abgelaufen. Bitte neu anmelden.';
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+                return;
+            }
+
+            console.log('Current user:', sessionData.session.user.id);
+            console.log('Organization ID:', props.organizationId);
+            console.log('Selected rows count:', props.selectedRows.length);
+            
             const updatedValues = { note: additionalNote.value || null };
             if(isAdmin.value){
                 switch (props.organizationType) {
@@ -107,12 +121,9 @@
                         updatedValues.responsible_troop = null;
                         updatedValues.responsible_provider = null;
                         updatedValues.completed_at_state = new Date();
-                        //updatedValues.completed_at_administration = null;
                         break;
                     case 'provider':
                         updatedValues.completed_at_troop = new Date();
-                        //updatedValues.completed_at_administration = null;
-                        //updatedValues.completed_at_state = null;
                         break;
                     case 'root':
                         updatedValues.responsible_troop = null;
@@ -127,49 +138,102 @@
                 updatedValues.completed_at_troop = new Date();
             }
 
-            let query = supabase
-                .schema('public')
-                .from('records')
-                .update(updatedValues)
-                .in('cluster_id', props.selectedRows.map(row => row.cluster_id));
+            console.log('Updated values:', updatedValues);
 
-            // Add condition for `completed_at_state` when organizationType is 'root'
-            if(isAdmin.value) {
-                if (props.organizationType === 'root') {
-                    query = query.not('completed_at_state', 'is', null);
-                    query = query.not('completed_at_troop', 'is', null);
-                } else if (props.organizationType === 'country') {
-                    //query = query.not('completed_at_troop', 'is', null);
+            // Process in batches to avoid Supabase limits
+            const BATCH_SIZE = 100; // Reduced batch size for safety
+            const clusterIds = props.selectedRows.map(row => row.cluster_id);
+            const totalRows = clusterIds.length;
+            let totalUpdated = 0;
+            let allUpdatedData = [];
+
+            console.log(`Processing ${totalRows} records in batches of ${BATCH_SIZE}`);
+
+            // Show progress to user
+            snackbarText.value = `Verarbeite ${totalRows} Datensätze in Stapeln...`;
+            snackbarColor.value = 'info';
+            snackbar.value = true;
+
+            for (let i = 0; i < clusterIds.length; i += BATCH_SIZE) {
+                const batch = clusterIds.slice(i, i + BATCH_SIZE);
+                const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+                const totalBatches = Math.ceil(clusterIds.length / BATCH_SIZE);
+                
+                console.log(`Processing batch ${batchNumber}/${totalBatches} with ${batch.length} records`);
+                
+                // Update progress
+                snackbarText.value = `Verarbeite Stapel ${batchNumber}/${totalBatches} (${batch.length} Datensätze)...`;
+
+                let query = supabase
+                    .schema('public')
+                    .from('records')
+                    .update(updatedValues)
+                    .in('cluster_id', batch);
+
+                // Add conditions based on organization type and admin status
+                if(isAdmin.value) {
+                    if (props.organizationType === 'root') {
+                        query = query.not('completed_at_state', 'is', null);
+                        query = query.not('completed_at_troop', 'is', null);
+                    } else if (props.organizationType === 'country') {
+                        // Add specific conditions if needed
+                    }
+                } else {
+                    console.log('Adding null filters for non-admin user');
+                    query = query.is('completed_at_state', null);
+                    query = query.is('completed_at_administration', null);
+                    query = query.is('completed_at_troop', null);
                 }
-            }else{
-                console.log('Adding null filters for non-admin user');
-                query = query.is('completed_at_state', null);
-                query = query.is('completed_at_administration', null);
-                query = query.is('completed_at_troop', null);
+
+                query = query.select();
+
+                const { data, error } = await query;
+
+                if (error) {
+                    console.error(`Batch ${batchNumber} failed:`, {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code,
+                        batchSize: batch.length
+                    });
+                    snackbarText.value = `Fehler bei Stapel ${batchNumber}: ${error.message}`;
+                    snackbarColor.value = 'error';
+                    snackbar.value = true;
+                    return;
+                }
+
+                totalUpdated += data.length;
+                allUpdatedData = allUpdatedData.concat(data);
+                console.log(`Batch ${batchNumber} completed: ${data.length} records updated`);
+                
+                // Small delay to avoid rate limiting
+                if (i + BATCH_SIZE < clusterIds.length) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
             }
 
-            query = query.select();
-
-            console.log(query);
-
-            const { data, error } = await query;
-
-            if (error) {
-                snackbarText.value = 'Fehler beim Aktualisieren der Datensätze: ' + error.message;
-                snackbarColor.value = 'error';
-                snackbar.value = true;
-                return;
-            }
-
-            snackbarText.value = `${data.length} Datensätze erfolgreich aktualisiert.`;
+            snackbarText.value = `${totalUpdated} von ${totalRows} Datensätzen erfolgreich aktualisiert.`;
             snackbarColor.value = 'success';
             snackbar.value = true;
 
-            emit('confirm', data);
-
+            console.log(`Batch processing complete: ${totalUpdated} total records updated`);
+            
+            emit('confirm', allUpdatedData);
             closeDialog();
         } catch (error) {
-            snackbarText.value = 'Fehler beim Aktualisieren der Datensätze: ' + error.message;
+            console.error('Unexpected error in setAsFinished:', error);
+            console.error('Error type:', error.constructor.name);
+            console.error('Error stack:', error.stack);
+            
+            let errorMessage = 'Fehler beim Aktualisieren der Datensätze: ' + error.message;
+            
+            // Provide more specific error messages for common issues
+            if (error.message?.includes('Failed to fetch')) {
+                errorMessage += '\n\nMögliche Ursachen:\n- Netzwerkverbindung unterbrochen\n- Supabase Server nicht erreichbar\n- CORS-Problem';
+            }
+            
+            snackbarText.value = errorMessage;
             snackbarColor.value = 'error';
             snackbar.value = true;
         }
