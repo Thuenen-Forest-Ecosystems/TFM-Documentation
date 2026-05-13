@@ -13,6 +13,7 @@
     import DetailAdministration from './DetailAdministration.vue';
     import ResponsibleByRecord from './ResponsibleByRecord.vue';
     import RecordMessages from './RecordMessages.vue';
+    import PositionMap from './PositionMap.vue';
 
     const ajv = new Ajv({
         allErrors: true,
@@ -58,7 +59,6 @@
     }, { immediate: true });
 
     const sheet = shallowRef(false)
-    const messagesDialog = ref(false)
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -74,7 +74,7 @@
     const validate = ref(null);
     const initialLoading = ref(false);
 
-    const toggle_data_view = ref(0);
+    const styleMap = ref(null);
 
     const selectedHistoryPerTab = ref({});
 
@@ -132,6 +132,7 @@
             schema.value = null;
             validate.value = null;
             tfm.value = null;
+            styleMap.value = null;
             return;
         }
 
@@ -141,6 +142,7 @@
             schema.value = cached.schema;
             validate.value = cached.validate;
             tfm.value = cached.tfm;
+            styleMap.value = cached.styleMap || null;
             console.log('Restored from cache - schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value);
             loadingVersion.value = false;
             return;
@@ -195,15 +197,26 @@
             // TODO: Fetch lookup tables (tableData) if needed by TFM
             // For now, pass empty object as third parameter
             const tfmInstance = new TFM(url+'/', apikey);
+
+            // Fetch style_default from schemas table
+            const { data: schemaRow } = await supabase
+                .from('schemas')
+                .select('style_default')
+                .eq('id', selectedVersion.value.id)
+                .single();
+            const fetchedStyleMap = schemaRow?.style_default || null;
+
             validatorCache.set(versionDir, {
                 schema: schemaItems,
                 validate: compiledValidate,
-                tfm: tfmInstance
+                tfm: tfmInstance,
+                styleMap: fetchedStyleMap
             });
 
             schema.value = schemaItems;
             validate.value = compiledValidate;
             tfm.value = tfmInstance;
+            styleMap.value = fetchedStyleMap;
 
             loadingVersion.value = false;
             console.log('✅ All resources loaded for', versionDir, '- schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value, 'tfm.validationSchema:', !!tfm.value?.validationSchema);
@@ -283,17 +296,7 @@
                     </v-card>
                 </v-dialog>
 
-                <!-- Record Messages-->
-                <!-- Record Messages Dialog -->
-                <RecordMessages v-model="messagesDialog" :recordsId="activeRecord.id" />
-
                  <div class="ma-4 position-fixed d-flex flex-column ga-2" style="bottom: 0; right: 0; z-index: 1005;">
-                    <v-fab
-                        icon="mdi-message"
-                        small
-                        @click="messagesDialog = !messagesDialog"
-                    ></v-fab>
-
                     <!-- History FAB (only when viewing current record) -->
                     <v-fab
                         v-if="!isHistoricalRecord"
@@ -341,9 +344,8 @@
                         <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" :key="activeRecord.id" />
                     </v-card-text>
                 </v-card>
-
                 <v-card variant="tonal" class="ma-3">
-                    <RecordDetail :record="activeRecord" :schema="schema"/>
+                    <RecordDetail :record="activeRecord" :schema="schema" :style-map="styleMap" :validate="validate" :tfm="tfm" />
                 </v-card>
         </div>
 

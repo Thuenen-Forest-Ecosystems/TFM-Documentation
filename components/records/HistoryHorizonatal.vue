@@ -197,6 +197,8 @@
                 responsible_state: item.responsible_state,
                 responsible_provider: item.responsible_provider,
                 responsible_troop: item.responsible_troop,
+                validation_errors: item.validation_errors,
+                plausibility_errors: item.plausibility_errors,
             })
             .eq('plot_id', latestPlot.value.plot_id)
             .select()

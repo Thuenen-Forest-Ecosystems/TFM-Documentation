@@ -91,6 +91,13 @@
         return colorOption.workflowIds.some(id => selectedWorkflowIds.value.includes(id));
     }
 
+    defineExpose({
+        isFilterActive,
+        doesFilterPass,
+        getModel,
+        setModel
+    });
+
 </script>
 
 <template>

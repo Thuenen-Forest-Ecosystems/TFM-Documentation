@@ -132,8 +132,16 @@
 
         isValidating.value = true;
         isValid.value = props.validate(props.record.properties);
-        validationErrors.value = props.validate.errors ? [...props.validate.errors] : [];
-        localize.de(validationErrors.value);
+        const rawErrors = props.validate.errors ? [...props.validate.errors] : [];
+        localize.de(rawErrors);
+        // Deduplicate errors by instancePath + schemaPath + message
+        const seen = new Set();
+        validationErrors.value = rawErrors.filter(err => {
+            const key = `${err.instancePath}|${err.schemaPath}|${err.message}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
 
 
         try {

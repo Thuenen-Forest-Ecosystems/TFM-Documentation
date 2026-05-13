@@ -88,6 +88,7 @@
         const { data, error } = await supabase.auth.getSession()
         if (data.session) {
             user.value = data.session.user;
+            console.log('User:', user.value);
             _getUsersProfile(data.session.user.id);
             _getOrganizations(data.session.user.id);
             console.log('User Profile:', user.value['confirmed_at'], format(user['confirmed_at'], 'de'));
@@ -110,7 +111,7 @@
 
 # Profil
 
-<v-card variant="tonal" class="my-4" :title="user['email']" :subtitle="'Registriert:'+format(user['confirmed_at'], 'de')">
+<v-card variant="tonal" class="my-4" :title="user['email']" :subtitle="'Registriert: '+format(user['confirmed_at'], 'de')">
     <template v-slot:append>
         <VimeoPlayer vimeoId="1129523554" :btnTitle="'Tutorial'" title="Profil verwalten" :iconOnly="false" />
     </template>
@@ -148,7 +149,7 @@
     <h2>Inventuren</h2>
     <v-card variant="tonal" title="Kohlenstoffinventur 2027">
         <v-list>
-            <v-list-item v-for="permission in organizationsAccess" :key="permission.id" @click="_toOrganization(permission.organizations.id)">
+            <v-list-item v-for="permission in organizationsAccess" :key="permission.id" :disabled="!permission.is_organization_admin" @click="_toOrganization(permission.organizations.id)">
                 <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
                 <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
                 <template v-slot:append>

@@ -5,6 +5,10 @@
         recordsId: {
             type: String,
             required: true
+        },
+        inline: {
+            type: Boolean,
+            default: false
         }
     });
 
@@ -160,7 +164,7 @@
 </script>
 
 <template>
-    <v-dialog v-model="model" max-width="600" scrollable>
+    <v-dialog v-if="!inline" v-model="model" max-width="600" scrollable>
         <v-card class="d-flex flex-column" style="height: 70vh;">
             <v-toolbar flat density="compact">
                 <v-toolbar-title>
@@ -251,4 +255,68 @@
             </v-card-actions>
         </v-card>
     </v-dialog>
+    <v-card v-else class="d-flex flex-column ma-3" style="height: 500px;">
+        <v-toolbar flat density="compact">
+            <v-toolbar-title>
+                <v-icon class="mr-1" size="small">mdi-message-text</v-icon>
+                Nachrichten
+            </v-toolbar-title>
+        </v-toolbar>
+        <v-card-text ref="messagesContainer" class="flex-grow-1 overflow-y-auto pa-3">
+            <v-progress-linear v-if="isLoading" indeterminate color="primary" class="mb-3" />
+            <div v-if="!isLoading && messages.length === 0" class="text-center text-grey mt-8">
+                Noch keine Nachrichten
+            </div>
+            <div
+                v-for="msg in messages"
+                :key="msg.id"
+                class="d-flex mb-2"
+                :class="msg.isOwn ? 'justify-end' : 'justify-start'"
+            >
+                <v-card
+                    variant="tonal"
+                    :max-width="msg.is_system_message ? '90%' : '80%'"
+                    class="pa-2"
+                    elevation="1"
+                    rounded="lg"
+                >
+                    <template v-if="msg.is_system_message">
+                        <div class="text-caption text-center font-italic">{{ msg.note }}</div>
+                        <div class="text-caption text-grey text-center mt-1">{{ formatDate(msg.created_at) }}</div>
+                    </template>
+                    <template v-else>
+                        <div class="text-caption font-weight-bold">{{ msg.user_name }}</div>
+                        <div class="text-body-2 my-1" style="white-space: pre-wrap;">{{ msg.note }}</div>
+                        <div class="d-flex align-center justify-space-between">
+                            <span class="text-caption text-grey mr-2">{{ formatDate(msg.created_at) }}</span>
+                            <v-btn v-if="msg.isOwn" icon="mdi-delete-outline" size="x-small" variant="text" density="compact" @click="deleteMessage(msg.id)" />
+                        </div>
+                    </template>
+                </v-card>
+            </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-3">
+            <v-textarea
+                v-model="newMessage"
+                placeholder="Nachricht schreiben..."
+                variant="outlined"
+                density="compact"
+                rows="1"
+                max-rows="4"
+                auto-grow
+                hide-details
+                class="flex-grow-1"
+                @keydown="handleKeydown"
+            />
+            <v-btn
+                icon="mdi-send"
+                color="primary"
+                class="ml-2"
+                :loading="isSending"
+                :disabled="!newMessage.trim()"
+                @click="sendMessage"
+            />
+        </v-card-actions>
+    </v-card>
 </template>
