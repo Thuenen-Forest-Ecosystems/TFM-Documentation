@@ -1,5 +1,5 @@
 <script setup>
-    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch} from 'vue';
+    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, computed } from 'vue';
     import { AllCommunityModule, ModuleRegistry, TooltipModule } from 'ag-grid-community';
     ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
@@ -17,6 +17,7 @@
     import FinishDialog from './FinishDialog.vue';
     import { getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
+    import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
     import ClusterActions from '../cluster/ClusterActions.vue';
@@ -94,12 +95,18 @@
     const lookupTablesValue = ref({});
     let currentGrid = ref(null);
     let selectedRows = ref([]);
+    const selectedRecordIds = computed(() => {
+        return [...new Set(selectedRows.value
+            .map((row) => row.plot_id)
+            .filter((id) => id !== null && id !== undefined && id !== ''))];
+    });
     let filteredRows = ref({}); // Active Filter
     let displayedRows = ref([]); // Rows after filter and sort
     let selectableLose = ref([]);
     const assigning = ref(false);
     const mapDialog = ref(false);
     const recordsDialog = ref(false);
+    const bulkValidationDialog = ref(false);
 
     const snackbar = ref(false);
     const snackbarText = ref('');
@@ -1894,6 +1901,17 @@
                 </v-chip>-->
                 <v-spacer></v-spacer>
                 <div v-if="selectedRows.length > 0">
+                    <!-- Show bulk validation from selected ecken-->
+                     <v-btn
+                        class="mx-2"
+                        variant="elevated"
+                        prepend-icon="mdi-security"
+                        rounded="xl"
+                        color="warning"
+                        @click="bulkValidationDialog = true"
+                    >
+                        Bulk Validation
+                    </v-btn>
                     <v-btn
                         v-if="usersPermissions.find(perm => perm.is_organization_admin)"
                         class="mx-2"
@@ -1956,6 +1974,12 @@
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
+
+    <BulkValidationDialog
+        v-model="bulkValidationDialog"
+        :selected-ids="selectedRecordIds"
+    />
+
     <div v-if="selectedRows.length > 0 && props.organization_id && props.organization_type && props.organization_type !== 'troop'">
         <DialogResponsible
             v-model="responsibleDialog"
