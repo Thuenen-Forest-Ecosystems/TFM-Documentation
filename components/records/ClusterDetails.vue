@@ -10,6 +10,7 @@
     import Ajv from 'ajv';
     import VersionSelection from '../validation/VersionSelection.vue';
     import HistoryHorizonatal from './HistoryHorizonatal.vue';
+    import CompareDialog from './CompareDialog.vue';
     import DetailAdministration from './DetailAdministration.vue';
     import ResponsibleByRecord from './ResponsibleByRecord.vue';
     import RecordMessages from './RecordMessages.vue';
@@ -59,6 +60,7 @@
     }, { immediate: true });
 
     const sheet = shallowRef(false)
+    const compareDialog = ref(false);
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -296,7 +298,14 @@
                     </v-card>
                 </v-dialog>
 
+                <CompareDialog v-model="compareDialog" :record="activeRecord" :schema="schema" />
+
                  <div class="ma-4 position-fixed d-flex flex-column ga-2" style="bottom: 0; right: 0; z-index: 1005;">
+                    <v-fab
+                        icon="mdi-compare"
+                        small
+                        @click="compareDialog = true"
+                    ></v-fab>
                     <!-- History FAB (only when viewing current record) -->
                     <v-fab
                         v-if="!isHistoricalRecord"

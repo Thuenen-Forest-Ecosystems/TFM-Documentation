@@ -1,7 +1,7 @@
 <script setup>
     import { getCurrentInstance, onMounted, useAttrs, ref, watch } from 'vue';
     import DialogTroop from './DialogTroop.vue';
-
+    import { withBase } from 'vitepress'
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -122,6 +122,14 @@
                 troops.value.unshift(updatedTroop);
             }
         });
+    }
+
+    function _toDetails(troop) {
+        if (!troop.id) {
+            console.error('Error: troopId is required to navigate to details.');
+            return;
+        }
+        window.location.href = withBase('/dashboard/troop/statistic?troop=' + troop.id);
     }
 
     const deletingUser = ref({});
@@ -293,6 +301,7 @@
                     variant="text"
                     @click="_editTroop(troop)"
                 ></v-btn>
+                <!--<v-btn icon="mdi-state-machine" v-if="props.is_admin"variant="text" @click="_toDetails(troop)"></v-btn>-->
             </template>
         </v-card-item>
         <v-card-text>
