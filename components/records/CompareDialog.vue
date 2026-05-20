@@ -34,6 +34,7 @@
     const leftSnapshotKey = ref(null);
     const rightSnapshotKey = ref(null);
     const expandedPanels = ref([0]);
+    const exportingCsv = ref(false);
 
     const showOnlyChanges = ref(true);
 
@@ -854,6 +855,83 @@
         if (typeof value === 'number' || typeof value === 'boolean') return String(value);
         return stableSerialize(value);
     }
+
+    function escapeCsvValue(value) {
+        const text = String(value ?? '');
+        return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function getCsvTimestamp() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    }
+
+    async function downloadComparisonCsv() {
+        if (!leftSnapshot.value || !rightSnapshot.value) return;
+
+        const exportRows = [
+            ...sectionRowsAll.value.metadata,
+            ...sectionRowsAll.value.properties
+        ];
+
+        if (exportRows.length === 0) return;
+
+        exportingCsv.value = true;
+        try {
+            await resolveMetaReferenceValues(exportRows);
+
+            const leftLabel = leftSnapshot.value.label || 'Version A';
+            const rightLabel = rightSnapshot.value.label || 'Version B';
+
+            const header = [
+                'Section',
+                'Field',
+                'Path',
+                leftLabel,
+                rightLabel,
+                'BWI2022',
+                'Changed'
+            ];
+
+            const rows = exportRows.map((row) => {
+                const section = getSectionKey(row.path);
+                const leftVal = section === 'metadata'
+                    ? formatMetaValue(row.path, row.leftValue)
+                    : formatValue(row.leftValue);
+                const rightVal = section === 'metadata'
+                    ? formatMetaValue(row.path, row.rightValue)
+                    : formatValue(row.rightValue);
+                const bwi2022Val = section === 'properties' ? formatValue(row.BWI2022Value) : '';
+
+                return [
+                    section,
+                    row.displayTitle || row.title || row.path,
+                    row.path,
+                    leftVal,
+                    rightVal,
+                    bwi2022Val,
+                    row.changed ? 'yes' : 'no'
+                ];
+            });
+
+            const csvContent = [header, ...rows]
+                .map((cols) => cols.map((col) => escapeCsvValue(col)).join(';'))
+                .join('\r\n');
+
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `comparison_${getCsvTimestamp()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } finally {
+            exportingCsv.value = false;
+        }
+    }
 </script>
 
 <template>
@@ -904,6 +982,20 @@
                                 hide-details
                             />
                         </v-col>
+
+                        <v-col cols="12" class="d-flex justify-end">
+                            <v-btn
+                                prepend-icon="mdi-download"
+                                variant="tonal"
+                                size="small"
+                                :loading="exportingCsv"
+                                :disabled="!leftSnapshot || !rightSnapshot || configuredRows.length === 0"
+                                @click="downloadComparisonCsv"
+                            >
+                                CSV herunterladen
+                            </v-btn>
+                        </v-col>
+
                     </v-row>
 
                     <v-row dense class="mt-1 mb-2">
