@@ -1,8 +1,17 @@
 
-
+<script setup lang="ts">
+    import VimeoPlayer from '../components/VimeoPlayer.vue';
+</script>
 <template>
   <div>
-    <div class="text-subtitle-2 mb-2">Installation</div>
+    <v-row class="d-flex align-baseline ma-1">
+        <v-col>
+            <div class="text-title-1 mb-2">Installation</div>
+        </v-col>
+        <v-col class="d-flex justify-end">
+            <VimeoPlayer vimeoId="1194296619" h="e8acbb75e4" btnTitle="Installation & Update" title="Installation & Update" :iconOnly="false" />
+        </v-col>
+    </v-row>
         <v-expansion-panels>
             <v-expansion-panel title="Windows">
                 <v-expansion-panel-text>
