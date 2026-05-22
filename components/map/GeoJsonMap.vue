@@ -13,6 +13,32 @@ const drawMode = ref(false);
 let draw;
 let popup = null;
 
+function runWhenStyleReady(callback) {
+    if (!map) return;
+
+    if (map.isStyleLoaded()) {
+        callback();
+        return;
+    }
+
+    const handleStyleData = () => {
+        if (!map || !map.isStyleLoaded()) return;
+        map.off('styledata', handleStyleData);
+        callback();
+    };
+
+    map.on('styledata', handleStyleData);
+}
+
+function withSafeLayoutDefaults(layer) {
+    // MapLibre v5 placement expects symbol layers to have a layout object.
+    if (layer?.type !== 'symbol') return layer;
+    return {
+        ...layer,
+        layout: layer.layout || {}
+    };
+}
+
 const props = defineProps({
     geojson: {
         type: Object,
@@ -124,7 +150,7 @@ async function initializeMap() {
                         'circle-color': '#ffff00'
                     }
                 }
-            ]
+            ].map(withSafeLayoutDefaults)
         });
         map.addControl(draw, 'top-left');
 
@@ -132,19 +158,10 @@ async function initializeMap() {
         map.on('draw.create', handlePolygonComplete);
         map.on('draw.update', handlePolygonComplete);
         map.on('draw.delete', clearPolygonSelection);
-        
-        // Wait for style to be fully loaded
-        if (map.isStyleLoaded()) {
-            refreshLayer();
-            updateGeoJsonFeatures(props.geojson);
-        } else {
-            // Use styledata event if style is not loaded yet
-            map.once('styledata', () => {
-                console.log('Style loaded');
-                refreshLayer();
-                updateGeoJsonFeatures(props.geojson);
-            });
-        }
+
+        // The `load` event guarantees the style is ready — call directly.
+        refreshLayer();
+        updateGeoJsonFeatures(props.geojson);
 
         // Add click event listener
         map.on('click', handleMapClick);
@@ -208,15 +225,12 @@ watch(basemapToggle, () => {
 
     const newStyle = basemapToggle.value ? styleOSM : styleSatellite;
 
-    const handleStyleData = (e) => {
-        if (e.dataType === 'style') {
-            map.off('styledata', handleStyleData);
-            refreshLayer();
-            updateGeoJsonFeatures(props.geojson);
-        }
-    };
-    
-    map.on('styledata', handleStyleData);
+    // Register BEFORE setStyle so the listener is in place for the new style's idle event.
+    map.once('idle', () => {
+        refreshLayer();
+        updateGeoJsonFeatures(props.geojson);
+    });
+
     map.setStyle(newStyle);
 });
 
@@ -263,7 +277,8 @@ function refreshLayer() {
             id: 'geojson-cluster-label',
             type: 'symbol',
             source: 'geojson-data',
-            filter: ["all", [">=", ["zoom"], 10], ["<", ["zoom"], 14]],
+            minzoom: 10,
+            maxzoom: 14,
             layout: {
                 'text-field': ['get', 'cluster_name'],
                 'text-font': ['Open Sans Regular'],
@@ -271,7 +286,7 @@ function refreshLayer() {
                 'symbol-placement': 'point',
                 'text-size': 14,
                 'text-anchor': 'center',
-                'symbol-sort-key': ['get', 'cluster_name']
+                'symbol-sort-key': ['to-number', ['get', 'cluster_name'], 0]
             },
             paint: {
                 'text-color': '#000',
@@ -285,7 +300,7 @@ function refreshLayer() {
             id: 'geojson-plot-label',
             type: 'symbol',
             source: 'geojson-data',
-            filter: [">=", ["zoom"], 14],
+            minzoom: 14,
             layout: {
                 'text-field': ['concat', ['get', 'cluster_name'], ' - ', ['get', 'plot_name']],
                 'text-font': ['Open Sans Regular'],

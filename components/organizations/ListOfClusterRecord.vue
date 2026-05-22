@@ -894,7 +894,8 @@
                     cluster_situation,
                     state_responsible,
                     states_affected,
-                    grid_density
+                    grid_density,
+                    previous_properties
                 `)
                 .eq(companyType, organizationId)
                 .order('cluster_id', { ascending: true })
@@ -917,16 +918,20 @@
     }
     function createGeojsonFeatureCollection(records) {
         console.log('Creating GeoJSON Feature Collection with records:', records.length);
-        geojsonFeatureCollection.value.features = records.map(record => ({
+        geojsonFeatureCollection.value.features = records.map(record => {
+            return ({
             type: "Feature",
-            geometry: record.center_location,
+            geometry: record.previous_properties?.plot_coordinates?.center_location?.coordinates
+                ? { type: 'Point', coordinates: record.previous_properties.plot_coordinates.center_location.coordinates }
+                : (record.center_location || null),
             properties: {
                 isSelected: false,
                 isFiltered: false,
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).searchText,
                 ...record
             }
-        }));
+            });
+        });
 
     }
     async function _requestPlots(organizationType, organizationId) {
@@ -1201,7 +1206,7 @@
      watch(() => props.records, (newRecords) => {
 
         rowData.value = _preRenderRecords(newRecords);
-        createGeojsonFeatureCollection(newRecords);
+        // GeoJSON is handled in onMounted with a separate fetch that includes geometry fields
     }, { immediate: true });
 
     onMounted(async () => {
@@ -1219,7 +1224,13 @@
         await _requestAllLookupTables();
 
         rowData.value = _preRenderRecords(records);
-        createGeojsonFeatureCollection(records);
+
+        // Map always needs fresh records with previous_properties/center_location
+        // (props.records from parent may not include these geometry fields)
+        const mapRecords = props.records
+            ? await _requestPlots(props.organization_type, props.organization_id)
+            : records;
+        createGeojsonFeatureCollection(mapRecords || records);
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 
