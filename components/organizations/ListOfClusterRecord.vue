@@ -208,7 +208,8 @@
         defaultColDef: {
             initialWidth: 215,
             wrapHeaderText: false,
-            autoHeaderHeight: false
+            autoHeaderHeight: false,
+            lockVisible: true
         },
         postSortRows: (params) => {
             const selected = [];
