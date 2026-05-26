@@ -27,6 +27,14 @@
             required: false,
             default: null
         },
+        validationErrors: {
+            type: Array,
+            default: () => []
+        },
+        plausibilityErrors: {
+            type: Array,
+            default: () => []
+        },
     });
 
     const tabObjects = ref({});
@@ -106,9 +114,21 @@
         return props.schema.properties[topKey]?.items ?? null;
     }
 
+    // Filter errors for a specific property path (strips the leading /propertyName prefix for tables)
+    function errorsForProperty(propertyName) {
+        const prefix = `/${propertyName}/`;
+        const val = props.validationErrors.filter(e => (e.instancePath || '').startsWith(prefix));
+        const plaus = props.plausibilityErrors.filter(e => (e.instancePath || '').startsWith(prefix));
+        return { validation: val, plausibility: plaus };
+    }
+
+    // Filter errors directly for a form (no prefix stripping needed, path starts with /fieldName)
+    function errorsForForm() {
+        return { validation: props.validationErrors, plausibility: props.plausibilityErrors };
+    }
+
     // Legacy: styleMap manages its own tabs
     const styleMapTabs = computed(() => {
-        if (!props.styleMap?.layout?.items) return null;
         return props.styleMap.layout.items.filter(
             item => item.id !== 'messages' && item.id !== 'position_column'
         );
@@ -146,6 +166,9 @@
                 v-if="styleTab.component === 'datagrid' && styleTab.property"
                 :data="props.data?.[styleTab.property] || []"
                 :schema="props.schema?.properties?.[styleTab.property]?.items"
+                :property-name="styleTab.property"
+                :validation-errors="errorsForProperty(styleTab.property).validation"
+                :plausibility-errors="errorsForProperty(styleTab.property).plausibility"
             />
             <!-- Column: cards, nested tabs, direct arrays -->
             <div v-else-if="styleTab.type === 'column'" class="pa-1">
@@ -160,12 +183,16 @@
                                 v-if="formItem.type === 'form' && formItem.property"
                                 :data="getNestedData(formItem.property)?.[0] || {}"
                                 :schema="getFormSchema(formItem, getNestedSchema(formItem.property))"
+                                :validation-errors="errorsForForm().validation"
+                                :plausibility-errors="errorsForForm().plausibility"
                             />
                             <!-- Normal form -->
                             <GridViewGridTab
                                 v-else-if="formItem.type === 'form'"
                                 :data="props.data"
                                 :schema="getFormSchema(formItem)"
+                                :validation-errors="errorsForForm().validation"
+                                :plausibility-errors="errorsForForm().plausibility"
                             />
                         </template>
                     </v-card>
@@ -191,11 +218,16 @@
                                         v-if="subItem.type === 'form'"
                                         :data="props.data"
                                         :schema="getFormSchema(subItem)"
+                                        :validation-errors="errorsForForm().validation"
+                                        :plausibility-errors="errorsForForm().plausibility"
                                     />
                                     <GridViewTableTab
                                         v-else-if="subItem.component === 'datagrid' && subItem.property"
                                         :data="props.data?.[subItem.property] || []"
                                         :schema="props.schema?.properties?.[subItem.property]?.items"
+                                        :property-name="subItem.property"
+                                        :validation-errors="errorsForProperty(subItem.property).validation"
+                                        :plausibility-errors="errorsForProperty(subItem.property).plausibility"
                                     />
                                 </template>
                             </v-tabs-window-item>
@@ -207,6 +239,9 @@
                         v-else-if="item.component === 'datagrid' && item.property"
                         :data="props.data?.[item.property] || []"
                         :schema="props.schema?.properties?.[item.property]?.items"
+                        :property-name="item.property"
+                        :validation-errors="errorsForProperty(item.property).validation"
+                        :plausibility-errors="errorsForProperty(item.property).plausibility"
                         class="ma-2"
                     />
 

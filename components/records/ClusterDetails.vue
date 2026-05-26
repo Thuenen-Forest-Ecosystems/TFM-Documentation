@@ -337,7 +337,7 @@
                     <ResponsibleByRecord :record="activeRecord" class="ma-1" />
                 </v-card>
 
-                <v-card variant="tonal" v-if="activeRecord" class="ma-3">
+                <!--<v-card variant="tonal" v-if="activeRecord" class="ma-3">
                     <v-toolbar color="transparent">
                         <v-toolbar-title>Validation</v-toolbar-title>
                         <template v-slot:append>
@@ -352,7 +352,7 @@
                     <v-card-text v-if="activeRecord && validate && tfm">
                         <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" :key="activeRecord.id" />
                     </v-card-text>
-                </v-card>
+                </v-card>-->
                 <v-card variant="tonal" class="ma-3">
                     <RecordDetail :record="activeRecord" :schema="schema" :style-map="styleMap" :validate="validate" :tfm="tfm" />
                 </v-card>
