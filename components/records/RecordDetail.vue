@@ -225,8 +225,10 @@
                     <v-btn value="CI2027" size="small">CI2027</v-btn>
                     <v-btn value="BWI2022" size="small">BWI2022</v-btn>
                 </v-btn-toggle>
+                
+                <div class="flex-grow-1"></div>
+                <!-- Version Selection -->
                 <v-btn-toggle
-                    v-if="isDataTab"
                     density="compact"
                     v-model="toggleDataView"
                     rounded="xl"
@@ -235,10 +237,11 @@
                     <v-btn size="small"><v-icon>mdi-view-list</v-icon></v-btn>
                     <v-btn size="small"><v-icon>mdi-code-braces</v-icon></v-btn>
                 </v-btn-toggle>
+                 
             </div>
 
             <!-- Content tabs from styleMap -->
-            <v-tabs v-model="contentTab" show-arrows>
+            <v-tabs v-model="contentTab" show-arrows  v-if="toggleDataView === 0">
                 <v-tab
                     v-for="item in styleMapTabs"
                     :key="item.id"
@@ -257,7 +260,7 @@
             </v-tabs>
             <v-divider />
 
-            <v-tabs-window v-model="contentTab">
+            <v-tabs-window v-model="contentTab" v-if="toggleDataView === 0">
                 <v-tabs-window-item
                     v-for="item in styleMapTabs"
                     :key="item.id"
@@ -289,6 +292,11 @@
                     />
                 </v-tabs-window-item>
             </v-tabs-window>
+
+                <!-- JSON view when toggled -->
+            <v-card-text v-if="toggleDataView === 1">
+                <JsonViewer :data="currentData" :schema="schema" />
+            </v-card-text>
 
             <TabErrorsDialog
                 v-model="errorDialogOpen"
