@@ -58,7 +58,7 @@ const autoSizeStrategy = { type: 'fitGridWidth', defaultMinWidth: 5 };
 const MIN_GRID_HEIGHT = 200;   // px – adjust to your design
 const gridHeight = computed(() => {
   const rowHeight = 25;               // default ag‑grid row height
-  const maxRows   = 20;               // rows before pagination kicks in
+  const maxRows   = 50;               // rows before pagination kicks in
   const rows = Math.min(tabledata.value?.length ?? 0, maxRows) || 1;
   const height = rowHeight * rows;
   return `${Math.max(height, MIN_GRID_HEIGHT)}px`;   // enforce min height
@@ -93,6 +93,16 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
   let from = 0
   let to = batchSize - 1
   let hasMore = true
+  const ids = selectedOrganisations.value.join(','); // CSV list of org UUIDs
+  // Build an OR‑filter that matches any of the four organisation‑type columns
+  const orFilters = [
+    `responsible_administration.in.(${ids})`,
+    `responsible_state.in.(${ids})`,
+    `responsible_provider.in.(${ids})`,
+    `responsible_troop.in.(${ids})`
+  ];
+
+
   console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
   try {
     // 1. Fetch lookup tables once and convert them to Maps for fast O(1) matching
@@ -114,6 +124,7 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
       const { data, error } = await supabase
         .from('record_changes')
         .select('responsible_state, cluster_id, cluster_name, plot_name, responsible_troop, completed_at_troop, properties')
+        .or(orFilters.join(','))
         .not('completed_at_troop', 'is', null)
         .lt('cluster_name', 1000000000)
         .range(from, to)
@@ -121,6 +132,9 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
       if (error) throw error
 
       if (!data || data.length === 0) {
+        if (hasMore === true) {
+          console.warn("No data returned from Supabase for orgs, ending batch fetch.")
+        }
         hasMore = false
         break
       }
@@ -290,11 +304,12 @@ function onBtnExport1() {
   </v-card>
 
   <!-- ==================== GRID 1 – ALL ==================== -->
-  <v-card v-if="tabledata && tabledata.length > 0">
-    <v-card-title>Alle Traktecken</v-card-title>
+  <!-- <v-card v-if="tabledata && tabledata.length > 0">-->
+  <v-card>
+    <v-card-title>Ergebnis</v-card-title>
 
     <!-- Render the grid only when at least one organisation is selected -->
-    <ag-grid-vue v-if="selectedOrganisations.length > 0"
+    <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
       :rowData="tabledata"
       :columnDefs="MyColDefs1"
       :style="{ height: gridHeight }"
@@ -307,7 +322,7 @@ function onBtnExport1() {
       @grid-ready="onGridReady1" />
     <!-- Fallback message when no org is selected -->
     <v-card-text v-else class="text-center text-grey italic">
-      Keine Daten für die aktuelle Auswahl verfügbar.
+      Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
     <!-- CSV export button for Grid 1 -->
