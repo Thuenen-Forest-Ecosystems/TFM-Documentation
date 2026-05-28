@@ -6,12 +6,12 @@ layout: home
      imports and prepares any components or utilities needed by the template. -->
 <script setup>
     /*  Import the specific Stats component from its relative path.*/
-    import Stats from '../../../components/statistics/g1/s1.vue';
+    import Stats from '../../../components/statistics/g1/s3b.vue';
 </script>
 
 <!-- Markdown heading that will be rendered as an <h1> element.
      It describes the content: "Cumulative performance per inventory team". -->
-# Kumulative Leistung pro Inventurtrupp
+# Wann, welcher Trupp welche Ecke abgegeben hat  (Variante B)
 
 <!-- Vuetify application wrapper with a transparent background.
      It provides the necessary layout and styling context for the component. -->
