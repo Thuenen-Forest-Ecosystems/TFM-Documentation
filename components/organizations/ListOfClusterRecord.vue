@@ -1207,7 +1207,9 @@
      watch(() => props.records, (newRecords) => {
 
         rowData.value = _preRenderRecords(newRecords);
-        // GeoJSON is handled in onMounted with a separate fetch that includes geometry fields
+        if (Array.isArray(newRecords)) {
+            createGeojsonFeatureCollection(newRecords);
+        }
     }, { immediate: true });
 
     onMounted(async () => {
@@ -1226,11 +1228,15 @@
 
         rowData.value = _preRenderRecords(records);
 
-        // Map always needs fresh records with previous_properties/center_location
-        // (props.records from parent may not include these geometry fields)
-        const mapRecords = props.records
-            ? await _requestPlots(props.organization_type, props.organization_id)
-            : records;
+        const hasMapGeometry = Array.isArray(records)
+            && records.some(record =>
+                record?.center_location
+                || record?.previous_properties?.plot_coordinates?.center_location?.coordinates
+            );
+
+        const mapRecords = hasMapGeometry
+            ? records
+            : await _requestPlots(props.organization_type, props.organization_id);
         createGeojsonFeatureCollection(mapRecords || records);
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
