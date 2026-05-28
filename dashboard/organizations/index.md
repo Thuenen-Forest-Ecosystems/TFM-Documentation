@@ -151,6 +151,9 @@ layout: home
     const toEditOrganization = (organization) => {
         window.location.href = withBase('/dashboard/organizations/administration?organization=' + organization.id);
     };
+    const toApi = (organization) => {
+        window.location.href = withBase('/dashboard/organizations/api?organization=' + organization.id);
+    };
 
     // Globaly load records
     async function fetchAllDataPaginated(tableName, organizationId, companyType, troopFilter = null) {
@@ -281,6 +284,13 @@ layout: home
             </template>
             Administratoren bearbeiten
         </v-btn>
+        &nbsp;
+        <v-btn v-if="permission.is_organization_admin" variant="outlined" @click="toApi(currentOrganization)" rounded="xl">
+            <template v-slot:prepend>
+                <v-icon>mdi-download</v-icon>
+            </template>
+            Aktuelle Aufnahmen
+        </v-btn>
         <template v-slot:extension>
             <v-tabs v-model="tab" align-tabs="center" class="mt-6">
                 <v-tab value="0">Statistik</v-tab>
@@ -334,8 +344,8 @@ layout: home
             <v-divider class="my-8" />
             <ListOfTroops 
                 v-if="organizationId"
-                :organization_id="organizationId" 
-                :title="'Trupps'" 
+                :organization_id="organizationId"
+                :title="'Trupps'"
                 :is_admin="permission.is_organization_admin || false"
                 class="mt-11"
             />

@@ -1,5 +1,5 @@
 <script setup>
-    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch} from 'vue';
+    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, computed } from 'vue';
     import { AllCommunityModule, ModuleRegistry, TooltipModule } from 'ag-grid-community';
     ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
     import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
@@ -17,6 +17,7 @@
     import FinishDialog from './FinishDialog.vue';
     import { getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
+    import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
     import ClusterActions from '../cluster/ClusterActions.vue';
@@ -94,12 +95,18 @@
     const lookupTablesValue = ref({});
     let currentGrid = ref(null);
     let selectedRows = ref([]);
+    const selectedRecordIds = computed(() => {
+        return [...new Set(selectedRows.value
+            .map((row) => row.plot_id)
+            .filter((id) => id !== null && id !== undefined && id !== ''))];
+    });
     let filteredRows = ref({}); // Active Filter
     let displayedRows = ref([]); // Rows after filter and sort
     let selectableLose = ref([]);
     const assigning = ref(false);
     const mapDialog = ref(false);
     const recordsDialog = ref(false);
+    const bulkValidationDialog = ref(false);
 
     const snackbar = ref(false);
     const snackbarText = ref('');
@@ -170,6 +177,12 @@
         features: []
     });
     const selectedLos = ref(null);
+    const lookupTablesLoaded = ref(false);
+    const referenceDataLoaded = ref(false);
+
+    let lookupTablesPromise = null;
+    let referenceDataPromise = null;
+    let hydrateVersion = 0;
 
     // Grid Options
     const gridOptions = {
@@ -201,7 +214,8 @@
         defaultColDef: {
             initialWidth: 215,
             wrapHeaderText: false,
-            autoHeaderHeight: false
+            autoHeaderHeight: false,
+            lockVisible: true
         },
         postSortRows: (params) => {
             const selected = [];
@@ -647,13 +661,14 @@
             );
         });
 
+        const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
+        const troopsMap = new Map(troops.value.map(troop => [troop.id, troop]));
+
 
         const processedRecords = records.map(record => {
             const clusterData = clusterMap.get(record.cluster_id);
 
-            const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
-
-            const troop = troops.value.find(troop => troop.id === record.responsible_troop);
+            const troop = troopsMap.get(record.responsible_troop);
 
             return {
                 is_selectable: computeSelectable(record),
@@ -845,6 +860,96 @@
             return [];
         }
     }
+
+    async function _ensureLookupTablesLoaded() {
+        if (lookupTablesLoaded.value) {
+            return;
+        }
+
+        if (!lookupTablesPromise) {
+            lookupTablesPromise = (async () => {
+                await _requestAllLookupTables();
+                lookupTablesLoaded.value = true;
+            })().finally(() => {
+                lookupTablesPromise = null;
+            });
+        }
+
+        await lookupTablesPromise;
+    }
+
+    async function _ensureReferenceDataLoaded() {
+        if (referenceDataLoaded.value) {
+            return;
+        }
+
+        if (!referenceDataPromise) {
+            referenceDataPromise = (async () => {
+                const [loadedOrganizations, loadedTroops] = await Promise.all([
+                    _getOrganizations(),
+                    _getTroops(props.organization_id)
+                ]);
+
+                organizations.value = loadedOrganizations;
+                troops.value = loadedTroops;
+                setColDefs();
+                referenceDataLoaded.value = true;
+            })().finally(() => {
+                referenceDataPromise = null;
+            });
+        }
+
+        await referenceDataPromise;
+    }
+
+    function _hasMapGeometry(records) {
+        return Array.isArray(records)
+            && records.some(record =>
+                record?.center_location
+                || record?.previous_properties?.plot_coordinates?.center_location?.coordinates
+            );
+    }
+
+    async function _hydrateGridData() {
+        if (!props.tab_active) {
+            return;
+        }
+
+        const runId = ++hydrateVersion;
+        loading.value = true;
+
+        try {
+            await Promise.all([
+                _ensureLookupTablesLoaded(),
+                _ensureReferenceDataLoaded()
+            ]);
+
+            const activeRecords = Array.isArray(props.records)
+                ? props.records
+                : await _requestPlots(props.organization_type, props.organization_id);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            rowData.value = _preRenderRecords(activeRecords);
+
+            const mapRecords = _hasMapGeometry(activeRecords)
+                ? activeRecords
+                : await _requestPlots(props.organization_type, props.organization_id);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            createGeojsonFeatureCollection(mapRecords || activeRecords);
+        } finally {
+            if (runId === hydrateVersion) {
+                loading.value = false;
+            }
+        }
+    }
+
     async function fetchAllDataPaginated(tableName, organizationId, companyType) {
         let allData = [];
         let currentPage = 0;
@@ -887,7 +992,8 @@
                     cluster_situation,
                     state_responsible,
                     states_affected,
-                    grid_density
+                    grid_density,
+                    previous_properties
                 `)
                 .eq(companyType, organizationId)
                 .order('cluster_id', { ascending: true })
@@ -910,16 +1016,20 @@
     }
     function createGeojsonFeatureCollection(records) {
         console.log('Creating GeoJSON Feature Collection with records:', records.length);
-        geojsonFeatureCollection.value.features = records.map(record => ({
+        geojsonFeatureCollection.value.features = records.map(record => {
+            return ({
             type: "Feature",
-            geometry: record.center_location,
+            geometry: record.previous_properties?.plot_coordinates?.center_location?.coordinates
+                ? { type: 'Point', coordinates: record.previous_properties.plot_coordinates.center_location.coordinates }
+                : (record.center_location || null),
             properties: {
                 isSelected: false,
                 isFiltered: false,
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).searchText,
                 ...record
             }
-        }));
+            });
+        });
 
     }
     async function _requestPlots(organizationType, organizationId) {
@@ -1139,20 +1249,9 @@
     // watch tab_active
     watch(() => props.tab_active, (newValue) => {
         if (newValue) {
-            nextTick(async () => {
-
-                organizations.value = await _getOrganizations();
-                troops.value = await _getTroops(props.organization_id);
-                console.log('Organizations and Troops loaded on tab active', troops.value);
-
-                const records = props.records || await _requestPlots(props.organization_type, props.organization_id);
-
-                rowData.value = _preRenderRecords(records);
-                createGeojsonFeatureCollection(records);
-                
-            });
+            _hydrateGridData();
         }
-    }, { immediate: true });
+    });
 
     function exportSelected() {
         if (selectedRows.value.length === 0) {
@@ -1191,32 +1290,34 @@
 
     }
 
-     watch(() => props.records, (newRecords) => {
+     watch(() => props.records, async (newRecords) => {
+
+        if (!props.tab_active || !Array.isArray(newRecords)) {
+            return;
+        }
+
+        await Promise.all([
+            _ensureLookupTablesLoaded(),
+            _ensureReferenceDataLoaded()
+        ]);
 
         rowData.value = _preRenderRecords(newRecords);
-        createGeojsonFeatureCollection(newRecords);
-    }, { immediate: true });
+
+        const mapRecords = _hasMapGeometry(newRecords)
+            ? newRecords
+            : await _requestPlots(props.organization_type, props.organization_id);
+        createGeojsonFeatureCollection(mapRecords || newRecords);
+    });
 
     onMounted(async () => {
 
-        loading.value = true;
-
-        //organizations.value = await _getOrganizations();
-        //troops.value = await _getTroops(props.organization_id);
-
         setColDefs();
-
-        const records = props.records || await _requestPlots(props.organization_type, props.organization_id);
-
-         // Ensure lookup tables are fully loaded before processing
-        await _requestAllLookupTables();
-
-        rowData.value = _preRenderRecords(records);
-        createGeojsonFeatureCollection(records);
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 
-        loading.value = false;
+        if (props.tab_active) {
+            await _hydrateGridData();
+        }
     });
 
     function onGridReady(params) {
@@ -1894,6 +1995,17 @@
                 </v-chip>-->
                 <v-spacer></v-spacer>
                 <div v-if="selectedRows.length > 0">
+                    <!-- Show bulk validation from selected ecken-->
+                     <v-btn
+                        class="mx-2"
+                        variant="elevated"
+                        prepend-icon="mdi-security"
+                        rounded="xl"
+                        color="warning"
+                        @click="bulkValidationDialog = true"
+                    >
+                        Bulk Validation
+                    </v-btn>
                     <v-btn
                         v-if="usersPermissions.find(perm => perm.is_organization_admin)"
                         class="mx-2"
@@ -1956,6 +2068,12 @@
             <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
         </template>
     </v-snackbar>
+
+    <BulkValidationDialog
+        v-model="bulkValidationDialog"
+        :selected-ids="selectedRecordIds"
+    />
+
     <div v-if="selectedRows.length > 0 && props.organization_id && props.organization_type && props.organization_type !== 'troop'">
         <DialogResponsible
             v-model="responsibleDialog"

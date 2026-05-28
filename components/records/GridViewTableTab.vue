@@ -1,5 +1,5 @@
 <script setup>
-    import { ref, watch, inject, onMounted, nextTick } from 'vue';
+    import { ref, watch, inject, onMounted, nextTick, computed } from 'vue';
 
     import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
     ModuleRegistry.registerModules([AllCommunityModule]);
@@ -21,7 +21,19 @@
         schema: {
             type: Object,
             required: true
-        }
+        },
+        propertyName: {
+            type: String,
+            default: ''
+        },
+        validationErrors: {
+            type: Array,
+            default: () => []
+        },
+        plausibilityErrors: {
+            type: Array,
+            default: () => []
+        },
     });
 
     const gridOptions = ref({
@@ -37,8 +49,12 @@
             autoHeaderHeight: false
         },
         columnDefs: [],
-        rowData: []
+        rowData: [],
     });
+
+    const errorDialogOpen = ref(false);
+    const errorDialogMessages = ref([]);
+    const errorDialogType = ref('error');
 
     /*function createColumnDefsFromJsonSchema(jsonSchema){
         
@@ -102,6 +118,14 @@
                 pinned, // AG Grid supports 'left' or 'right'
                 headerTooltip: property.description || '', // Add tooltip if description exists
                 cellClass: isNumeric ? 'ag-right-aligned-cell' : '',
+                cellStyle: params => {
+                    const k = `${params.rowIndex}_${key}`;
+                    const cell = cellErrorMap.value[k];
+                    if (!cell) return null;
+                    if (cell.hasError) return { backgroundColor: 'rgba(239,83,80,0.15)', borderLeft: '3px solid #ef5350' };
+                    if (cell.hasWarning) return { backgroundColor: 'rgba(255,167,38,0.15)', borderLeft: '3px solid #ffa726' };
+                    return null;
+                },
                 valueFormatter: params => {
                     let value = params.value;
 
@@ -211,12 +235,122 @@
         });
 
         // Combine: columns with sortBy, then grouped columns, then columns without sortBy
-        gridOptions.value.columnDefs = [...ungroupedWithSort, ...sortedGroups, ...ungroupedWithoutSort];
+        const dataCols = [...ungroupedWithSort, ...sortedGroups, ...ungroupedWithoutSort];
+
+        // Prepend pinned error-indicator column — click opens a dialog with all error messages
+        const errorIndicatorCol = {
+            headerName: '',
+            field: '_errorIndicator',
+            width: 40,
+            minWidth: 40,
+            maxWidth: 40,
+            pinned: 'left',
+            sortable: false,
+            filter: false,
+            resizable: false,
+            suppressMovable: true,
+            suppressSizeToFit: true,
+            suppressAutoSize: true,
+            onCellClicked: params => {
+                if (params.data?._errorTooltip) {
+                    errorDialogMessages.value = params.data._errorTooltip.split('\n');
+                    errorDialogType.value = params.data._errorIndicator;
+                    errorDialogOpen.value = true;
+                }
+            },
+            cellRenderer: params => {
+                if (!params.value) return '';
+                const color = params.value === 'error' ? '#ef5350' : '#ffa726';
+                return `<div style="display:flex;align-items:center;justify-content:center;height:100%;cursor:pointer;"><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="${color}"/></svg></div>`;
+            }
+        };
+
+        gridOptions.value.columnDefs = [errorIndicatorCol, ...dataCols];
     }
     function createRowDataFromData(data){
         if (!data) return [];
-        return Array.isArray(data) ? data : [data];
+        const rows = Array.isArray(data) ? data : [data];
+        const errMap = rowErrorMap.value;
+        const prefix = props.propertyName ? `/${props.propertyName}/` : '/';
+
+        // Build per-row tooltip messages (deduplicated)
+        const tooltipMap = {};
+        for (const err of props.validationErrors) {
+            const p = err.instancePath || '';
+            const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
+            const rowIdx = rest.split('/')[0];
+            if (!rowIdx) continue;
+            const msg = err.message;
+            if (msg) (tooltipMap[rowIdx] ??= new Set()).add(msg);
+        }
+        for (const err of props.plausibilityErrors) {
+            const p = err.instancePath || '';
+            const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
+            const rowIdx = rest.split('/')[0];
+            if (!rowIdx) continue;
+            const msg = err.error?.text || err.error?.note;
+            if (msg) (tooltipMap[rowIdx] ??= new Set()).add(msg);
+        }
+
+        return rows.map((row, index) => {
+            const idxStr = String(index);
+            const msgs = tooltipMap[idxStr];
+            return {
+                ...row,
+                _errorIndicator: errMap[idxStr]?.hasError ? 'error' : errMap[idxStr]?.hasWarning ? 'warning' : null,
+                _errorTooltip: msgs?.size ? [...msgs].join('\n') : null
+            };
+        });
     }
+
+    // Reactive row error map: { '${rowIdx}': { hasError, hasWarning } }
+    const rowErrorMap = computed(() => {
+        const map = {};
+        function addEntry(rowIdx, isError) {
+            if (!map[rowIdx]) map[rowIdx] = { hasError: false, hasWarning: false };
+            if (isError) map[rowIdx].hasError = true;
+            else map[rowIdx].hasWarning = true;
+        }
+        const prefix = props.propertyName ? `/${props.propertyName}/` : '/';
+        for (const err of props.validationErrors) {
+            const p = err.instancePath || '';
+            const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
+            const rowIdx = rest.split('/')[0];
+            if (rowIdx !== '') addEntry(rowIdx, true);
+        }
+        for (const err of props.plausibilityErrors) {
+            const p = err.instancePath || '';
+            const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
+            const rowIdx = rest.split('/')[0];
+            if (rowIdx !== '') addEntry(rowIdx, err.error?.type === 'error');
+        }
+        return map;
+    });
+
+    // Reactive cell error map: { '${rowIdx}_${field}': { hasError, hasWarning } }
+    const cellErrorMap = computed(() => {
+        const map = {};
+        function addEntry(rowIdx, field, isError) {
+            const k = `${rowIdx}_${field}`;
+            if (!map[k]) map[k] = { hasError: false, hasWarning: false };
+            if (isError) map[k].hasError = true;
+            else map[k].hasWarning = true;
+        }
+        const prefix = props.propertyName ? `/${props.propertyName}/` : '/';
+        for (const err of props.validationErrors) {
+            const p = err.instancePath || '';
+            const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
+            const parts = rest.split('/');
+            if (parts.length >= 2) addEntry(parts[0], parts[1], true);
+        }
+        for (const err of props.plausibilityErrors) {
+            const p = err.instancePath || '';
+            const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
+            const parts = rest.split('/');
+            if (parts.length >= 2) addEntry(parts[0], parts[1], err.error?.type === 'error');
+        }
+        return map;
+    });
 
     onMounted(() => {
        
@@ -229,11 +363,21 @@
         });
     });
 
-    watch(() => [props.data, props.schema], (newData) => {
-        // Handle data changes
+    // Rebuild columns and row data when schema or data changes
+    watch(() => [props.data, props.schema], () => {
         createColumnDefsFromJsonSchema(props.schema);
-        gridOptions.value.rowData = [props.data];
+        gridOptions.value.rowData = createRowDataFromData(props.data);
+        nextTick(() => {
+            currentGrid.value?.api?.sizeColumnsToFit();
+        });
+    });
 
+    // Rebuild rowData (embeds _errorIndicator) and re-evaluate cellStyle when errors change
+    watch(() => [props.validationErrors, props.plausibilityErrors], () => {
+        gridOptions.value.rowData = createRowDataFromData(props.data);
+        nextTick(() => {
+            currentGrid.value?.api?.refreshCells({ force: true });
+        });
     });
 </script>
 
@@ -250,5 +394,23 @@
             :columnDefs="gridOptions.columnDefs"
             style="height: 700px"
         ></ag-grid-vue>
+
+        <v-dialog v-model="errorDialogOpen" max-width="520">
+            <v-card>
+                <v-card-title class="d-flex align-center gap-2">
+                    <v-icon :color="errorDialogType === 'error' ? 'error' : 'warning'" class="mr-2">
+                        {{ errorDialogType === 'error' ? 'mdi-alert-circle' : 'mdi-alert' }}
+                    </v-icon>
+                    {{ errorDialogType === 'error' ? 'Fehler' : 'Warnung' }}
+                </v-card-title>
+                <v-card-text>
+                    <div v-for="(msg, i) in errorDialogMessages" :key="i" class="mb-1">{{ msg }}</div>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn @click="errorDialogOpen = false">Schließen</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </div>
 </template>

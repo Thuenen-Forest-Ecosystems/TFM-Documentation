@@ -10,6 +10,14 @@
             type: Object,
             required: true,
         },
+        validationErrors: {
+            type: Array,
+            default: () => []
+        },
+        plausibilityErrors: {
+            type: Array,
+            default: () => []
+        },
     });
 
     /*
@@ -83,6 +91,25 @@
             }, {});
     });
 
+    // Collect validation and plausibility errors for a specific field key
+    function getFieldErrors(key) {
+        const validation = props.validationErrors.filter(e => {
+            const p = e.instancePath || '';
+            return p === `/${key}` || p.startsWith(`/${key}/`);
+        });
+        const plausibility = props.plausibilityErrors.filter(e => {
+            const p = e.instancePath || '';
+            return p === `/${key}` || p.startsWith(`/${key}/`);
+        });
+        return {
+            validation,
+            plausibility,
+            hasError: validation.length > 0 || plausibility.some(e => e.error?.type === 'error'),
+            hasWarning: plausibility.some(e => e.error?.type !== 'error'),
+            validationMessages: validation.map(e => e.message),
+        };
+    }
+
     // Get display value (handle enums)
     function getDisplayValue(key, property) {
         const value = props.data[key];
@@ -118,11 +145,25 @@
                         :model-value="getDisplayValue(key, property)"
                         variant="solo-filled"
                         readonly
+                        :error="getFieldErrors(key).hasError"
+                        :messages="getFieldErrors(key).hasError ? getFieldErrors(key).validationMessages : []"
                     >
                     <template v-slot:append-inner>
+                        <v-tooltip v-if="getFieldErrors(key).plausibility.length > 0">
+                            <template #activator="{ props: tp }">
+                                <v-icon
+                                    v-bind="tp"
+                                    density="compact"
+                                    :color="getFieldErrors(key).plausibility.some(e => e.error?.type === 'error') ? 'red' : 'orange'"
+                                >
+                                    {{ getFieldErrors(key).plausibility.some(e => e.error?.type === 'error') ? 'mdi-alert-octagon' : 'mdi-alert-circle' }}
+                                </v-icon>
+                            </template>
+                            <div v-for="(e, i) in getFieldErrors(key).plausibility" :key="i">{{ e.error?.note || e.error?.text }}</div>
+                        </v-tooltip>
                         <v-tooltip>
-                            <template #activator="{ props }">
-                                <v-icon v-bind="props" density="compact">mdi-information</v-icon>
+                            <template #activator="{ props: ip }">
+                                <v-icon v-bind="ip" density="compact">mdi-information</v-icon>
                             </template>
                             <span>{{ property.description || '' }}</span>
                         </v-tooltip>

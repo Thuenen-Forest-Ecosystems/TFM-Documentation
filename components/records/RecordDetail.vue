@@ -1,10 +1,27 @@
 <script setup>
-    import { ref, computed, watch } from 'vue';
+    import { ref, computed, watch, getCurrentInstance } from 'vue';
     import JsonViewer from './JsonViewer.vue';
     import GridView from './GridView.vue';
     import PositionMap from './PositionMap.vue';
     import RecordMessages from './RecordMessages.vue';
     import TabErrorsDialog from './TabErrorsDialog.vue';
+    import VersionSelection from '../validation/VersionSelection.vue';
+    import Ajv from 'ajv';
+
+    const instance = getCurrentInstance();
+    const supabase = instance.appContext.config.globalProperties.$supabase;
+    const url = instance.appContext.config.globalProperties.$url;
+    const apikey = instance.appContext.config.globalProperties.$apikey;
+
+    const ajv = new Ajv({ allErrors: true, strict: false });
+    const validatorCache = new Map();
+
+    const selectedVersion = ref(null);
+    const loadingVersion = ref(false);
+    const internalSchema = ref(null);
+    const internalValidate = ref(null);
+    const internalTfm = ref(null);
+    const internalStyleMap = ref(null);
 
     const dataTab = ref('CI2027');
     const contentTab = ref(null);
@@ -39,6 +56,7 @@
     const toggleDataView = ref(0);
 
     const schema = computed(() => {
+        if (internalSchema.value) return internalSchema.value;
         if (props.schema) return props.schema;
         if (props.record?.tfm?.schema) return props.record.tfm.schema;
         return null;
@@ -50,7 +68,10 @@
             : props.record?.properties;
     });
 
-    const styleMapTabs = computed(() => props.styleMap?.layout?.items ?? null);
+    const styleMapTabs = computed(() => (internalStyleMap.value || props.styleMap)?.layout?.items ?? null);
+
+    const activeValidate = computed(() => internalValidate.value || props.validate || null);
+    const activeTfm = computed(() => internalTfm.value || props.tfm || null);
 
     const isDataTab = computed(() => {
         const item = styleMapTabs.value?.find(t => t.id === contentTab.value);
@@ -82,6 +103,7 @@
     }
 
     const errorCountByTab = ref({});
+    const warningCountByTab = ref({});
     const errorsByTab = ref({ validation: {}, plausibility: {} });
     const errorDialogOpen = ref(false);
     const errorDialogTabId = ref(null);
@@ -92,16 +114,17 @@
         return item?.label || item?.id || '';
     });
 
-    const errorDialogValidation = computed(() => {
-        return errorsByTab.value.validation[errorDialogTabId.value] || [];
-    });
+    const errorDialogValidation = computed(() => errorsByTab.value.validation[errorDialogTabId.value] || []);
+    const errorDialogPlausibility = computed(() => errorsByTab.value.plausibility[errorDialogTabId.value] || []);
 
-    const errorDialogPlausibility = computed(() => {
-        return errorsByTab.value.plausibility[errorDialogTabId.value] || [];
-    });
+    const globalDialogOpen = ref(false);
+    const globalValidationErrors = computed(() => errorsByTab.value.validation['_global'] || []);
+    const globalPlausibilityErrors = computed(() => errorsByTab.value.plausibility['_global'] || []);
+    const globalErrorCount = computed(() => (errorCountByTab.value['_global'] || 0));
+    const globalWarningCount = computed(() => (warningCountByTab.value['_global'] || 0));
 
     function onTabClick(tabId) {
-        if (lastClickedTab.value === tabId && errorCountByTab.value[tabId]) {
+        if (lastClickedTab.value === tabId && (errorCountByTab.value[tabId] || warningCountByTab.value[tabId])) {
             errorDialogTabId.value = tabId;
             errorDialogOpen.value = true;
         }
@@ -118,14 +141,13 @@
             if (!field && error.keyword === 'required' && error.params?.missingProperty) {
                 field = error.params.missingProperty;
             }
-            if (field && fieldToTab[field]) {
-                counts[fieldToTab[field]] = (counts[fieldToTab[field]] || 0) + 1;
-            }
+            const tid = (field && fieldToTab[field]) ? fieldToTab[field] : '_global';
+            counts[tid] = (counts[tid] || 0) + 1;
         }
     }
 
-    watch([currentData, styleMapTabs, () => props.validate, () => props.tfm], async () => {
-        if (!props.validate || !currentData.value || !styleMapTabs.value) {
+    watch([currentData, styleMapTabs, activeValidate, activeTfm], async () => {
+        if (!activeValidate.value || !currentData.value || !styleMapTabs.value) {
             errorCountByTab.value = {};
             return;
         }
@@ -138,8 +160,8 @@
         const counts = {};
 
         // Validation errors (AJV)
-        props.validate(currentData.value);
-        const rawErrors = props.validate.errors || [];
+        activeValidate.value(currentData.value);
+        const rawErrors = activeValidate.value.errors || [];
         // Deduplicate
         const seen = new Set();
         const validationErrors = rawErrors.filter(err => {
@@ -161,24 +183,35 @@
             if (!field && err.keyword === 'required' && err.params?.missingProperty) {
                 field = err.params.missingProperty;
             }
-            if (field && fieldToTab[field]) {
-                const tid = fieldToTab[field];
-                if (!valByTab[tid]) valByTab[tid] = [];
-                valByTab[tid].push(err);
-            }
+            const tid = (field && fieldToTab[field]) ? fieldToTab[field] : '_global';
+            if (!valByTab[tid]) valByTab[tid] = [];
+            valByTab[tid].push(err);
         }
 
         // Plausibility errors (TFM)
-        if (props.tfm && props.record) {
+        if (activeTfm.value && props.record) {
             try {
-                const result = await props.tfm.runPlots(
+                const result = await activeTfm.value.runPlots(
                     [currentData.value],
                     '/plot',
                     [dataTab.value === 'BWI2022' ? props.record.properties : props.record.previous_properties]
                 );
-                const plausErrors = Array.isArray(result) ? result : [];
+                // Normalize instancePath: TFM returns paths relative to /plot/0 (the base passed to runPlots).
+                // Strip that prefix so paths match validation error paths like /tree/0/dbh.
+                const rawPlaus = Array.isArray(result) ? result : [];
+                const plausResults = rawPlaus.map(err => {
+                    if (!err.instancePath) return err;
+                    if (err.instancePath.startsWith('/plot/0/')) {
+                        return { ...err, instancePath: err.instancePath.slice('/plot/0'.length) };
+                    }
+                    if (err.instancePath === '/plot/0') {
+                        return { ...err, instancePath: '' };
+                    }
+                    return err;
+                });
                 const plausByTab = {};
-                for (const err of plausErrors) {
+                const warnCounts = {};
+                for (const err of plausResults) {
                     let field = null;
                     if (err.instancePath) {
                         const parts = err.instancePath.split('/').filter(Boolean);
@@ -189,20 +222,25 @@
                             }
                         }
                     }
-                    if (field) {
-                        const tid = fieldToTab[field];
+                    const tid = (field && fieldToTab[field]) ? fieldToTab[field] : '_global';
+                    if (err.error?.type === 'warning') {
+                        warnCounts[tid] = (warnCounts[tid] || 0) + 1;
+                    } else {
                         counts[tid] = (counts[tid] || 0) + 1;
-                        if (!plausByTab[tid]) plausByTab[tid] = [];
-                        plausByTab[tid].push(err);
                     }
+                    if (!plausByTab[tid]) plausByTab[tid] = [];
+                    plausByTab[tid].push(err);
                 }
                 errorsByTab.value = { validation: valByTab, plausibility: plausByTab };
+                warningCountByTab.value = warnCounts;
             } catch (e) {
                 console.error('Error running plausibility for tab counts:', e);
                 errorsByTab.value = { validation: valByTab, plausibility: {} };
+                warningCountByTab.value = {};
             }
         } else {
             errorsByTab.value = { validation: valByTab, plausibility: {} };
+            warningCountByTab.value = {};
         }
 
         errorCountByTab.value = counts;
@@ -213,51 +251,141 @@
             contentTab.value = tabs[0].id;
         }
     }, { immediate: true });
+
+    watch(selectedVersion, () => loadValidationResources());
+
+    async function loadValidationResources() {
+        const versionDir = selectedVersion.value?.directory;
+        if (!versionDir) {
+            internalSchema.value = null;
+            internalValidate.value = null;
+            internalTfm.value = null;
+            internalStyleMap.value = null;
+            return;
+        }
+        if (validatorCache.has(versionDir)) {
+            const cached = validatorCache.get(versionDir);
+            internalSchema.value = cached.schema;
+            internalValidate.value = cached.validate;
+            internalTfm.value = cached.tfm;
+            internalStyleMap.value = cached.styleMap || null;
+            loadingVersion.value = false;
+            return;
+        }
+        loadingVersion.value = true;
+        const [schemaResult, plausibilityResult] = await Promise.all([
+            supabase.storage.from('validation').download(`${versionDir}/validation.json`),
+            supabase.storage.from('validation').download(`${versionDir}/bundle.umd.js`)
+        ]);
+        if (schemaResult.error || plausibilityResult.error) {
+            loadingVersion.value = false;
+            console.error('Error fetching validation resources:', schemaResult.error || plausibilityResult.error);
+            return;
+        }
+        try {
+            const schemaTxt = await schemaResult.data.text();
+            const plausibilityTxt = await plausibilityResult.data.text();
+            const schemaJson = JSON.parse(schemaTxt);
+            const schemaItems = schemaJson.properties?.plot?.items || null;
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const compiledValidate = ajv.compile(schemaItems);
+            eval(plausibilityTxt);
+            const tfmInstance = new TFM(url + '/', apikey);
+            const { data: schemaRow } = await supabase
+                .from('schemas')
+                .select('style_default')
+                .eq('id', selectedVersion.value.id)
+                .single();
+            const fetchedStyleMap = schemaRow?.style_default || null;
+            validatorCache.set(versionDir, {
+                schema: schemaItems,
+                validate: compiledValidate,
+                tfm: tfmInstance,
+                styleMap: fetchedStyleMap
+            });
+            internalSchema.value = schemaItems;
+            internalValidate.value = compiledValidate;
+            internalTfm.value = tfmInstance;
+            internalStyleMap.value = fetchedStyleMap;
+            loadingVersion.value = false;
+        } catch (error) {
+            loadingVersion.value = false;
+            console.error('Error parsing/compiling validation resources:', error);
+        }
+    }
 </script>
 
 <template>
     <div>
+        <!-- Top bar: always shown so VersionSelection always mounts and triggers initial load -->
+        <div class="d-flex align-center justify-space-between px-3 py-2">
+            <v-btn-toggle v-model="dataTab" density="compact" rounded="xl" variant="outlined" mandatory>
+                <v-btn value="CI2027" size="small">CI2027</v-btn>
+                <v-btn value="BWI2022" size="small">BWI2022</v-btn>
+            </v-btn-toggle>
+            <div class="flex-grow-1"></div>
+            <VersionSelection
+                size="small"
+                class="flex-grow-0"
+                v-model="selectedVersion"
+                :is_loading="loadingVersion"
+                :default_schema_id="props.record?.schema_id_validated_by"
+                :key="props.record?.id"
+            />
+            <v-btn-toggle
+                density="compact"
+                v-model="toggleDataView"
+                rounded="xl"
+                variant="outlined"
+            >
+                <v-btn size="small"><v-icon>mdi-view-list</v-icon></v-btn>
+                <v-btn size="small"><v-icon>mdi-code-braces</v-icon></v-btn>
+            </v-btn-toggle>
+        </div>
+
         <!-- === STYLE-MAP LAYOUT === -->
         <template v-if="styleMapTabs">
-            <!-- Top bar: dataset selector + JSON toggle -->
-            <div class="d-flex align-center justify-space-between px-3 py-2">
-                <v-btn-toggle v-model="dataTab" density="compact" rounded="xl" variant="outlined" mandatory>
-                    <v-btn value="CI2027" size="small">CI2027</v-btn>
-                    <v-btn value="BWI2022" size="small">BWI2022</v-btn>
-                </v-btn-toggle>
-                <v-btn-toggle
-                    v-if="isDataTab"
-                    density="compact"
-                    v-model="toggleDataView"
-                    rounded="xl"
-                    variant="outlined"
-                >
-                    <v-btn size="small"><v-icon>mdi-view-list</v-icon></v-btn>
-                    <v-btn size="small"><v-icon>mdi-code-braces</v-icon></v-btn>
-                </v-btn-toggle>
-            </div>
-
             <!-- Content tabs from styleMap -->
-            <v-tabs v-model="contentTab" show-arrows>
-                <v-tab
-                    v-for="item in styleMapTabs"
-                    :key="item.id"
-                    :value="item.id"
-                    @click="onTabClick(item.id)"
-                >
-                    <v-icon v-if="item.icon" :icon="'mdi-' + item.icon" start size="small" />
-                    {{ item.label || item.id }}
-                    <v-badge
-                        v-if="errorCountByTab[item.id]"
-                        :content="errorCountByTab[item.id]"
-                        color="error"
-                        inline
-                    />
-                </v-tab>
-            </v-tabs>
+            <div class="d-flex align-center" v-if="toggleDataView === 0">
+                <v-tooltip v-if="globalErrorCount + globalWarningCount > 0" :text="`${globalErrorCount + globalWarningCount} globale Fehler/Warnungen`">
+                    <template v-slot:activator="{ props: tooltipProps }">
+                        <v-btn
+                            v-bind="tooltipProps"
+                            variant="text"
+                            density="compact"
+                            size="small"
+                            class="mx-1"
+                            @click="globalDialogOpen = true"
+                        >
+                            <v-badge :content="globalErrorCount + globalWarningCount" color="error" floating>
+                                <v-icon :color="globalErrorCount > 0 ? 'red' : 'orange'">
+                                    {{ globalErrorCount > 0 ? 'mdi-alert-octagon' : 'mdi-alert-circle' }}
+                                </v-icon>
+                            </v-badge>
+                        </v-btn>
+                    </template>
+                </v-tooltip>
+                <v-tabs v-model="contentTab" show-arrows class="flex-grow-1">
+                    <v-tab
+                        v-for="item in styleMapTabs"
+                        :key="item.id"
+                        :value="item.id"
+                        @click="onTabClick(item.id)"
+                    >
+                        <v-icon v-if="item.icon" :icon="'mdi-' + item.icon" start size="small" />
+                        {{ item.label || item.id }}
+                        <v-badge
+                            v-if="(errorCountByTab[item.id] || 0) + (warningCountByTab[item.id] || 0) > 0"
+                            :content="(errorCountByTab[item.id] || 0) + (warningCountByTab[item.id] || 0)"
+                            color="error"
+                            inline
+                        />
+                    </v-tab>
+                </v-tabs>
+            </div>
             <v-divider />
 
-            <v-tabs-window v-model="contentTab">
+            <v-tabs-window v-model="contentTab" v-if="toggleDataView === 0">
                 <v-tabs-window-item
                     v-for="item in styleMapTabs"
                     :key="item.id"
@@ -286,9 +414,16 @@
                         :schema="schema"
                         :style-tab="item"
                         :key="item.id + '_' + dataTab"
+                        :validation-errors="errorsByTab.validation[item.id] || []"
+                        :plausibility-errors="errorsByTab.plausibility[item.id] || []"
                     />
                 </v-tabs-window-item>
             </v-tabs-window>
+
+                <!-- JSON view when toggled -->
+            <v-card-text v-if="toggleDataView === 1">
+                <JsonViewer :data="currentData" :schema="schema" />
+            </v-card-text>
 
             <TabErrorsDialog
                 v-model="errorDialogOpen"
@@ -296,21 +431,21 @@
                 :validation-errors="errorDialogValidation"
                 :plausibility-errors="errorDialogPlausibility"
             />
+            <TabErrorsDialog
+                v-model="globalDialogOpen"
+                tab-label="Allgemein"
+                :validation-errors="globalValidationErrors"
+                :plausibility-errors="globalPlausibilityErrors"
+            />
         </template>
 
         <!-- === LEGACY LAYOUT (no style-map) === -->
-        <template v-else-if="!styleMapTabs">
+        <template v-else>
             <v-list-item
                 :title="props.record.record_id
                     ? new Date(props.record.created_at).toLocaleDateString() + ' ' + new Date(props.record.created_at).toLocaleTimeString()
                     : new Date(props.record.updated_at).toLocaleDateString() + ' ' + new Date(props.record.updated_at).toLocaleTimeString()"
                 subtitle="letzte Änderung">
-                <template v-slot:append>
-                    <v-btn-toggle density="compact" v-model="toggleDataView" rounded="xl" variant="outlined">
-                        <v-btn><v-icon>mdi-view-list</v-icon></v-btn>
-                        <v-btn><v-icon>mdi-code-braces</v-icon></v-btn>
-                    </v-btn-toggle>
-                </template>
             </v-list-item>
 
             <v-tabs v-model="dataTab" align-tabs="center" class="mb-3">

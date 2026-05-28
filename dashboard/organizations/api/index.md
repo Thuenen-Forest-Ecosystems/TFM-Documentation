@@ -9,7 +9,7 @@ Laden Sie Ihre Eckendaten als CSV-Datei herunter.
 <script setup>
 import DownloadBtn from '../../../components/api/DownloadBtn.vue'
 </script>
-
+<!--
 ## API
 
 Die API von Thünen Corner bietet Zugriff auf die Daten, die in den Ecken gespeichert sind. Sie können die API verwenden, um Daten abzurufen.
@@ -341,3 +341,4 @@ Nicht optimal:       2
 ```
 
 :::
+-->

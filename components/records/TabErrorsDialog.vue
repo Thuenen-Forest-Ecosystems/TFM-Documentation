@@ -29,7 +29,7 @@
     <v-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)" max-width="700" scrollable>
         <v-card>
             <v-toolbar flat density="compact">
-                <v-toolbar-title>Fehler: {{ tabLabel }}</v-toolbar-title>
+                <v-toolbar-title>Fehler & Warnungen: {{ tabLabel }}</v-toolbar-title>
                 <template v-slot:append>
                     <v-btn icon="mdi-close" variant="text" @click="close" />
                 </template>
@@ -64,6 +64,7 @@
                         <v-list-item-subtitle>
                             <div v-if="error.error?.text">{{ error.error.text }}</div>
                             <div v-if="error.error?.code">Code: {{ error.error.code }}</div>
+                            <div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>
                         </v-list-item-subtitle>
                     </v-list-item>
                 </v-list>

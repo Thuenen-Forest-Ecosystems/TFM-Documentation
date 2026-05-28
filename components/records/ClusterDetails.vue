@@ -10,6 +10,7 @@
     import Ajv from 'ajv';
     import VersionSelection from '../validation/VersionSelection.vue';
     import HistoryHorizonatal from './HistoryHorizonatal.vue';
+    import CompareDialog from './CompareDialog.vue';
     import DetailAdministration from './DetailAdministration.vue';
     import ResponsibleByRecord from './ResponsibleByRecord.vue';
     import RecordMessages from './RecordMessages.vue';
@@ -59,6 +60,7 @@
     }, { immediate: true });
 
     const sheet = shallowRef(false)
+    const compareDialog = ref(false);
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -296,7 +298,14 @@
                     </v-card>
                 </v-dialog>
 
+                <CompareDialog v-model="compareDialog" :record="activeRecord" :schema="schema" />
+
                  <div class="ma-4 position-fixed d-flex flex-column ga-2" style="bottom: 0; right: 0; z-index: 1005;">
+                    <v-fab
+                        icon="mdi-compare"
+                        small
+                        @click="compareDialog = true"
+                    ></v-fab>
                     <!-- History FAB (only when viewing current record) -->
                     <v-fab
                         v-if="!isHistoricalRecord"
@@ -328,7 +337,7 @@
                     <ResponsibleByRecord :record="activeRecord" class="ma-1" />
                 </v-card>
 
-                <v-card variant="tonal" v-if="activeRecord" class="ma-3">
+                <!--<v-card variant="tonal" v-if="activeRecord" class="ma-3">
                     <v-toolbar color="transparent">
                         <v-toolbar-title>Validation</v-toolbar-title>
                         <template v-slot:append>
@@ -343,7 +352,7 @@
                     <v-card-text v-if="activeRecord && validate && tfm">
                         <ValidateByPlot :record="activeRecord" :validate="validate" :tfm="tfm" :version="selectedVersion" :key="activeRecord.id" />
                     </v-card-text>
-                </v-card>
+                </v-card>-->
                 <v-card variant="tonal" class="ma-3">
                     <RecordDetail :record="activeRecord" :schema="schema" :style-map="styleMap" :validate="validate" :tfm="tfm" />
                 </v-card>
