@@ -177,6 +177,12 @@
         features: []
     });
     const selectedLos = ref(null);
+    const lookupTablesLoaded = ref(false);
+    const referenceDataLoaded = ref(false);
+
+    let lookupTablesPromise = null;
+    let referenceDataPromise = null;
+    let hydrateVersion = 0;
 
     // Grid Options
     const gridOptions = {
@@ -655,13 +661,14 @@
             );
         });
 
+        const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
+        const troopsMap = new Map(troops.value.map(troop => [troop.id, troop]));
+
 
         const processedRecords = records.map(record => {
             const clusterData = clusterMap.get(record.cluster_id);
 
-            const organizationsIDMap = new Map(organizations.value.map(org => [org.id, org.name]));
-
-            const troop = troops.value.find(troop => troop.id === record.responsible_troop);
+            const troop = troopsMap.get(record.responsible_troop);
 
             return {
                 is_selectable: computeSelectable(record),
@@ -853,6 +860,96 @@
             return [];
         }
     }
+
+    async function _ensureLookupTablesLoaded() {
+        if (lookupTablesLoaded.value) {
+            return;
+        }
+
+        if (!lookupTablesPromise) {
+            lookupTablesPromise = (async () => {
+                await _requestAllLookupTables();
+                lookupTablesLoaded.value = true;
+            })().finally(() => {
+                lookupTablesPromise = null;
+            });
+        }
+
+        await lookupTablesPromise;
+    }
+
+    async function _ensureReferenceDataLoaded() {
+        if (referenceDataLoaded.value) {
+            return;
+        }
+
+        if (!referenceDataPromise) {
+            referenceDataPromise = (async () => {
+                const [loadedOrganizations, loadedTroops] = await Promise.all([
+                    _getOrganizations(),
+                    _getTroops(props.organization_id)
+                ]);
+
+                organizations.value = loadedOrganizations;
+                troops.value = loadedTroops;
+                setColDefs();
+                referenceDataLoaded.value = true;
+            })().finally(() => {
+                referenceDataPromise = null;
+            });
+        }
+
+        await referenceDataPromise;
+    }
+
+    function _hasMapGeometry(records) {
+        return Array.isArray(records)
+            && records.some(record =>
+                record?.center_location
+                || record?.previous_properties?.plot_coordinates?.center_location?.coordinates
+            );
+    }
+
+    async function _hydrateGridData() {
+        if (!props.tab_active) {
+            return;
+        }
+
+        const runId = ++hydrateVersion;
+        loading.value = true;
+
+        try {
+            await Promise.all([
+                _ensureLookupTablesLoaded(),
+                _ensureReferenceDataLoaded()
+            ]);
+
+            const activeRecords = Array.isArray(props.records)
+                ? props.records
+                : await _requestPlots(props.organization_type, props.organization_id);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            rowData.value = _preRenderRecords(activeRecords);
+
+            const mapRecords = _hasMapGeometry(activeRecords)
+                ? activeRecords
+                : await _requestPlots(props.organization_type, props.organization_id);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            createGeojsonFeatureCollection(mapRecords || activeRecords);
+        } finally {
+            if (runId === hydrateVersion) {
+                loading.value = false;
+            }
+        }
+    }
+
     async function fetchAllDataPaginated(tableName, organizationId, companyType) {
         let allData = [];
         let currentPage = 0;
@@ -1152,20 +1249,9 @@
     // watch tab_active
     watch(() => props.tab_active, (newValue) => {
         if (newValue) {
-            nextTick(async () => {
-
-                organizations.value = await _getOrganizations();
-                troops.value = await _getTroops(props.organization_id);
-                console.log('Organizations and Troops loaded on tab active', troops.value);
-
-                const records = props.records || await _requestPlots(props.organization_type, props.organization_id);
-
-                rowData.value = _preRenderRecords(records);
-                createGeojsonFeatureCollection(records);
-                
-            });
+            _hydrateGridData();
         }
-    }, { immediate: true });
+    });
 
     function exportSelected() {
         if (selectedRows.value.length === 0) {
@@ -1204,44 +1290,34 @@
 
     }
 
-     watch(() => props.records, (newRecords) => {
+     watch(() => props.records, async (newRecords) => {
+
+        if (!props.tab_active || !Array.isArray(newRecords)) {
+            return;
+        }
+
+        await Promise.all([
+            _ensureLookupTablesLoaded(),
+            _ensureReferenceDataLoaded()
+        ]);
 
         rowData.value = _preRenderRecords(newRecords);
-        if (Array.isArray(newRecords)) {
-            createGeojsonFeatureCollection(newRecords);
-        }
-    }, { immediate: true });
+
+        const mapRecords = _hasMapGeometry(newRecords)
+            ? newRecords
+            : await _requestPlots(props.organization_type, props.organization_id);
+        createGeojsonFeatureCollection(mapRecords || newRecords);
+    });
 
     onMounted(async () => {
 
-        loading.value = true;
-
-        //organizations.value = await _getOrganizations();
-        //troops.value = await _getTroops(props.organization_id);
-
         setColDefs();
-
-        const records = props.records || await _requestPlots(props.organization_type, props.organization_id);
-
-         // Ensure lookup tables are fully loaded before processing
-        await _requestAllLookupTables();
-
-        rowData.value = _preRenderRecords(records);
-
-        const hasMapGeometry = Array.isArray(records)
-            && records.some(record =>
-                record?.center_location
-                || record?.previous_properties?.plot_coordinates?.center_location?.coordinates
-            );
-
-        const mapRecords = hasMapGeometry
-            ? records
-            : await _requestPlots(props.organization_type, props.organization_id);
-        createGeojsonFeatureCollection(mapRecords || records);
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 
-        loading.value = false;
+        if (props.tab_active) {
+            await _hydrateGridData();
+        }
     });
 
     function onGridReady(params) {
