@@ -1,7 +1,7 @@
 <script setup>
     import LoginForm from '../components/LoginForm.vue';
     import Credentials from '../components/Credentials.vue';
-    import { ref, onMounted, getCurrentInstance } from 'vue';
+    import { ref, computed, onMounted, getCurrentInstance } from 'vue';
     import { createClient } from '@supabase/supabase-js';
     import OrganizationsAdmins from '../components/organizations/OrganizationsAdmins.vue';
     import { withBase } from 'vitepress'
@@ -32,6 +32,33 @@
     const organization = ref({});
 
     const organizationsAccess = ref([]);
+    const organizationCards = computed(() => {
+        const permissionsByOrganization = new Map();
+
+        for (const permission of organizationsAccess.value) {
+            const organization = permission?.organizations;
+
+            if (!organization || organization.deleted) {
+                continue;
+            }
+
+            const organizationId = organization.id;
+            const isAdmin = Boolean(permission.is_organization_admin);
+
+            if (!permissionsByOrganization.has(organizationId)) {
+                permissionsByOrganization.set(organizationId, {
+                    ...permission,
+                    is_organization_admin: isAdmin,
+                });
+                continue;
+            }
+
+            const existingPermission = permissionsByOrganization.get(organizationId);
+            existingPermission.is_organization_admin = existingPermission.is_organization_admin || isAdmin;
+        }
+
+        return Array.from(permissionsByOrganization.values());
+    });
 
     function parseJwt (token) {
         var base64Url = token.split('.')[1];
@@ -65,8 +92,8 @@
 
     const isAdminOfAtLeastOneOrganization = () => {
         // is_organization_admin true in any of organizationsAccess
-        for (let i = 0; i < organizationsAccess.value.length; i++) {
-            if (organizationsAccess.value[i].is_organization_admin) {
+        for (let i = 0; i < organizationCards.value.length; i++) {
+            if (organizationCards.value[i].is_organization_admin) {
                 return true;
             }
         }
@@ -78,9 +105,8 @@
                 console.error(error);
                 return;
             }
-            // only if organization is not deleted
-            data = data.filter(permission => !permission.organizations.deleted);
-            organizationsAccess.value = data;
+
+            organizationsAccess.value = data || [];
         });
     }
 
@@ -149,7 +175,7 @@
     <h2>Inventuren</h2>
     <v-card variant="tonal" title="Kohlenstoffinventur 2027">
         <v-list>
-            <v-list-item v-for="permission in organizationsAccess" :key="permission.id" :disabled="!permission.is_organization_admin" @click="_toOrganization(permission.organizations.id)">
+            <v-list-item v-for="permission in organizationCards" :key="permission.organizations.id" :disabled="!permission.is_organization_admin" @click="_toOrganization(permission.organizations.id)">
                 <v-list-item-title>{{ permission.organizations.name }}</v-list-item-title>
                 <v-list-item-subtitle>{{ permission.organizations.description }}</v-list-item-subtitle>
                 <template v-slot:append>
