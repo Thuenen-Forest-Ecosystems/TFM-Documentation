@@ -72,14 +72,14 @@ const troopsList = ref([]); // raw troop records from Supabase
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-    { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
-    { field: "lil" , headerName: "LiL", filter: "agTextColumnFilter" },
-    { field: "cluster_id", headerName: "Trakt-ID", filter: "agTextColumnFilter" },
-    { field: "cluster_name", headerName: "Trakt-Name", filter: "agTextColumnFilter" },
-    { field: "plot_name", headerName: "Plot-Name", filter: "agTextColumnFilter" },
-    { field: "responsible_troop", headerName: "Trupp-ID", filter: "agTextColumnFilter" },
-    { field: "name", headerName: "Trupp-Name", filter: "agTextColumnFilter" },
-    { field: "completed_at_troop", headerName: "Abschlussdatum", filter: "agDateColumnFilter" },
+//    { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
+    { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
+//    { field: "cluster_id", headerName: "Trakt-ID", filter: "agTextColumnFilter" },
+    { field: "cluster_name", headerName: "Trakt", filter: "agNumberColumnFilter" },
+    { field: "plot_name", headerName: "Plot", filter: "agNumberColumnFilter" },
+//    { field: "responsible_troop", headerName: "Trupp-ID", filter: "agTextColumnFilter" },
+    { field: "name", headerName: "Trupp", filter: "agTextColumnFilter" },
+    { field: "completed_at_troop", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
     { field: "is_control_troop", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
     { field: "wald2027", headerName: "Wald2027-Status", filter: "agTextColumnFilter" }
   ];

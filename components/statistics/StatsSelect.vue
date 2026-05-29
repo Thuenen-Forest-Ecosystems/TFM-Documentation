@@ -8,17 +8,17 @@
 // Datenstruktur mögliche Statistiken
 const availableStats = ref([
   {
-    "id": "g1",
+    "id": "TroopStatistics",
     "name": "1. Truppstatistiken",
     "stats": [
-      { "id": "s1", "name": "1. Kumulative Leistung pro Inventurtrupp" },
-      { "id": "s2", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
-      { "id": "s3", "name": "3. Abgabe von Ecken durch Trupp nach Datum" },
-      { "id": "s3b", "name": "3. Abgabe von Ecken durch Trupp nach Datum (Variante B)" }
+      { "id": "PerformanceByTroopCumulative", "name": "1. Kumulative Leistung pro Inventurtrupp" },
+      { "id": "PerformanceByTroopAverage", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
+    //  { "id": "PlotsDeliveredByToopAndDate_old", "name": "3. Abgabe von Ecken durch Trupp nach Datum" },
+      { "id": "PlotsDeliveredByToopAndDate", "name": "3. Abgabe von Ecken durch Trupp nach Datum (View)" }
 
     ]
-  },
-  {
+  }//,
+/*   {
     "id": "g2",
     "name": "2. Gruppe (noch leer)",
     "stats": [
@@ -26,7 +26,7 @@ const availableStats = ref([
       { "id": "s2", "name": "Stat2.2"},
       { "id": "s3", "name": "Stat2.3"}
     ]
-  }
+  } */
 ]);
 
 // Hier werden die Auswahlen gespeichert
@@ -37,7 +37,8 @@ const availableElements = ref([""]);
 
 async function onBtnExport() {
   if (selectedStatsGrp.value && selectedStatInGrp.value) {
-    window.open(`./${selectedStatsGrp.value.id}/${selectedStatInGrp.value.id}`, '_blank');
+  //  window.open(`./${selectedStatsGrp.value.id}/${selectedStatInGrp.value.id}`, '_blank');
+    window.location.href=`./${selectedStatsGrp.value.id}/${selectedStatInGrp.value.id}`;
   }
 }
 

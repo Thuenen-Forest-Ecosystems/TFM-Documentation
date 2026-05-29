@@ -1,7 +1,7 @@
 <script setup>
 // 1️⃣ Component meta‑information (JSDoc) – helps IDEs & documentation generators
 /**
- * @component Wann, welcher Trupp welche Ecke abgegeben hat
+ * @component Kumulative Leistung pro Inventurtrupp
  * @description A VitePress component for visualizing Supabase records using AG Grid
  * Supports dynamic time‑interval aggregation (Day, Week, Month) and organization‑based filtering.
  */
@@ -58,7 +58,7 @@ const autoSizeStrategy = { type: 'fitGridWidth', defaultMinWidth: 5 };
 const MIN_GRID_HEIGHT = 200;   // px – adjust to your design
 const gridHeight = computed(() => {
   const rowHeight = 25;               // default ag‑grid row height
-  const maxRows   = 50;               // rows before pagination kicks in
+  const maxRows   = 20;               // rows before pagination kicks in
   const rows = Math.min(tabledata.value?.length ?? 0, maxRows) || 1;
   const height = rowHeight * rows;
   return `${Math.max(height, MIN_GRID_HEIGHT)}px`;   // enforce min height
@@ -72,23 +72,34 @@ const troopsList = ref([]); // raw troop records from Supabase
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-    { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
-    { field: "lil" , headerName: "LiL", filter: "agTextColumnFilter" },
-    { field: "cluster_name", headerName: "Trakt-Name", filter: "agTextColumnFilter" },
-    { field: "plot_name", headerName: "Plot-Name", filter: "agTextColumnFilter" },
-    { field: "troop_name", headerName: "Trupp-Name", filter: "agTextColumnFilter" },
-    { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "completed_as_troop_latest", headerName: "Datum", filter: "agDateColumnFilter" }
+    { field: "troop", headerName: trupps.value, filter: "agTextColumnFilter" },
+    // dynamic period column – header & field name come from `mysteps`
+    { field: mysteps.value, headerName: mysteps.value, filter: "agTextColumnFilter" },
+    { field: "SUMME_all", headerName: "Summe", filter: "agNumberColumnFilter" },
+    { field: "NHB_all", headerName: "Nichtholzboden", filter: "agNumberColumnFilter" },
+    { field: "BHB_all", headerName: "Holzboden", filter: "agNumberColumnFilter" },
+    { field: "BLOESSE_all", headerName: "Blöße", filter: "agNumberColumnFilter" },
+  ];
+  MyColDefs2.value = [
+    { field: "troop", headerName: trupps.value, filter: "agTextColumnFilter" },
+    { field: mysteps.value, headerName: mysteps.value, filter: "agTextColumnFilter" },
+    { field: "SUMME_bg", headerName: "Summe", filter: "agNumberColumnFilter" },
+    { field: "NHB_bg", headerName: "Nichtholzboden", filter: "agNumberColumnFilter" },
+    { field: "BHB_bg", headerName: "Holzboden", filter: "agNumberColumnFilter" },
+    { field: "BLOESSE_bg", headerName: "Blöße", filter: "agNumberColumnFilter" },
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
-
+// ──────────────────────────────────────────────────────────────────────────────
+// 6️⃣ Data loading – fetch records from Supabase in paginated batches
+// ──────────────────────────────────────────────────────────────────────────────
+async function _loadRecords() {
+  dataload.value = true;                     // show loading spinner
+  const batchSize = 1000;                    // rows per request
+  let offset = 0;                            // start index for the next batch
+  const allRecords = [];                     // accumulator for all pages
   const ids = selectedOrganisations.value.join(','); // CSV list of org UUIDs
+
   // Build an OR‑filter that matches any of the four organisation‑type columns
   const orFilters = [
     `responsible_administration.in.(${ids})`,
@@ -96,65 +107,159 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
     `responsible_provider.in.(${ids})`,
     `responsible_troop.in.(${ids})`
   ];
-  console.log("Selected Orgs for batch fetch:", selectedOrganisations.value);
 
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
-  try {
-    // Ruft die primäre Tabelle 'v_stats_troop_completed_latest' in Batches ab
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('v_stats_troop_completed_latest')
-        .select('responsible_state, responsible_administration, responsible_provider, responsible_troop, lil, cluster_name, plot_name,  troop_name, kt, completed_as_troop_latest')
-        .or(orFilters.join(','))
-        //.and('cluster_name', 'lt', 10000) // TBD filter out training and test records based on cluster_name
-        .range(from, to)
+  // Loop until Supabase returns no more rows or an error occurs
+  while (true) {
+    const { data, error } = await supabase
+      .from('records')
+      .select('id, completed_at_troop, responsible_troop, updated_at, updated_by, properties')
+      .or(orFilters.join(','))
+      // keep only rows that have a timestamp (comment out in order to get more data for debugging)
+      .not('completed_at_troop', 'is', null)
+      .range(offset, offset + batchSize - 1); // pagination
 
-      if (error) throw error
-
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
-
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      // Fügt die Rohdaten direkt dem Gesamt-Array hinzu
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
+    if (error) {
+      console.error('Fetch Error:', error);
+      break;                                 // abort on error
     }
 
-    // Clientseitige Sortierung basierend auf den Feldern der Haupttabelle
-    allRecords.sort((a, b) => {
-      // Sortierung nach responsible_state (Ersatz für das vorherige 'lil'-Mapping)
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
+    if (!data?.length) break;                // no more rows → exit loop
 
-      // Sortierung nach troop_name (Ersatz für das vorherige 'name'-Lookup)
-      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''))
-      if (compareTroopName !== 0) return compareTroopName
-
-      // Abschließende Sortierung nach Abschlussdatum
-      return String(a.completed_at_troop || '').localeCompare(String(b.completed_at_troop || ''))
-    })
- 
-    tabledata.value = allRecords // Zuweisung an die reaktive Variable für die Grid-Anzeige
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
-  } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    allRecords.push(...data);                // add this chunk
+    offset += batchSize;                     // advance offset for next request
+    dataloaded.value = allRecords.length;    // update UI counter
+    console.log(`Loaded ${allRecords.length} records so far...`);
   }
+
+  // Store the complete result set in the reactive variable
+  my_data.value = allRecords;
+  console.log(`Total records loaded: ${allRecords.length}`);
+  console.log(allRecords);
+  dataload.value = false;                    // hide spinner
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 6️⃣ loading troops – fetch records from Supabase
+// ──────────────────────────────────────────────────────────────────────────────
+async function loadTroopsList() {
+  const { data, error } = await supabase
+    .from('troop')
+    .select('id, name');          // only the columns we need
+
+  if (error) {
+    console.error('Failed to load troops:', error);
+    return;
+  }
+
+  // Return an array of { id, name } objects
+  troopsList.value = data.map(item => ({
+    id: item.id,
+    name: item.name
+  }));
+  console.log("Troops List Loaded:", troopsList.value);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 7️⃣ Transform raw data → aggregation per troop & period (used by both grids)
+// ──────────────────────────────────────────────────────────────────────────────
+async function _transformData(steps = mysteps.value) {
+  // -----------------------------------------------------------------
+  // Helper: convert a full ISO‑date string to the requested granularity
+  // -----------------------------------------------------------------
+  const getPeriod = (isoDate) => {
+    if (!isoDate) return 'Kein Datum';
+    const d = new Date(isoDate);
+    if (isNaN(d)) return 'Kein Datum';
+
+    if (steps === 'Tag') {
+      return d.toISOString().substring(0, 10);          // YYYY‑MM‑DD
+    }
+    if (steps === 'Woche') {
+      const year = d.getUTCFullYear();
+      const week = Math.ceil(((d - new Date(Date.UTC(year, 0, 1))) / 86400000 + 1) / 7);
+      return `${year}-${String(week).padStart(2, '0')}`; // YYYY‑WW
+    }
+    if (steps === 'Monat') {
+      return d.toISOString().substring(0, 7);           // YYYY‑MM
+    }
+    return d.toISOString().substring(0, 10);
+  };
+
+  // -----------------------------------------------------------------
+  // Dynamic column name – will become the header in the table
+  // -----------------------------------------------------------------
+  const periodKey = steps;   // e.g. "Tag", "Woche" or "Monat"
+
+  // -----------------------------------------------------------------
+  // 1️⃣ Build a flat summary array with only the needed fields for aggregation, swapping the troop id to the name
+  // -----------------------------------------------------------------
+
+  // Create a quick lookup map:  { id → name }
+  const troopIdToName = computed(() => {
+    const map = {}
+    troopsList.value?.forEach(t => {
+      if (t?.id && t?.name) map[t.id] = t.name
+    })
+    return map
+  })
+
+  // -----------------------------------------------------------------
+  // 2️⃣ Aggregate per troop + period (Tag / Woche / Monat)
+  // -----------------------------------------------------------------
+  const aggregation = my_data.value.reduce((acc, item) => {
+    const period = getPeriod(item.updated_at);
+    const troop = troopIdToName.value?.[item.responsible_troop] || 'unknown';
+    const status = item.properties?.forest_status;
+    const accessibility = item.properties?.accessibility;
+
+    // key combines troop and period → unique bucket
+    const key = `${troop}_${period}`;
+
+    if (!acc[key]) {
+      acc[key] = {
+        troop,
+        [periodKey]: period,   // dynamic column name/value
+        SUMME_all: 0,
+        NHB_all: 0,
+        HB_all: 0,
+        BLOESSE_all: 0,
+        BHB_all: 0,
+
+        SUMME_bg: 0,
+        NHB_bg: 0,
+        HB_bg: 0,
+        BLOESSE_bg: 0,
+        BHB_bg: 0
+      };
+    }
+
+    // ---- counting logic ----
+    if ([3, 4, 5].includes(status)) acc[key].SUMME_all++;
+    if (status === 4) acc[key].NHB_all++;
+    if (status === 3 || status === 5) acc[key].HB_all++;
+    if (status === 3) acc[key].BLOESSE_all++;
+    if (status === 5) acc[key].BHB_all++;
+
+    if ([3, 4, 5].includes(status) && accessibility === 1) acc[key].SUMME_bg++;
+    if (status === 4 && accessibility === 1) acc[key].NHB_bg++;
+    if ((status === 3 || status === 5) && accessibility === 1) acc[key].HB_bg++;
+    if (status === 3 && accessibility === 1) acc[key].BLOESSE_bg++;
+    if (status === 5 && accessibility === 1) acc[key].BHB_bg++;
+
+    return acc;
+  }, {});
+
+  // -----------------------------------------------------------------
+  // 3️⃣ Convert aggregation object → sorted array for the grid
+  // -----------------------------------------------------------------
+  const resultTable = Object.values(aggregation).sort((a, b) => {
+    // first sort by the dynamic period column, then by troop name
+    return a[periodKey].localeCompare(b[periodKey]) || a.troop.localeCompare(b.troop);
+  });
+
+  console.table(resultTable);
+  console.log("Aggregated Data:", resultTable);
+  tabledata.value = resultTable;   // reactive state consumed by AG‑Grid & ECharts
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -194,7 +299,7 @@ onMounted(async () => {
     await _getOrganizations(data.session.user.id); // populate org list
     buildColDefs();                               // initialise column definitions
     console.log("instance", instance);
-    //await loadTroopsList();                    // load troop names for better grid display
+    await loadTroopsList();                    // load troop names for better grid display
   }
 });
 
@@ -219,9 +324,8 @@ watch(mysteps, async (val) => {
 // When the organisation selection changes → reload raw records & re‑aggregate
 watch(selectedOrganisations, async () => {
   console.log("Selected Orgs:", selectedOrganisations.value);
-  //await _loadRecords();
-  await fetchRecordChangesInBatches(); // reload data from Supabase with new org filter 
-  //await _transformData();
+  await _loadRecords();
+  await _transformData();
 });
 
 // Placeholder watcher – you could trigger chart redraws here
@@ -238,9 +342,15 @@ function onGridReady2(params) { gridApi2.value = params.api; }
 // ──────────────────────────────────────────────────────────────────────────────
 function onBtnExport1() {
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat3_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_Gruppe1_Stat1_nach${mysteps.value}_alle_${new Date().toISOString().slice(0, 10)}.csv`
   });
 }
+function onBtnExport2() {
+  gridApi2.value?.exportDataAsCsv({
+    fileName: `CI-Statistik_Gruppe1_Stat1_nach${mysteps.value}_begehbar_${new Date().toISOString().slice(0, 10)}.csv`
+  });
+}
+
 </script>
 
 <template>
@@ -260,6 +370,12 @@ function onBtnExport1() {
     </v-list>
   </v-card> -->
 
+  <!-- ==================== TIME‑STEP SELECTION ==================== -->
+  <v-card v-if="tabledata && tabledata.length > 0">
+    <v-card-title>Zeitschritte auswählen:</v-card-title>
+    <v-select v-model="mysteps" :items="['Monat', 'Woche', 'Tag']" />
+  </v-card>
+
   <!-- ==================== LOADING INDICATOR ==================== -->
   <v-card v-if="dataload === true">
     <v-card-title class="d-flex flex-column align-center">
@@ -269,9 +385,8 @@ function onBtnExport1() {
   </v-card>
 
   <!-- ==================== GRID 1 – ALL ==================== -->
-  <!-- <v-card v-if="tabledata && tabledata.length > 0">-->
   <v-card>
-    <v-card-title>Ergebnis</v-card-title>
+    <v-card-title>Alle Traktecken</v-card-title>
 
     <!-- Render the grid only when at least one organisation is selected -->
     <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
@@ -294,6 +409,32 @@ function onBtnExport1() {
     <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport1"
       :disabled="!tabledata || tabledata.length === 0">
       CSV Export (Alle Traktecken)
+    </v-btn>
+  </v-card>
+
+  <!-- ==================== GRID 2 – BEGEHBARE ==================== -->
+  <v-card>
+    <v-card-title>Begehbare Traktecken</v-card-title>
+
+    <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
+      :rowData="tabledata"
+      :columnDefs="MyColDefs2"
+      :style="{ height: gridHeight }"
+      style="width: 100%"
+      :paginationAutoPageSize="true"
+      :pagination="true"
+      :autoSizeStrategy="autoSizeStrategy"
+      :key="isDark"
+      :theme="currentTheme"
+      @grid-ready="onGridReady2" />
+    <v-card-text v-else class="text-center text-grey italic">
+      Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
+    </v-card-text>
+
+    <!-- CSV export button for Grid 2 -->
+    <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport2"
+      :disabled="!tabledata || tabledata.length === 0">
+      CSV Export (Begehbare Traktecken)
     </v-btn>
   </v-card>
 </template>

@@ -6,11 +6,13 @@ layout: home
      imports and prepares any components or utilities needed by the template. -->
 <script setup>
     /*  Import the specific Stats component from its relative path.*/
-    import Stats from '../../../components/statistics/g1/s1.vue';
+    import Stats from '../../../components/statistics/TroopStatistics/PerformanceByTroopCumulative.vue';
 </script>
 
 <!-- Markdown heading that will be rendered as an <h1> element.
      It describes the content: "Cumulative performance per inventory team". -->
+[← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
+
 # Kumulative Leistung pro Inventurtrupp
 
 ::: warning Hinweis

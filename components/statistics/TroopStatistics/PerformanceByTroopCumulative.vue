@@ -76,16 +76,16 @@ function buildColDefs() {
     // dynamic period column – header & field name come from `mysteps`
     { field: mysteps.value, headerName: mysteps.value, filter: "agTextColumnFilter" },
     { field: "SUMME_all", headerName: "Summe", filter: "agNumberColumnFilter" },
-    { field: "NHB_all", headerName: "NHB", filter: "agNumberColumnFilter" },
-    { field: "BHB_all", headerName: "HB", filter: "agNumberColumnFilter" },
+    { field: "NHB_all", headerName: "Nichtholzboden", filter: "agNumberColumnFilter" },
+    { field: "BHB_all", headerName: "Holzboden", filter: "agNumberColumnFilter" },
     { field: "BLOESSE_all", headerName: "Blöße", filter: "agNumberColumnFilter" },
   ];
   MyColDefs2.value = [
     { field: "troop", headerName: trupps.value, filter: "agTextColumnFilter" },
     { field: mysteps.value, headerName: mysteps.value, filter: "agTextColumnFilter" },
     { field: "SUMME_bg", headerName: "Summe", filter: "agNumberColumnFilter" },
-    { field: "NHB_bg", headerName: "NHB", filter: "agNumberColumnFilter" },
-    { field: "BHB_bg", headerName: "HB", filter: "agNumberColumnFilter" },
+    { field: "NHB_bg", headerName: "Nichtholzboden", filter: "agNumberColumnFilter" },
+    { field: "BHB_bg", headerName: "Holzboden", filter: "agNumberColumnFilter" },
     { field: "BLOESSE_bg", headerName: "Blöße", filter: "agNumberColumnFilter" },
   ];
 }
@@ -203,51 +203,112 @@ async function _transformData(steps = mysteps.value) {
     return map
   })
 
-  // -----------------------------------------------------------------
-  // 2️⃣ Aggregate per troop + period (Tag / Woche / Monat)
-  // -----------------------------------------------------------------
-  const aggregation = my_data.value.reduce((acc, item) => {
-    const period = getPeriod(item.updated_at);
-    const troop = troopIdToName.value?.[item.responsible_troop] || 'unknown';
-    const status = item.properties?.forest_status;
-    const accessibility = item.properties?.accessibility;
+// ... existing imports / data ...
 
-    // key combines troop and period → unique bucket
-    const key = `${troop}_${period}`;
+// -----------------------------------------------------------------
+// 2️⃣ Aggregate per troop + period (Tag / Woche / Monat) – now cumulative
+// -----------------------------------------------------------------
+const aggregation = my_data.value.reduce((acc, item) => {
+  const period = getPeriod(item.updated_at);
+  const troop = troopIdToName.value?.[item.responsible_troop] || 'unknown';
+  const status = item.properties?.forest_status;
+  const accessibility = item.properties?.accessibility;
 
-    if (!acc[key]) {
-      acc[key] = {
-        troop,
-        [periodKey]: period,   // dynamic column name/value
-        SUMME_all: 0,
-        NHB_all: 0,
-        HB_all: 0,
-        BLOESSE_all: 0,
-        BHB_all: 0,
+  // key combines troop and period → unique bucket
+  const key = `${troop}_${period}`;
 
-        SUMME_bg: 0,
-        NHB_bg: 0,
-        HB_bg: 0,
-        BLOESSE_bg: 0,
-        BHB_bg: 0
+  if (!acc[key]) {
+    acc[key] = {
+      troop,
+      [periodKey]: period,   // dynamic column name/value
+      SUMME_all: 0,
+      NHB_all: 0,
+      HB_all: 0,
+      BLOESSE_all: 0,
+      BHB_all: 0,
+
+      SUMME_bg: 0,
+      NHB_bg: 0,
+      HB_bg: 0,
+      BLOESSE_bg: 0,
+      BHB_bg: 0
+    };
+  }
+
+  // ---- counting logic ----
+  if ([3, 4, 5].includes(status)) acc[key].SUMME_all++;
+  if (status === 4) acc[key].NHB_all++;
+  if (status === 3 || status === 5) acc[key].HB_all++;
+  if (status === 3) acc[key].BLOESSE_all++;
+  if (status === 5) acc[key].BHB_all++;
+
+  if ([3, 4, 5].includes(status) && accessibility === 1) acc[key].SUMME_bg++;
+  if (status === 4 && accessibility === 1) acc[key].NHB_bg++;
+  if ((status === 3 || status === 5) && accessibility === 1) acc[key].HB_bg++;
+  if (status === 3 && accessibility === 1) acc[key].BLOESSE_bg++;
+  if (status === 5 && accessibility === 1) acc[key].BHB_bg++;
+
+  return acc;
+}, {});
+
+// ---------------------------------------------------------------
+// 3️⃣ Turn per‑period values into cumulative values (running total)
+// ---------------------------------------------------------------
+(() => {
+  // Gather all unique periods and sort them chronologically.
+  const periods = Array.from(new Set(
+    Object.values(aggregation).map(b => b[periodKey])
+  )).sort((a, b) => a.localeCompare(b)); // assumes ISO‑like strings
+
+  // Keep a running total object for each troop.
+  const runningTotals = {};
+
+  periods.forEach(period => {
+    // For each troop that has a bucket in this period…
+    Object.keys(aggregation).forEach(key => {
+      const bucket = aggregation[key];
+      if (bucket[periodKey] !== period) return; // only current period
+
+      const troop = bucket.troop;
+      if (!runningTotals[troop]) {
+        runningTotals[troop] = {
+          SUMME_all: 0, NHB_all: 0, HB_all: 0, BLOESSE_all: 0, BHB_all: 0,
+          SUMME_bg: 0,  NHB_bg: 0,  HB_bg: 0,  BLOESSE_bg: 0,  BHB_bg: 0
+        };
+      }
+
+      // Add previous totals to current bucket (cumulative)
+      const prev = runningTotals[troop];
+      bucket.SUMME_all   += prev.SUMME_all;
+      bucket.NHB_all     += prev.NHB_all;
+      bucket.HB_all      += prev.HB_all;
+      bucket.BLOESSE_all+= prev.BLOESSE_all;
+      bucket.BHB_all     += prev.BHB_all;
+
+      bucket.SUMME_bg    += prev.SUMME_bg;
+      bucket.NHB_bg      += prev.NHB_bg;
+      bucket.HB_bg       += prev.HB_bg;
+      bucket.BLOESSE_bg += prev.BLOESSE_bg;
+      bucket.BHB_bg      += prev.BHB_bg;
+
+      // Update running totals for the next period
+      runningTotals[troop] = {
+        SUMME_all:   bucket.SUMME_all,
+        NHB_all:     bucket.NHB_all,
+        HB_all:      bucket.HB_all,
+        BLOESSE_all:bucket.BLOESSE_all,
+        BHB_all:     bucket.BHB_all,
+        SUMME_bg:    bucket.SUMME_bg,
+        NHB_bg:      bucket.NHB_bg,
+        HB_bg:       bucket.HB_bg,
+        BLOESSE_bg:  bucket.BLOESSE_bg,
+        BHB_bg:      bucket.BHB_bg
       };
-    }
+    });
+  });
+})();
 
-    // ---- counting logic ----
-    if ([3, 4, 5].includes(status)) acc[key].SUMME_all++;
-    if (status === 4) acc[key].NHB_all++;
-    if (status === 3 || status === 5) acc[key].HB_all++;
-    if (status === 3) acc[key].BLOESSE_all++;
-    if (status === 5) acc[key].BHB_all++;
 
-    if ([3, 4, 5].includes(status) && accessibility === 1) acc[key].SUMME_bg++;
-    if (status === 4 && accessibility === 1) acc[key].NHB_bg++;
-    if ((status === 3 || status === 5) && accessibility === 1) acc[key].HB_bg++;
-    if (status === 3 && accessibility === 1) acc[key].BLOESSE_bg++;
-    if (status === 5 && accessibility === 1) acc[key].BHB_bg++;
-
-    return acc;
-  }, {});
 
   // -----------------------------------------------------------------
   // 3️⃣ Convert aggregation object → sorted array for the grid
@@ -385,11 +446,11 @@ function onBtnExport2() {
   </v-card>
 
   <!-- ==================== GRID 1 – ALL ==================== -->
-  <v-card v-if="tabledata && tabledata.length > 0">
+  <v-card>
     <v-card-title>Alle Traktecken</v-card-title>
 
     <!-- Render the grid only when at least one organisation is selected -->
-    <ag-grid-vue v-if="selectedOrganisations.length > 0"
+    <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
       :rowData="tabledata"
       :columnDefs="MyColDefs1"
       :style="{ height: gridHeight }"
@@ -402,7 +463,7 @@ function onBtnExport2() {
       @grid-ready="onGridReady1" />
     <!-- Fallback message when no org is selected -->
     <v-card-text v-else class="text-center text-grey italic">
-      Keine Daten für die aktuelle Auswahl verfügbar.
+      Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
     <!-- CSV export button for Grid 1 -->
@@ -413,12 +474,11 @@ function onBtnExport2() {
   </v-card>
 
   <!-- ==================== GRID 2 – BEGEHBARE ==================== -->
-  <v-card v-if="tabledata && tabledata.length > 0">
+  <v-card>
     <v-card-title>Begehbare Traktecken</v-card-title>
 
     <ag-grid-vue v-if="selectedOrganisations.length > 0"
-      :rowData="tabledata"
-      :columnDefs="MyColDefs2"
+      :rowData="tabledata" :columnDefs="MyColDefs2"
       :style="{ height: gridHeight }"
       style="width: 100%"
       :paginationAutoPageSize="true"
@@ -428,7 +488,7 @@ function onBtnExport2() {
       :theme="currentTheme"
       @grid-ready="onGridReady2" />
     <v-card-text v-else class="text-center text-grey italic">
-      Keine Daten für die aktuelle Auswahl verfügbar.
+      Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
     <!-- CSV export button for Grid 2 -->

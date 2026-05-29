@@ -6,12 +6,14 @@ layout: home
      imports and prepares any components or utilities needed by the template. -->
 <script setup>
     /*  Import the specific Stats component from its relative path.*/
-    import Stats from '../../../components/statistics/g1/s3b.vue';
+    import Stats from '../../../components/statistics/TroopStatistics/PlotsDeliveredByToopAndDate_old.vue';
 </script>
 
 <!-- Markdown heading that will be rendered as an <h1> element.
      It describes the content: "Cumulative performance per inventory team". -->
-# Abgabe von Ecken durch Trupp nach Datum  (Variante B)
+[← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
+
+# Abgabe von Ecken durch Trupp nach Datum 
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.
