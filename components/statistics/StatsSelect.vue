@@ -13,8 +13,8 @@ const availableStats = ref([
     "stats": [
       { "id": "s1", "name": "1. Kumulative Leistung pro Inventurtrupp" },
       { "id": "s2", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
-      { "id": "s3", "name": "3. Wann, welcher Trupp welche Ecke abgegeben hat" },
-      { "id": "s3b", "name": "3. Wann, welcher Trupp welche Ecke abgegeben hat (Variante B)" }
+      { "id": "s3", "name": "3. Abgabe von Ecken durch Trupp nach Datum" },
+      { "id": "s3b", "name": "3. Abgabe von Ecken durch Trupp nach Datum (Variante B)" }
 
     ]
   },
@@ -78,7 +78,7 @@ watch(selectedStatsGrp, (newGroup) => {
       :items="availableElements"
       item-title="name"
       return-object
-      label="Stat wählen"
+      label="Statistik wählen"
       :disabled="availableElements[0] === ''"
     />
   </v-card>

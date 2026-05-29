@@ -11,7 +11,11 @@ layout: home
 
 <!-- Markdown heading that will be rendered as an <h1> element.
      It describes the content: "Cumulative performance per inventory team". -->
-# Wann, welcher Trupp welche Ecke abgegeben hat  (Variante B)
+# Abgabe von Ecken durch Trupp nach Datum  (Variante B)
+
+::: warning Hinweis
+Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.
+:::
 
 <!-- Vuetify application wrapper with a transparent background.
      It provides the necessary layout and styling context for the component. -->
