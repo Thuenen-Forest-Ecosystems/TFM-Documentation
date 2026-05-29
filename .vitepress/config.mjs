@@ -69,7 +69,9 @@ export default defineConfig({
             next: false
           },
           items: [
-            { text: 'Profile', link: '/dashboard/profile' }
+            { text: 'Profile', link: '/dashboard/profile' },
+            { text: 'Statistics', link: '/dashboard/statistics' }/* ,
+            { text: 'Statistics (example)', link: '/dashboard/statistics/index_deprecated' } */
           ]
         },
         /*{
