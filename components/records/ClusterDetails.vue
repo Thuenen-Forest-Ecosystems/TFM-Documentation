@@ -14,7 +14,7 @@
     import DetailAdministration from './DetailAdministration.vue';
     import ResponsibleByRecord from './ResponsibleByRecord.vue';
     import RecordMessages from './RecordMessages.vue';
-    import PositionMap from './PositionMap.vue';
+    //import PositionMap from './PositionMap.vue';
 
     const ajv = new Ajv({
         allErrors: true,
@@ -354,7 +354,7 @@
                     </v-card-text>
                 </v-card>-->
                 <v-card variant="tonal" class="ma-3">
-                    <RecordDetail :record="activeRecord" :schema="schema" :style-map="styleMap" :validate="validate" :tfm="tfm" />
+                    <RecordDetail :record="activeRecord" :records="records" :schema="schema" :style-map="styleMap" :validate="validate" :tfm="tfm" />
                 </v-card>
         </div>
 

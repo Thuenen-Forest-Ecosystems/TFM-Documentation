@@ -31,6 +31,11 @@
             type: Object,
             required: true
         },
+        records: {
+            type: Array,
+            required: false,
+            default: () => []
+        },
         schema: {
             type: Object,
             required: false,
@@ -402,6 +407,7 @@
                     <PositionMap
                         v-else-if="item.id === 'position_column'"
                         :record="props.record"
+                        :records="props.records"
                     />
                     <!-- JSON view for data tabs -->
                     <v-card-text v-else-if="toggleDataView === 1">

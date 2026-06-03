@@ -7,37 +7,87 @@
         record: {
             type: Object,
             required: true
+        },
+        records: {
+            type: Array,
+            required: false,
+            default: () => []
         }
     });
 
     const mapContainer = ref(null);
     let map = null;
+    const OTHER_RECORDS_SOURCE_ID = 'other-records-source';
+    const OTHER_RECORDS_LAYER_ID = 'other-records-layer';
 
     const position = computed(() => props.record?.properties?.position);
 
-    const positionMedian = computed(() => {
-        const p = position.value?.position_median;
-        if (p?.coordinates && p.coordinates.length === 2) return p.coordinates;
-        if (p?.longitude != null && p?.latitude != null) return [p.longitude, p.latitude];
+    function normalizeCoordinates(value) {
+        if (!value) return null;
+        if (value.coordinates && value.coordinates.length === 2) return value.coordinates;
+        if (value.longitude != null && value.latitude != null) return [value.longitude, value.latitude];
         return null;
+    }
+
+    function getRecordPositionMedian(record) {
+        return normalizeCoordinates(record?.properties?.position?.position_median);
+    }
+
+    function getRecordPositionMean(record) {
+        return normalizeCoordinates(record?.properties?.position?.position_mean);
+    }
+
+    function getRecordPlotCoordinates(record) {
+        return normalizeCoordinates(record?.properties?.plot_coordinates?.center_location);
+    }
+
+    function getRecordMapCenter(record) {
+        return getRecordPositionMedian(record) || getRecordPositionMean(record) || getRecordPlotCoordinates(record);
+    }
+
+    const positionMedian = computed(() => {
+        return getRecordPositionMedian(props.record);
     });
 
     const positionMean = computed(() => {
-        const p = position.value?.position_mean;
-        if (p?.coordinates && p.coordinates.length === 2) return p.coordinates;
-        if (p?.longitude != null && p?.latitude != null) return [p.longitude, p.latitude];
-        return null;
+        return getRecordPositionMean(props.record);
     });
 
     const plotCoordinates = computed(() => {
-        const c = props.record?.properties?.plot_coordinates?.center_location;
-        if (c?.coordinates && c.coordinates.length === 2) return c.coordinates;
-        return null;
+        return getRecordPlotCoordinates(props.record);
     });
 
-    const mapCenter = computed(() => positionMedian.value || positionMean.value || plotCoordinates.value);
+    const otherRecordPoints = computed(() => {
+        const activeId = props.record?.id;
+        const records = Array.isArray(props.records) ? props.records : [];
+        return records
+            .filter(record => record && record.id !== activeId)
+            .map(record => ({
+                id: record.id,
+                label: record.plot_name || record.plot_id || String(record.id),
+                center: getRecordMapCenter(record)
+            }))
+            .filter(point => !!point.center);
+    });
 
-    const hasPosition = computed(() => !!mapCenter.value);
+    const allMapPoints = computed(() => {
+        return [
+            positionMedian.value,
+            positionMean.value,
+            plotCoordinates.value,
+            ...otherRecordPoints.value.map(point => point.center)
+        ].filter(Boolean);
+    });
+
+    const mapCenter = computed(() => positionMedian.value || positionMean.value || plotCoordinates.value || otherRecordPoints.value[0]?.center || null);
+
+    const hasPosition = computed(() => allMapPoints.value.length > 0);
+
+    const mapRenderSignature = computed(() => JSON.stringify({
+        activeRecordId: props.record?.id,
+        activePoints: [positionMedian.value, positionMean.value, plotCoordinates.value],
+        otherPoints: otherRecordPoints.value.map(point => ({ id: point.id, center: point.center }))
+    }));
 
     const hdop = computed(() => position.value?.hdop_mean);
     const pdop = computed(() => position.value?.pdop_mean);
@@ -56,6 +106,15 @@
     function formatTime(iso) {
         if (!iso) return null;
         return new Date(iso).toLocaleString();
+    }
+
+    function formatQuality(value) {
+        if (value == null) return 'Nicht geeignet';
+        if (value === 1) return 'Standard GPS fix';
+        if (value === 2) return 'DGPS';
+        if (value === 4) return 'RTK Fixed';
+        if (value === 5) return 'RTK Float';
+        return 'Nicht geeignet';
     }
 
     const style = {
@@ -119,12 +178,75 @@
                 .addTo(map);
         }
 
+        addOtherRecordPointsLayer();
+
         // Fit bounds if multiple points exist
-        const points = [positionMedian.value, positionMean.value, plotCoordinates.value].filter(Boolean);
+        const points = allMapPoints.value;
         if (points.length > 1) {
             const bounds = new maplibregl.LngLatBounds();
             points.forEach(p => bounds.extend(p));
             map.fitBounds(bounds, { padding: 80, maxZoom: 18 });
+        }
+    }
+
+    function addOtherRecordPointsLayer() {
+        if (!map || otherRecordPoints.value.length === 0) return;
+
+        const featureCollection = {
+            type: 'FeatureCollection',
+            features: otherRecordPoints.value.map(point => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: point.center
+                },
+                properties: {
+                    id: String(point.id),
+                    label: point.label
+                }
+            }))
+        };
+
+        if (map.getSource(OTHER_RECORDS_SOURCE_ID)) {
+            map.getSource(OTHER_RECORDS_SOURCE_ID).setData(featureCollection);
+        } else {
+            map.addSource(OTHER_RECORDS_SOURCE_ID, {
+                type: 'geojson',
+                data: featureCollection
+            });
+        }
+
+        if (!map.getLayer(OTHER_RECORDS_LAYER_ID)) {
+            map.addLayer({
+                id: OTHER_RECORDS_LAYER_ID,
+                type: 'circle',
+                source: OTHER_RECORDS_SOURCE_ID,
+                paint: {
+                    'circle-radius': 5,
+                    'circle-color': '#546E7A',
+                    'circle-stroke-color': '#ECEFF1',
+                    'circle-stroke-width': 2
+                }
+            });
+
+            map.on('mouseenter', OTHER_RECORDS_LAYER_ID, () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', OTHER_RECORDS_LAYER_ID, () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+            map.on('click', OTHER_RECORDS_LAYER_ID, (event) => {
+                const feature = event.features?.[0];
+                const coordinates = feature?.geometry?.coordinates;
+                if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
+                const label = feature?.properties?.label || 'Weitere Ecke';
+                new maplibregl.Popup()
+                    .setLngLat(coordinates)
+                    .setText(`${label}: Gemessene Position`)
+                    .addTo(map);
+            });
         }
     }
 
@@ -135,7 +257,7 @@
         }
     });
 
-    watch(() => props.record?.id, async () => {
+    watch(mapRenderSignature, async () => {
         if (map) {
             map.remove();
             map = null;
@@ -184,6 +306,10 @@
                                 <v-icon color="green-darken-3" size="small">mdi-map-marker</v-icon>
                                 <span class="text-caption">Soll-Position</span>
                             </div>
+                            <div class="d-flex align-center ga-2" v-if="otherRecordPoints.length">
+                                <v-icon color="blue-grey-darken-1" size="small">mdi-circle</v-icon>
+                                <span class="text-caption">Weitere Ecken ({{ otherRecordPoints.length }})</span>
+                            </div>
                         </div>
 
                         <v-table density="compact" class="mt-2">
@@ -229,7 +355,7 @@
                                 </tr>
                                 <tr v-if="quality != null">
                                     <td class="text-caption font-weight-medium">Qualitätscode</td>
-                                    <td class="text-caption">{{ quality }}</td>
+                                    <td class="text-caption">{{ quality }} ({{ formatQuality(quality) }})</td>
                                 </tr>
                             </tbody>
                         </v-table>
