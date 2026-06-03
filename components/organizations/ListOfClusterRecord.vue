@@ -215,7 +215,13 @@
             initialWidth: 215,
             wrapHeaderText: false,
             autoHeaderHeight: false,
-            lockVisible: true
+            lockVisible: true,
+            // Allow 3+ conditions for AG Grid simple filters (text/number/date).
+            filterParams: {
+                maxNumConditions: 5,
+                numAlwaysVisibleConditions: 1,
+                defaultJoinOperator: 'OR'
+            }
         },
         postSortRows: (params) => {
             const selected = [];
