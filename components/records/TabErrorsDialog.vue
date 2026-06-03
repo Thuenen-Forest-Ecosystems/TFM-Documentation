@@ -20,6 +20,30 @@
 
     const emit = defineEmits(['update:modelValue']);
 
+    function getValidationNote(error) {
+        return error?.savedNote || error?.note || error?.rawError?.note || null;
+    }
+
+    function getPlausibilityType(error) {
+        return error?.error?.type || error?.type || error?.rawError?.type || 'error';
+    }
+
+    function getPlausibilityTitle(error) {
+        return error?.error?.note || error?.error?.text || error?.message || 'Unbekannter Fehler';
+    }
+
+    function getPlausibilityText(error) {
+        return error?.error?.text || error?.message || null;
+    }
+
+    function getPlausibilityCode(error) {
+        return error?.error?.code || error?.rawError?.code || null;
+    }
+
+    function getPlausibilityNote(error) {
+        return error?.savedNote || error?.note || error?.rawError?.note || null;
+    }
+
     function close() {
         emit('update:modelValue', false);
     }
@@ -36,35 +60,43 @@
             </v-toolbar>
             <v-card-text class="pa-0">
                 <!-- Validation errors -->
-                <v-list v-if="validationErrors.length > 0" lines="three">
+                <v-list v-if="validationErrors.length > 0">
                     <v-list-subheader>Validierung ({{ validationErrors.length }})</v-list-subheader>
                     <v-list-item v-for="(error, index) in validationErrors" :key="'v-' + index">
                         <template v-slot:prepend>
                             <v-icon icon="mdi-alert-octagon" color="red" />
                         </template>
                         <v-list-item-title class="text-wrap">{{ error.message }}</v-list-item-title>
-                        <v-list-item-subtitle>
-                            <div>Schema Path: {{ error.schemaPath }}</div>
-                            <div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>
+                        <v-list-item-subtitle class="error-details">
+                            <!--<div>Schema Path: {{ error.schemaPath }}</div>
+                            <div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>-->
+                            <div v-if="getValidationNote(error)" class="error-note">
+                                <span class="error-note-label">Notiz:</span>
+                                <span>{{ getValidationNote(error) }}</span>
+                            </div>
                         </v-list-item-subtitle>
                     </v-list-item>
                 </v-list>
 
                 <!-- Plausibility errors -->
-                <v-list v-if="plausibilityErrors.length > 0" lines="three">
+                <v-list v-if="plausibilityErrors.length > 0">
                     <v-list-subheader>Plausibilität ({{ plausibilityErrors.length }})</v-list-subheader>
                     <v-list-item v-for="(error, index) in plausibilityErrors" :key="'p-' + index">
                         <template v-slot:prepend>
                             <v-icon
-                                :icon="error.error?.type === 'error' ? 'mdi-alert-octagon' : 'mdi-alert-circle'"
-                                :color="error.error?.type === 'error' ? 'red' : 'orange'"
+                                :icon="getPlausibilityType(error) === 'error' ? 'mdi-alert-octagon' : 'mdi-alert-circle'"
+                                :color="getPlausibilityType(error) === 'error' ? 'red' : 'orange'"
                             />
                         </template>
-                        <v-list-item-title class="text-wrap">{{ error.error?.note || error.error?.text }}</v-list-item-title>
-                        <v-list-item-subtitle>
-                            <div v-if="error.error?.text">{{ error.error.text }}</div>
-                            <div v-if="error.error?.code">Code: {{ error.error.code }}</div>
-                            <div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>
+                        <v-list-item-title class="text-wrap">{{ getPlausibilityTitle(error) }}</v-list-item-title>
+                        <v-list-item-subtitle class="error-details">
+                            <div v-if="getPlausibilityText(error)">{{ getPlausibilityText(error) }}</div>
+                            <!--<div v-if="getPlausibilityCode(error)">Code: {{ getPlausibilityCode(error) }}</div>
+                            <div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>-->
+                            <div v-if="getPlausibilityNote(error)" class="error-note">
+                                <span class="error-note-label">Notiz:</span>
+                                <span>{{ getPlausibilityNote(error) }}</span>
+                            </div>
                         </v-list-item-subtitle>
                     </v-list-item>
                 </v-list>
@@ -77,3 +109,28 @@
         </v-card>
     </v-dialog>
 </template>
+
+<style scoped>
+    .error-details {
+        display: block !important;
+        overflow: visible !important;
+        line-clamp: unset !important;
+        -webkit-line-clamp: unset !important;
+        -webkit-box-orient: initial !important;
+    }
+
+    .error-note {
+        margin-top: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border-left: 3px solid rgb(var(--v-theme-warning));
+        background-color: rgba(var(--v-theme-warning), 0.16);
+        color: rgba(var(--v-theme-on-surface), 0.95);
+        line-height: 1.35;
+    }
+
+    .error-note-label {
+        font-weight: 700;
+        margin-right: 4px;
+    }
+</style>

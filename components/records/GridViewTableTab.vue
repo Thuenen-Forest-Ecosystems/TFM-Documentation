@@ -34,6 +34,10 @@
             type: Array,
             default: () => []
         },
+        gridHeight: {
+            type: Number,
+            default: 700
+        },
     });
 
     const gridOptions = ref({
@@ -55,6 +59,26 @@
     const errorDialogOpen = ref(false);
     const errorDialogMessages = ref([]);
     const errorDialogType = ref('error');
+
+    function getValidationMessage(err) {
+        return err?.message || null;
+    }
+
+    function getValidationNote(err) {
+        return err?.savedNote || err?.note || err?.rawError?.note || null;
+    }
+
+    function getPlausibilityType(err) {
+        return err?.error?.type || err?.type || err?.rawError?.type || 'error';
+    }
+
+    function getPlausibilityMessage(err) {
+        return err?.error?.text || err?.message || null;
+    }
+
+    function getPlausibilityNote(err) {
+        return err?.savedNote || err?.note || err?.rawError?.note || err?.error?.note || null;
+    }
 
     /*function createColumnDefsFromJsonSchema(jsonSchema){
         
@@ -252,8 +276,13 @@
             suppressSizeToFit: true,
             suppressAutoSize: true,
             onCellClicked: params => {
-                if (params.data?._errorTooltip) {
-                    errorDialogMessages.value = params.data._errorTooltip.split('\n');
+                if (params.data?._errorTooltip || (params.data?._errorDetails?.length || 0) > 0) {
+                    errorDialogMessages.value = (params.data?._errorDetails || []).length > 0
+                        ? params.data._errorDetails
+                        : params.data._errorTooltip.split('\n').map(msg => ({
+                            text: msg.replace(/^Notiz:\s*/, ''),
+                            isNote: /^Notiz:\s*/.test(msg)
+                        }));
                     errorDialogType.value = params.data._errorIndicator;
                     errorDialogOpen.value = true;
                 }
@@ -273,32 +302,48 @@
         const errMap = rowErrorMap.value;
         const prefix = props.propertyName ? `/${props.propertyName}/` : '/';
 
-        // Build per-row tooltip messages (deduplicated)
-        const tooltipMap = {};
+        // Build per-row dialog entries (deduplicated)
+        const detailMap = {};
+        function addDetail(rowIdx, text, kind = 'message') {
+            if (!text) return;
+            const rowKey = String(rowIdx);
+            const list = (detailMap[rowKey] ??= []);
+            const alreadyThere = list.some(item => item.kind === kind && item.text === text);
+            if (!alreadyThere) list.push({ kind, text });
+        }
+
         for (const err of props.validationErrors) {
             const p = err.instancePath || '';
             const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
             const rowIdx = rest.split('/')[0];
             if (!rowIdx) continue;
-            const msg = err.message;
-            if (msg) (tooltipMap[rowIdx] ??= new Set()).add(msg);
+            const msg = getValidationMessage(err);
+            const note = getValidationNote(err);
+            addDetail(rowIdx, msg, 'message');
+            if (note && note !== msg) addDetail(rowIdx, note, 'note');
         }
+
         for (const err of props.plausibilityErrors) {
             const p = err.instancePath || '';
             const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
             const rowIdx = rest.split('/')[0];
             if (!rowIdx) continue;
-            const msg = err.error?.text || err.error?.note;
-            if (msg) (tooltipMap[rowIdx] ??= new Set()).add(msg);
+            const msg = getPlausibilityMessage(err);
+            const note = getPlausibilityNote(err);
+            addDetail(rowIdx, msg, 'message');
+            if (note && note !== msg) addDetail(rowIdx, note, 'note');
         }
 
         return rows.map((row, index) => {
             const idxStr = String(index);
-            const msgs = tooltipMap[idxStr];
+            const details = detailMap[idxStr] || [];
             return {
                 ...row,
                 _errorIndicator: errMap[idxStr]?.hasError ? 'error' : errMap[idxStr]?.hasWarning ? 'warning' : null,
-                _errorTooltip: msgs?.size ? [...msgs].join('\n') : null
+                _errorTooltip: details.length
+                    ? details.map(item => item.kind === 'note' ? `Notiz: ${item.text}` : item.text).join('\n')
+                    : null,
+                _errorDetails: details.map(item => ({ text: item.text, isNote: item.kind === 'note' }))
             };
         });
     }
@@ -322,7 +367,7 @@
             const p = err.instancePath || '';
             const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
             const rowIdx = rest.split('/')[0];
-            if (rowIdx !== '') addEntry(rowIdx, err.error?.type === 'error');
+            if (rowIdx !== '') addEntry(rowIdx, getPlausibilityType(err) === 'error');
         }
         return map;
     });
@@ -347,7 +392,7 @@
             const p = err.instancePath || '';
             const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
             const parts = rest.split('/');
-            if (parts.length >= 2) addEntry(parts[0], parts[1], err.error?.type === 'error');
+            if (parts.length >= 2) addEntry(parts[0], parts[1], getPlausibilityType(err) === 'error');
         }
         return map;
     });
@@ -392,7 +437,7 @@
             :pagination="false"
             :rowData="gridOptions.rowData"
             :columnDefs="gridOptions.columnDefs"
-            style="height: 700px"
+            :style="{ height: `${props.gridHeight}px` }"
         ></ag-grid-vue>
 
         <v-dialog v-model="errorDialogOpen" max-width="520">
@@ -404,7 +449,13 @@
                     {{ errorDialogType === 'error' ? 'Fehler' : 'Warnung' }}
                 </v-card-title>
                 <v-card-text>
-                    <div v-for="(msg, i) in errorDialogMessages" :key="i" class="mb-1">{{ msg }}</div>
+                    <div v-for="(msg, i) in errorDialogMessages" :key="i" class="mb-2">
+                        <div v-if="msg.isNote" class="error-note">
+                            <span class="error-note-label">Notiz:</span>
+                            <span>{{ msg.text }}</span>
+                        </div>
+                        <div v-else>{{ msg.text }}</div>
+                    </div>
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
@@ -414,3 +465,19 @@
         </v-dialog>
     </div>
 </template>
+
+<style scoped>
+    .error-note {
+        padding: 6px 8px;
+        border-radius: 6px;
+        border-left: 3px solid rgb(var(--v-theme-warning));
+        background-color: rgba(var(--v-theme-warning), 0.16);
+        color: rgba(var(--v-theme-on-surface), 0.95);
+        line-height: 1.35;
+    }
+
+    .error-note-label {
+        font-weight: 700;
+        margin-right: 4px;
+    }
+</style>

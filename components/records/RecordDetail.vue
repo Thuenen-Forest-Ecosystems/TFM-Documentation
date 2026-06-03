@@ -128,6 +128,115 @@
     const globalErrorCount = computed(() => (errorCountByTab.value['_global'] || 0));
     const globalWarningCount = computed(() => (warningCountByTab.value['_global'] || 0));
 
+    function parseErrorField(field) {
+        if (!field) return [];
+        if (Array.isArray(field)) return field;
+        if (typeof field === 'string') {
+            try {
+                const parsed = JSON.parse(field);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                console.error('Error parsing stored error field:', e);
+            }
+        }
+        return [];
+    }
+
+    function normalizePath(path) {
+        if (path == null || path === '') return 'root';
+        return path;
+    }
+
+    function getErrorKey(instancePath, schemaPath, message, source) {
+        return `${normalizePath(instancePath)}-${normalizePath(schemaPath)}-${message}-${source}`;
+    }
+
+    function getSavedErrorMessage(error) {
+        return error?.message || error?.error?.text || error?.rawError?.text || null;
+    }
+
+    function getSavedErrorNote(error) {
+        return error?.note || error?.rawError?.note || error?.error?.note || null;
+    }
+
+    const savedAcknowledgedErrors = computed(() => {
+        const errorMap = new Map();
+
+        const validationErrs = parseErrorField(props.record?.validation_errors);
+        for (const err of validationErrs) {
+            const source = err?.source || 'ajv';
+            const message = getSavedErrorMessage(err);
+            if (!message) continue;
+            const key = getErrorKey(err?.instancePath, err?.schemaPath, message, source);
+            errorMap.set(key, { ...err, source, message });
+        }
+
+        const plausibilityErrs = parseErrorField(props.record?.plausibility_errors);
+        for (const err of plausibilityErrs) {
+            const source = err?.source || 'tfm';
+            const message = getSavedErrorMessage(err);
+            if (!message) continue;
+            const key = getErrorKey(err?.instancePath, err?.schemaPath, message, source);
+            errorMap.set(key, { ...err, source, message });
+        }
+
+        return errorMap;
+    });
+
+    function getSavedNote(instancePath, schemaPath, message, source) {
+        if (!message) return null;
+
+        const exactKey = getErrorKey(instancePath, schemaPath, message, source);
+        let savedError = savedAcknowledgedErrors.value.get(exactKey);
+
+        if (!savedError && instancePath && instancePath !== '' && instancePath !== 'root') {
+            const fallbackKey = getErrorKey('', schemaPath, message, source);
+            savedError = savedAcknowledgedErrors.value.get(fallbackKey);
+        }
+
+        if (!savedError) {
+            for (const err of savedAcknowledgedErrors.value.values()) {
+                if (err?.message === message && err?.source === source) {
+                    savedError = err;
+                    break;
+                }
+            }
+        }
+
+        return savedError ? getSavedErrorNote(savedError) : null;
+    }
+
+    function normalizePlausibilityInstancePath(path) {
+        if (!path) return '';
+        if (path.startsWith('/plot/0/')) {
+            return path.slice('/plot/0'.length);
+        }
+        if (path === '/plot/0') {
+            return '';
+        }
+        return path;
+    }
+
+    function getPlausibilityMessage(error) {
+        return error?.error?.text || error?.message || error?.rawError?.text || null;
+    }
+
+    function getPlausibilityType(error) {
+        return error?.error?.type || error?.type || error?.rawError?.type || 'error';
+    }
+
+    function getPlausibilitySchemaPath(error) {
+        return error?.schemaPath || error?.rawError?.schemaPath || null;
+    }
+
+    function withSavedPlausibilityNote(error) {
+        const message = getPlausibilityMessage(error);
+        const schemaPath = getPlausibilitySchemaPath(error);
+        const source = error?.source || 'tfm';
+        const savedNote = getSavedNote(error?.instancePath, schemaPath, message, source);
+        return savedNote ? { ...error, savedNote } : error;
+    }
+
     function onTabClick(tabId) {
         if (lastClickedTab.value === tabId && (errorCountByTab.value[tabId] || warningCountByTab.value[tabId])) {
             errorDialogTabId.value = tabId;
@@ -151,9 +260,31 @@
         }
     }
 
-    watch([currentData, styleMapTabs, activeValidate, activeTfm], async () => {
+    function clearValidationUiState() {
+        errorCountByTab.value = {};
+        warningCountByTab.value = {};
+        errorsByTab.value = { validation: {}, plausibility: {} };
+        errorDialogOpen.value = false;
+        globalDialogOpen.value = false;
+        errorDialogTabId.value = null;
+    }
+
+    watch([
+        dataTab,
+        currentData,
+        styleMapTabs,
+        activeValidate,
+        activeTfm,
+        () => props.record?.validation_errors,
+        () => props.record?.plausibility_errors
+    ], async () => {
+        if (dataTab.value === 'BWI2022') {
+            clearValidationUiState();
+            return;
+        }
+
         if (!activeValidate.value || !currentData.value || !styleMapTabs.value) {
-            errorCountByTab.value = {};
+            clearValidationUiState();
             return;
         }
 
@@ -174,6 +305,9 @@
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
+        }).map(err => {
+            const savedNote = getSavedNote(err.instancePath, err.schemaPath, err.message, 'ajv');
+            return savedNote ? { ...err, savedNote } : err;
         });
         countErrorsByTab(validationErrors, fieldToTab, counts);
 
@@ -193,7 +327,7 @@
             valByTab[tid].push(err);
         }
 
-        // Plausibility errors (TFM)
+        // Plausibility errors (TFM + stored acknowledged)
         if (activeTfm.value && props.record) {
             try {
                 const result = await activeTfm.value.runPlots(
@@ -201,19 +335,39 @@
                     '/plot',
                     [dataTab.value === 'BWI2022' ? props.record.properties : props.record.previous_properties]
                 );
-                // Normalize instancePath: TFM returns paths relative to /plot/0 (the base passed to runPlots).
-                // Strip that prefix so paths match validation error paths like /tree/0/dbh.
                 const rawPlaus = Array.isArray(result) ? result : [];
-                const plausResults = rawPlaus.map(err => {
-                    if (!err.instancePath) return err;
-                    if (err.instancePath.startsWith('/plot/0/')) {
-                        return { ...err, instancePath: err.instancePath.slice('/plot/0'.length) };
-                    }
-                    if (err.instancePath === '/plot/0') {
-                        return { ...err, instancePath: '' };
-                    }
-                    return err;
-                });
+                const livePlausibility = rawPlaus
+                    .map(err => ({
+                        ...err,
+                        instancePath: normalizePlausibilityInstancePath(err?.instancePath)
+                    }))
+                    .map(withSavedPlausibilityNote);
+
+                const storedPlausibility = parseErrorField(props.record?.plausibility_errors)
+                    .map(err => ({
+                        ...err,
+                        source: err?.source || 'tfm',
+                        instancePath: normalizePlausibilityInstancePath(err?.instancePath)
+                    }))
+                    .map(withSavedPlausibilityNote);
+
+                const plausResults = [];
+                const seenPlausibility = new Set();
+
+                function pushUniquePlausibility(error) {
+                    const message = getPlausibilityMessage(error);
+                    if (!message) return;
+                    const source = error?.source || 'tfm';
+                    const schemaPath = getPlausibilitySchemaPath(error);
+                    const key = getErrorKey(error?.instancePath, schemaPath, message, source);
+                    if (seenPlausibility.has(key)) return;
+                    seenPlausibility.add(key);
+                    plausResults.push(error);
+                }
+
+                livePlausibility.forEach(pushUniquePlausibility);
+                storedPlausibility.forEach(pushUniquePlausibility);
+
                 const plausByTab = {};
                 const warnCounts = {};
                 for (const err of plausResults) {
@@ -228,7 +382,7 @@
                         }
                     }
                     const tid = (field && fieldToTab[field]) ? fieldToTab[field] : '_global';
-                    if (err.error?.type === 'warning') {
+                    if (getPlausibilityType(err) === 'warning') {
                         warnCounts[tid] = (warnCounts[tid] || 0) + 1;
                     } else {
                         counts[tid] = (counts[tid] || 0) + 1;

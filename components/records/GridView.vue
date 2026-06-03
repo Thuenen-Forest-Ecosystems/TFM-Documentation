@@ -127,6 +127,99 @@
         return { validation: props.validationErrors, plausibility: props.plausibilityErrors };
     }
 
+    function getCardListRows(cardListItem) {
+        if (!cardListItem?.property) return [];
+        const rows = props.data?.[cardListItem.property];
+        return Array.isArray(rows) ? rows : [];
+    }
+
+    function getCardListItemSchema(arrayProperty) {
+        return props.schema?.properties?.[arrayProperty]?.items || null;
+    }
+
+    function getCardListFormSchema(cardListItem) {
+        const itemSchema = getCardListItemSchema(cardListItem?.property);
+        if (!itemSchema?.properties) return null;
+
+        const fieldKeys = (cardListItem.items || [])
+            .filter(item => item?.name && item.display !== false && item.type !== 'array' && item.type !== 'object')
+            .map(item => item.name);
+
+        if (fieldKeys.length === 0) return null;
+
+        const filteredProps = Object.fromEntries(
+            fieldKeys
+                .filter(key => itemSchema.properties[key])
+                .map(key => [key, itemSchema.properties[key]])
+        );
+
+        if (Object.keys(filteredProps).length === 0) return null;
+        return { ...itemSchema, properties: filteredProps };
+    }
+
+    function getCardListNestedArrays(cardListItem) {
+        return (cardListItem?.items || []).filter(item => item?.type === 'array' && item?.name);
+    }
+
+    function getCardListNestedSchema(arrayProperty, nestedProperty) {
+        return props.schema?.properties?.[arrayProperty]?.items?.properties?.[nestedProperty]?.items || null;
+    }
+
+    function normalizeErrorsForCardListRow(propertyName, rowIndex, errors = []) {
+        const prefix = `/${propertyName}/${rowIndex}`;
+        return errors
+            .filter(err => (err.instancePath || '').startsWith(prefix))
+            .map(err => {
+                const normalizedPath = (err.instancePath || '').slice(prefix.length);
+                if (!normalizedPath && err.keyword === 'required' && err.params?.missingProperty) {
+                    return { ...err, instancePath: `/${err.params.missingProperty}` };
+                }
+                return { ...err, instancePath: normalizedPath };
+            });
+    }
+
+    function errorsForCardListRow(propertyName, rowIndex) {
+        return {
+            validation: normalizeErrorsForCardListRow(propertyName, rowIndex, props.validationErrors),
+            plausibility: normalizeErrorsForCardListRow(propertyName, rowIndex, props.plausibilityErrors)
+        };
+    }
+
+    function getCardListRowTitle(cardListItem, rowData, rowIndex) {
+        const baseLabel = cardListItem?.label || cardListItem?.id || 'Eintrag';
+        const identifierField = cardListItem?.identifierField;
+        const identifierValue = identifierField ? rowData?.[identifierField] : null;
+        if (identifierValue !== null && identifierValue !== undefined && identifierValue !== '') {
+            return `${baseLabel} ${identifierValue}`;
+        }
+        return `${baseLabel} ${rowIndex + 1}`;
+    }
+
+    function getCardListNestedLabel(cardListItem, nestedItem) {
+        const fieldName = nestedItem?.name;
+        if (!fieldName) return '';
+        const propertySchema = props.schema?.properties?.[cardListItem?.property]?.items?.properties?.[fieldName];
+        return nestedItem.label || propertySchema?.title || fieldName;
+    }
+
+    function getCardListNestedGridHeight(cardListItem, nestedItem) {
+        const configuredHeight = Number(nestedItem?.options?.height);
+        if (!Number.isNaN(configuredHeight) && configuredHeight > 0) return configuredHeight;
+
+        if ((cardListItem?.id === 'edges' || cardListItem?.property === 'edges') && nestedItem?.name === 'edges') {
+            return 260;
+        }
+
+        return 700;
+    }
+
+    function getCardListEmptyMessage(cardListItem) {
+        if (cardListItem?.id === 'edges' || cardListItem?.property === 'edges') {
+            return 'Es wurde kein Rand aufgenommen.';
+        }
+        return 'Keine Eintraege vorhanden.';
+    }
+
     // Legacy: styleMap manages its own tabs
     const styleMapTabs = computed(() => {
         return props.styleMap.layout.items.filter(
@@ -170,6 +263,52 @@
                 :validation-errors="errorsForProperty(styleTab.property).validation"
                 :plausibility-errors="errorsForProperty(styleTab.property).plausibility"
             />
+            <!-- Direct array/cardlist -->
+            <div v-else-if="styleTab.component === 'cardlist' && styleTab.property" class="pa-2">
+                <v-alert
+                    v-if="getCardListRows(styleTab).length === 0"
+                    type="info"
+                    variant="tonal"
+                    density="comfortable"
+                    class="ma-2"
+                >
+                    {{ getCardListEmptyMessage(styleTab) }}
+                </v-alert>
+                <v-card
+                    v-for="(rowData, rowIndex) in getCardListRows(styleTab)"
+                    :key="`${styleTab.property}_${rowIndex}`"
+                    variant="tonal"
+                    class="ma-2"
+                >
+                    <v-card-title class="text-subtitle-2 pa-3">
+                        {{ getCardListRowTitle(styleTab, rowData, rowIndex) }}
+                    </v-card-title>
+
+                    <GridViewGridTab
+                        v-if="getCardListFormSchema(styleTab)"
+                        :data="rowData || {}"
+                        :schema="getCardListFormSchema(styleTab)"
+                        :validation-errors="errorsForCardListRow(styleTab.property, rowIndex).validation"
+                        :plausibility-errors="errorsForCardListRow(styleTab.property, rowIndex).plausibility"
+                    />
+
+                    <template v-for="nestedItem in getCardListNestedArrays(styleTab)" :key="nestedItem.id || nestedItem.name">
+                        <div class="px-6 pt-2 text-caption text-medium-emphasis">
+                            {{ getCardListNestedLabel(styleTab, nestedItem) }}
+                        </div>
+                        <GridViewTableTab
+                            v-if="nestedItem.component === 'datagrid' && getCardListNestedSchema(styleTab.property, nestedItem.name)"
+                            :data="Array.isArray(rowData?.[nestedItem.name]) ? rowData[nestedItem.name] : []"
+                            :schema="getCardListNestedSchema(styleTab.property, nestedItem.name)"
+                            :property-name="nestedItem.name"
+                            :validation-errors="errorsForCardListRow(styleTab.property, rowIndex).validation"
+                            :plausibility-errors="errorsForCardListRow(styleTab.property, rowIndex).plausibility"
+                            :grid-height="getCardListNestedGridHeight(styleTab, nestedItem)"
+                            class="ma-2"
+                        />
+                    </template>
+                </v-card>
+            </div>
             <!-- Column: cards, nested tabs, direct arrays -->
             <div v-else-if="styleTab.type === 'column'" class="pa-1">
                 <template v-for="item in (styleTab.items || [])" :key="item.id || item.label">
