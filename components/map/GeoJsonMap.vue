@@ -3,7 +3,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MaplibreGlDraw from 'maplibre-gl-draw';
 import 'maplibre-gl-draw/dist/mapbox-gl-draw.css';
-import { watch, ref, nextTick } from 'vue';
+import { watch, ref, nextTick, computed } from 'vue';
 import { workflows } from '../Utils';
 import * as turf from '@turf/turf';
 
@@ -49,6 +49,12 @@ const props = defineProps({
         default: true
     }
 });
+
+const hasSelectedFeatures = computed(() =>
+    Array.isArray(props.geojson?.features)
+        ? props.geojson.features.some((feature) => feature?.properties?.isSelected)
+        : false
+);
 
 const emit = defineEmits(['update:selected', 'polygonSelection']);
 
@@ -401,6 +407,42 @@ function toggleDrawMode() {
         draw.deleteAll();
     }
 }
+
+function focusSelectedFeatures() {
+    if (!map) return;
+
+    runWhenStyleReady(() => {
+        const selectedFeatures = Array.isArray(props.geojson?.features)
+            ? props.geojson.features.filter((feature) => feature?.properties?.isSelected)
+            : [];
+
+        if (selectedFeatures.length === 0) return;
+
+        const [minLng, minLat, maxLng, maxLat] = turf.bbox(turf.featureCollection(selectedFeatures));
+        const isSinglePoint = minLng === maxLng && minLat === maxLat;
+
+        if (isSinglePoint) {
+            map.flyTo({
+                center: [minLng, minLat],
+                zoom: Math.max(map.getZoom(), 15),
+                essential: true
+            });
+            return;
+        }
+
+        map.fitBounds(
+            [
+                [minLng, minLat],
+                [maxLng, maxLat]
+            ],
+            {
+                padding: 60,
+                maxZoom: 15,
+                duration: 600
+            }
+        );
+    });
+}
 </script>
 
 <template>
@@ -418,6 +460,14 @@ function toggleDrawMode() {
             @click="toggleDrawMode"
             class="position-absolute"
             style="z-index: 12; top: 40px; left: 10px;" 
+            density="compact">
+        </v-btn>
+        <v-btn
+            icon="mdi-crosshairs-gps"
+            :disabled="!hasSelectedFeatures"
+            @click="focusSelectedFeatures"
+            class="position-absolute"
+            style="z-index: 12; top: 76px; left: 10px;"
             density="compact">
         </v-btn>
         <div id="map" style="width: 100%; height: 100%;"></div>

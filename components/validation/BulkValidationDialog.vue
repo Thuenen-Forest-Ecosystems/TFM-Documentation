@@ -102,6 +102,11 @@
             width: 95
         },
         {
+            field: 'troop_name',
+            headerName: 'Trupp',
+            width: 180
+        },
+        {
             field: 'source',
             headerName: 'Quelle',
             width: 140
@@ -152,7 +157,7 @@
         },
         {
             field: 'plots',
-            headerName: 'Plots',
+            headerName: 'Ecken',
             width: 110
         },
         {
@@ -169,7 +174,7 @@
         },
         {
             field: 'source',
-            headerName: 'Quelle',
+            headerName: 'Art der Validierung',
             width: 150
         },
         {
@@ -315,7 +320,7 @@
 
         const headers = isStatisticsView.value
             ? ['Rang', 'Vorkommen', 'Plots', 'Typ', 'Code', 'Quelle', 'Beispiel']
-            : ['Trakt', 'Ecke', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad'];
+            : ['Trakt', 'Ecke', 'Trupp', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad'];
 
         const csvRows = isStatisticsView.value
             ? rows.map((row) => [
@@ -330,6 +335,7 @@
             : rows.map((row) => [
                 row.cluster_name,
                 row.plot_name,
+                row.troop_name,
                 row.source,
                 row.severity,
                 row.code,
@@ -366,7 +372,7 @@
 
             const { data, error } = await supabase
                 .from('records')
-                .select('id, plot_id, plot_name, cluster_id, cluster_name, properties, previous_properties, schema_id_validated_by, validation_errors, plausibility_errors')
+                .select('id, plot_id, plot_name, cluster_id, cluster_name, responsible_troop, properties, previous_properties, schema_id_validated_by, validation_errors, plausibility_errors')
                 .in(fieldName, batch);
 
             if (error) {
@@ -378,6 +384,40 @@
         }
 
         return fetchedRecords;
+    }
+
+    async function withTroopNames(fetchedRecords) {
+        if (!Array.isArray(fetchedRecords) || fetchedRecords.length === 0) {
+            return [];
+        }
+
+        const troopIds = [...new Set(
+            fetchedRecords
+                .map((record) => record?.responsible_troop)
+                .filter((id) => !!id)
+        )];
+
+        if (troopIds.length === 0) {
+            return fetchedRecords.map((record) => ({ ...record, troop_name: '-' }));
+        }
+
+        const { data, error } = await supabase
+            .from('troop')
+            .select('id, name')
+            .in('id', troopIds);
+
+        if (error) {
+            console.error('Error fetching troop names:', error);
+        }
+
+        const troopNameById = new Map((data || []).map((troop) => [troop.id, troop.name]));
+
+        return fetchedRecords.map((record) => ({
+            ...record,
+            troop_name: record?.responsible_troop
+                ? (troopNameById.get(record.responsible_troop) || '-')
+                : '-'
+        }));
     }
 
     async function fetchSelectedRecords() {
@@ -398,7 +438,8 @@
                 fetchedRecords = await fetchRecordsByField(ids, 'id');
             }
 
-            records.value = fetchedRecords.sort(sortByPlotName);
+            const recordsWithTroopName = await withTroopNames(fetchedRecords);
+            records.value = recordsWithTroopName.sort(sortByPlotName);
         } catch (error) {
             console.error('Error fetching selected records:', error);
             records.value = [];
@@ -512,7 +553,8 @@ ${plausibilityTxt}
 
         const baseData = {
             cluster_name: record.cluster_name || '-',
-            plot_name: record.plot_name || '-'
+            plot_name: record.plot_name || '-',
+            troop_name: record.troop_name || '-'
         };
 
         const schemaRows = schemaErrors.map((err, index) => ({
@@ -645,7 +687,7 @@ ${plausibilityTxt}
                             Details
                         </v-btn>
                         <v-btn value="statistics" prepend-icon="mdi-chart-bar">
-                            Typ/Code
+                            Statistik
                         </v-btn>
                     </v-btn-toggle>
                     <v-btn
