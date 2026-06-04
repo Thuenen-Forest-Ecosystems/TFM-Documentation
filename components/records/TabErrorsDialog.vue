@@ -1,4 +1,6 @@
 <script setup>
+    import { getPlausibilityMessage, normalizeNoteText } from '../validation/errorNotes';
+
     const props = defineProps({
         modelValue: {
             type: Boolean,
@@ -21,7 +23,10 @@
     const emit = defineEmits(['update:modelValue']);
 
     function getValidationNote(error) {
-        return error?.savedNote || error?.note || error?.rawError?.note || null;
+        return normalizeNoteText(error?.savedNote)
+            || normalizeNoteText(error?.note)
+            || normalizeNoteText(error?.rawError?.note)
+            || null;
     }
 
     function getPlausibilityType(error) {
@@ -29,11 +34,16 @@
     }
 
     function getPlausibilityTitle(error) {
-        return error?.error?.note || error?.error?.text || error?.message || 'Unbekannter Fehler';
+        return normalizeNoteText(error?.error?.note)
+            || normalizeNoteText(error?.error?.text)
+            || normalizeNoteText(getPlausibilityMessage(error))
+            || 'Unbekannter Fehler';
     }
 
     function getPlausibilityText(error) {
-        return error?.error?.text || error?.message || null;
+        return normalizeNoteText(error?.error?.text)
+            || normalizeNoteText(error?.message)
+            || null;
     }
 
     function getPlausibilityCode(error) {
@@ -41,7 +51,10 @@
     }
 
     function getPlausibilityNote(error) {
-        return error?.savedNote || error?.note || error?.rawError?.note || null;
+        return normalizeNoteText(error?.savedNote)
+            || normalizeNoteText(error?.note)
+            || normalizeNoteText(error?.rawError?.note)
+            || null;
     }
 
     function close() {

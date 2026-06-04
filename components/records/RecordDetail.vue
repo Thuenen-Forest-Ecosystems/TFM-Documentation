@@ -7,6 +7,17 @@
     import TabErrorsDialog from './TabErrorsDialog.vue';
     import VersionSelection from '../validation/VersionSelection.vue';
     import Ajv from 'ajv';
+    import {
+        createSavedAcknowledgedErrorsMap,
+        getErrorKey,
+        getPlausibilityMessage,
+        getPlausibilitySchemaPath,
+        getPlausibilityType,
+        normalizePlausibilityInstancePath,
+        parseErrorField,
+        withSavedPlausibilityNote,
+        withSavedValidationNote
+    } from '../validation/errorNotes';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -128,114 +139,7 @@
     const globalErrorCount = computed(() => (errorCountByTab.value['_global'] || 0));
     const globalWarningCount = computed(() => (warningCountByTab.value['_global'] || 0));
 
-    function parseErrorField(field) {
-        if (!field) return [];
-        if (Array.isArray(field)) return field;
-        if (typeof field === 'string') {
-            try {
-                const parsed = JSON.parse(field);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (e) {
-                console.error('Error parsing stored error field:', e);
-            }
-        }
-        return [];
-    }
-
-    function normalizePath(path) {
-        if (path == null || path === '') return 'root';
-        return path;
-    }
-
-    function getErrorKey(instancePath, schemaPath, message, source) {
-        return `${normalizePath(instancePath)}-${normalizePath(schemaPath)}-${message}-${source}`;
-    }
-
-    function getSavedErrorMessage(error) {
-        return error?.message || error?.error?.text || error?.rawError?.text || null;
-    }
-
-    function getSavedErrorNote(error) {
-        return error?.note || error?.rawError?.note || error?.error?.note || null;
-    }
-
-    const savedAcknowledgedErrors = computed(() => {
-        const errorMap = new Map();
-
-        const validationErrs = parseErrorField(props.record?.validation_errors);
-        for (const err of validationErrs) {
-            const source = err?.source || 'ajv';
-            const message = getSavedErrorMessage(err);
-            if (!message) continue;
-            const key = getErrorKey(err?.instancePath, err?.schemaPath, message, source);
-            errorMap.set(key, { ...err, source, message });
-        }
-
-        const plausibilityErrs = parseErrorField(props.record?.plausibility_errors);
-        for (const err of plausibilityErrs) {
-            const source = err?.source || 'tfm';
-            const message = getSavedErrorMessage(err);
-            if (!message) continue;
-            const key = getErrorKey(err?.instancePath, err?.schemaPath, message, source);
-            errorMap.set(key, { ...err, source, message });
-        }
-
-        return errorMap;
-    });
-
-    function getSavedNote(instancePath, schemaPath, message, source) {
-        if (!message) return null;
-
-        const exactKey = getErrorKey(instancePath, schemaPath, message, source);
-        let savedError = savedAcknowledgedErrors.value.get(exactKey);
-
-        if (!savedError && instancePath && instancePath !== '' && instancePath !== 'root') {
-            const fallbackKey = getErrorKey('', schemaPath, message, source);
-            savedError = savedAcknowledgedErrors.value.get(fallbackKey);
-        }
-
-        if (!savedError) {
-            for (const err of savedAcknowledgedErrors.value.values()) {
-                if (err?.message === message && err?.source === source) {
-                    savedError = err;
-                    break;
-                }
-            }
-        }
-
-        return savedError ? getSavedErrorNote(savedError) : null;
-    }
-
-    function normalizePlausibilityInstancePath(path) {
-        if (!path) return '';
-        if (path.startsWith('/plot/0/')) {
-            return path.slice('/plot/0'.length);
-        }
-        if (path === '/plot/0') {
-            return '';
-        }
-        return path;
-    }
-
-    function getPlausibilityMessage(error) {
-        return error?.error?.text || error?.message || error?.rawError?.text || null;
-    }
-
-    function getPlausibilityType(error) {
-        return error?.error?.type || error?.type || error?.rawError?.type || 'error';
-    }
-
-    function getPlausibilitySchemaPath(error) {
-        return error?.schemaPath || error?.rawError?.schemaPath || null;
-    }
-
-    function withSavedPlausibilityNote(error) {
-        const message = getPlausibilityMessage(error);
-        const schemaPath = getPlausibilitySchemaPath(error);
-        const source = error?.source || 'tfm';
-        const savedNote = getSavedNote(error?.instancePath, schemaPath, message, source);
-        return savedNote ? { ...error, savedNote } : error;
-    }
+    const savedAcknowledgedErrors = computed(() => createSavedAcknowledgedErrorsMap(props.record));
 
     function onTabClick(tabId) {
         if (lastClickedTab.value === tabId && (errorCountByTab.value[tabId] || warningCountByTab.value[tabId])) {
@@ -305,10 +209,7 @@
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        }).map(err => {
-            const savedNote = getSavedNote(err.instancePath, err.schemaPath, err.message, 'ajv');
-            return savedNote ? { ...err, savedNote } : err;
-        });
+        }).map(err => withSavedValidationNote(err, savedAcknowledgedErrors.value));
         countErrorsByTab(validationErrors, fieldToTab, counts);
 
         // Store validation errors per tab
@@ -341,7 +242,7 @@
                         ...err,
                         instancePath: normalizePlausibilityInstancePath(err?.instancePath)
                     }))
-                    .map(withSavedPlausibilityNote);
+                    .map(err => withSavedPlausibilityNote(err, savedAcknowledgedErrors.value));
 
                 const storedPlausibility = parseErrorField(props.record?.plausibility_errors)
                     .map(err => ({
@@ -349,7 +250,7 @@
                         source: err?.source || 'tfm',
                         instancePath: normalizePlausibilityInstancePath(err?.instancePath)
                     }))
-                    .map(withSavedPlausibilityNote);
+                    .map(err => withSavedPlausibilityNote(err, savedAcknowledgedErrors.value));
 
                 const plausResults = [];
                 const seenPlausibility = new Set();

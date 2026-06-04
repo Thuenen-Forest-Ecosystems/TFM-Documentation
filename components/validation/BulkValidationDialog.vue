@@ -7,6 +7,13 @@
     import localize from 'ajv-i18n';
 
     import VersionSelection from './VersionSelection.vue';
+    import {
+        createSavedAcknowledgedErrorsMap,
+        normalizePlausibilityInstancePath,
+        normalizeNoteText,
+        withSavedPlausibilityNote,
+        withSavedValidationNote
+    } from './errorNotes';
 
     ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
 
@@ -116,6 +123,12 @@
             flex: 1
         },
         {
+            field: 'note',
+            headerName: 'Notiz',
+            minWidth: 260,
+            flex: 1
+        },
+        {
             field: 'path',
             headerName: 'Pfad',
             minWidth: 260,
@@ -180,9 +193,10 @@
     function toPlausibilityMessage(err) {
         const type = err?.error?.type || 'error';
         const code = err?.error?.code ? ` (${err.error.code})` : '';
-        const note = err?.error?.note || '';
-        const text = err?.error?.text || '';
-        return `${type}${code}: ${note}${text ? ` - ${text}` : ''}`.trim();
+        const note = normalizeNoteText(err?.error?.note);
+        const text = normalizeNoteText(err?.error?.text);
+        const details = [note, text].filter(Boolean).join(' - ');
+        return `${type}${code}${details ? `: ${details}` : ''}`.trim();
     }
 
     function csvEscape(value) {
@@ -198,7 +212,7 @@
             return;
         }
 
-        const headers = ['Trakt', 'Ecke', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Pfad'];
+        const headers = ['Trakt', 'Ecke', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad'];
         const rows = validationRows.value.map((row) => [
             row.cluster_name,
             row.plot_name,
@@ -206,6 +220,7 @@
             row.severity,
             row.code,
             row.message,
+            row.note,
             row.path
         ]);
 
@@ -235,7 +250,7 @@
 
             const { data, error } = await supabase
                 .from('records')
-                .select('id, plot_id, plot_name, cluster_id, cluster_name, properties, previous_properties, schema_id_validated_by')
+                .select('id, plot_id, plot_name, cluster_id, cluster_name, properties, previous_properties, schema_id_validated_by, validation_errors, plausibility_errors')
                 .in(fieldName, batch);
 
             if (error) {
@@ -347,19 +362,22 @@ ${plausibilityTxt}
     }
 
     async function validateRecord(record) {
-        const schemaOk = validate.value(record.properties);
-        const schemaErrors = dedupeAjvErrors(validate.value.errors || []);
+        const savedAcknowledgedErrors = createSavedAcknowledgedErrorsMap(record);
 
-        let plausibilityErrors = [];
+        const schemaOk = validate.value(record.properties);
+        const schemaErrors = dedupeAjvErrors(validate.value.errors || [])
+            .map((err) => withSavedValidationNote(err, savedAcknowledgedErrors));
+
+        let rawPlausibilityErrors = [];
         try {
             const result = await tfm.value.runPlots(
                 [record.properties],
                 '/plot',
                 [record.previous_properties]
             );
-            plausibilityErrors = Array.isArray(result) ? result : [];
+            rawPlausibilityErrors = Array.isArray(result) ? result : [];
         } catch (error) {
-            plausibilityErrors = [{
+            rawPlausibilityErrors = [{
                 error: {
                     type: 'error',
                     code: 'runtime',
@@ -368,6 +386,13 @@ ${plausibilityTxt}
                 }
             }];
         }
+
+        const plausibilityErrors = rawPlausibilityErrors
+            .map((err) => ({
+                ...err,
+                instancePath: normalizePlausibilityInstancePath(err?.instancePath)
+            }))
+            .map((err) => withSavedPlausibilityNote(err, savedAcknowledgedErrors));
 
         const baseData = {
             cluster_name: record.cluster_name || '-',
@@ -381,16 +406,18 @@ ${plausibilityTxt}
             severity: 'ERROR',
             code: err.keyword || '-',
             message: toSchemaMessage(err),
+            note: normalizeNoteText(err.savedNote) || '',
             path: err.instancePath || '/'
         }));
 
         const plausibilityRows = plausibilityErrors.map((err, index) => ({
             id: `${record.id}_plausibility_${index}`,
             ...baseData,
-            source: 'Plausibilitaet',
+            source: 'Plausibilität',
             severity: err?.error?.type === 'error' ? 'ERROR' : 'WARNING',
             code: err?.error?.code || '-',
             message: toPlausibilityMessage(err),
+            note: normalizeNoteText(err.savedNote) || '',
             path: err?.instancePath || '/'
         }));
 
@@ -402,6 +429,7 @@ ${plausibilityTxt}
                 severity: 'OK',
                 code: '-',
                 message: 'Keine Fehler',
+                note: '',
                 path: '/'
             }];
         }

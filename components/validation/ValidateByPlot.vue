@@ -1,6 +1,13 @@
 <script setup>
     import { onMounted, ref, watch, getCurrentInstance, computed } from 'vue';
     import localize from 'ajv-i18n';
+    import {
+        createSavedAcknowledgedErrorsMap,
+        normalizeNoteText,
+        normalizePlausibilityInstancePath,
+        withSavedPlausibilityNote,
+        withSavedValidationNote
+    } from './errorNotes';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -25,83 +32,22 @@
         }
     });
 
-    // Parse saved acknowledged errors from database
-    const savedAcknowledgedErrors = computed(() => {
-        const errorMap = new Map();
+    const savedAcknowledgedErrors = computed(() => createSavedAcknowledgedErrorsMap(props.record));
 
-        function parseField(field) {
-            if (!field) return null;
-            if (Array.isArray(field)) return field;
-            if (typeof field === 'string') {
-                try {
-                    const parsed = JSON.parse(field);
-                    return Array.isArray(parsed) ? parsed : null;
-                } catch (e) {
-                    console.error('Error parsing JSON field:', e);
-                    return null;
-                }
-            }
-            return null;
-        }
-        
-        // Parse validation_errors
-        const validationErrs = parseField(props.record.validation_errors);
-        if (validationErrs) {
-            validationErrs.forEach(err => {
-                const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
-                errorMap.set(key, err);
-            });
-        }
-        
-        // Parse plausibility_errors
-        const plausibilityErrs = parseField(props.record.plausibility_errors);
-        if (plausibilityErrs) {
-            plausibilityErrs.forEach(err => {
-                const key = getErrorKey(err.instancePath, err.schemaPath, err.message, err.source);
-                errorMap.set(key, err);
-            });
-        }
-        
-        return errorMap;
-    });
-
-    // Normalize path: treat null and empty string as equivalent ('root')
-    function normalizePath(path) {
-        if (path == null || path === '') return 'root';
-        return path;
+    function getSavedNoteText(error) {
+        return normalizeNoteText(error?.savedNote);
     }
 
-    // Build error key using same logic as Flutter app
-    function getErrorKey(instancePath, schemaPath, message, source) {
-        return `${normalizePath(instancePath)}-${normalizePath(schemaPath)}-${message}-${source}`;
+    function getPlausibilityTitle(error) {
+        return normalizeNoteText(error?.error?.note)
+            || normalizeNoteText(error?.error?.text)
+            || 'Unbekannter Fehler';
     }
 
-    // Get saved note for a given error with fallback matching
-    function getSavedNote(instancePath, schemaPath, message, source) {
-        // Try exact match first
-        const exactKey = getErrorKey(instancePath, schemaPath, message, source);
-        let savedError = savedAcknowledgedErrors.value.get(exactKey);
-        
-        // Fallback: try with normalized 'root' path for backward compatibility
-        // This handles cases where old saves had empty instancePath but current validation has populated paths
-        if (!savedError && instancePath && instancePath !== '' && instancePath !== 'root') {
-            const fallbackKey = getErrorKey('', schemaPath, message, source);
-            savedError = savedAcknowledgedErrors.value.get(fallbackKey);
-        }
-
-        // Fallback: match by message + source only, ignoring instancePath/schemaPath
-        // This handles plausibility errors where the live result has no instancePath
-        if (!savedError) {
-            for (const err of savedAcknowledgedErrors.value.values()) {
-                if (err.message === message && err.source === source) {
-                    savedError = err;
-                    break;
-                }
-            }
-        }
-        
-        return savedError?.note || null;
+    function getPlausibilityText(error) {
+        return normalizeNoteText(error?.error?.text);
     }
+
     /*async function validationOnline(){
         console.log(props.record)
         const { data, error } = await supabase.functions.invoke('validation', {
@@ -141,7 +87,7 @@
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        });
+        }).map(err => withSavedValidationNote(err, savedAcknowledgedErrors.value));
 
 
         try {
@@ -153,7 +99,12 @@
             );
             
             // Ensure result is always an array (handle null/undefined returns)
-            plausibilityErrors.value = Array.isArray(result) ? result : [];
+            plausibilityErrors.value = (Array.isArray(result) ? result : [])
+                .map(err => ({
+                    ...err,
+                    instancePath: normalizePlausibilityInstancePath(err?.instancePath)
+                }))
+                .map(err => withSavedPlausibilityNote(err, savedAcknowledgedErrors.value));
 
             console.log(plausibilityErrors.value);
             
@@ -194,9 +145,9 @@
                         <v-list-item-title class="text-wrap">{{ error.message }}</v-list-item-title>
                         <v-list-item-subtitle>
                             <div>Schema Path: {{ error.schemaPath }}</div>
-                            <div v-if="getSavedNote(error.instancePath, error.schemaPath, error.message, 'ajv')" class="mt-2">
+                            <div v-if="getSavedNoteText(error)" class="mt-2">
                                 <v-chip size="small" color="info" prepend-icon="mdi-note-text">
-                                    Notiz: {{ getSavedNote(error.instancePath, error.schemaPath, error.message, 'ajv') }}
+                                    Notiz: {{ getSavedNoteText(error) }}
                                 </v-chip>
                             </div>
                         </v-list-item-subtitle>
@@ -218,12 +169,12 @@
                                 </template>
                             </v-tooltip>
                         </template>
-                        <v-list-item-title class="text-wrap">{{ error.error.note }}</v-list-item-title>
+                        <v-list-item-title class="text-wrap">{{ getPlausibilityTitle(error) }}</v-list-item-title>
                         <v-list-item-subtitle>
-                            <div>{{ error.error.text }}</div>
-                            <div v-if="getSavedNote(error.instancePath, null, error.error.text, 'tfm')" class="mt-2">
+                            <div v-if="getPlausibilityText(error)">{{ getPlausibilityText(error) }}</div>
+                            <div v-if="getSavedNoteText(error)" class="mt-2">
                                 <v-chip size="small" color="info" prepend-icon="mdi-note-text">
-                                    Notiz: {{ getSavedNote(error.instancePath, null, error.error.text, 'tfm') }}
+                                    Notiz: {{ getSavedNoteText(error) }}
                                 </v-chip>
                             </div>
                         </v-list-item-subtitle>
