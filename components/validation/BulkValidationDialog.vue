@@ -65,6 +65,7 @@
 
     const validationRows = ref([]);
     const validationProgress = ref({ done: 0, total: 0 });
+    const viewMode = ref('details');
 
     const hasValidationDependencies = computed(() => !!validate.value && !!tfm.value);
     const normalizedSelectedIds = computed(() => normalizeIds(props.selectedIds));
@@ -72,6 +73,7 @@
         if (!validationProgress.value.total) return 0;
         return Math.round((validationProgress.value.done / validationProgress.value.total) * 100);
     });
+    const isStatisticsView = computed(() => viewMode.value === 'statistics');
 
     const gridOptions = {
         localeText: AG_GRID_LOCALE_DE,
@@ -135,6 +137,104 @@
             flex: 1
         }
     ]);
+
+    const statisticsColDefs = ref([
+        {
+            field: 'rank',
+            headerName: '#',
+            width: 80,
+            filter: false
+        },
+        {
+            field: 'count',
+            headerName: 'Vorkommen',
+            width: 130
+        },
+        {
+            field: 'plots',
+            headerName: 'Plots',
+            width: 110
+        },
+        {
+            field: 'type',
+            headerName: 'Typ',
+            width: 120,
+            filter: false,
+            cellRenderer: (params) => renderStatusIcon(params.value)
+        },
+        {
+            field: 'code',
+            headerName: 'Code',
+            width: 160
+        },
+        {
+            field: 'source',
+            headerName: 'Quelle',
+            width: 150
+        },
+        {
+            field: 'message',
+            headerName: 'Beispiel',
+            minWidth: 520,
+            flex: 1
+        }
+    ]);
+
+    const groupedValidationRows = computed(() => {
+        const groups = new Map();
+
+        for (const row of validationRows.value) {
+            if (row?.severity === 'OK') continue;
+
+            const type = row?.severity || 'ERROR';
+            const code = row?.code || '-';
+            const source = row?.source || '-';
+            const key = `${type}|${code}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    type,
+                    code,
+                    count: 0,
+                    message: row?.message || '-',
+                    plotKeys: new Set(),
+                    sources: new Set()
+                });
+            }
+
+            const entry = groups.get(key);
+            entry.count += 1;
+            entry.plotKeys.add(`${row?.cluster_name || '-'}|${row?.plot_name || '-'}`);
+            entry.sources.add(source);
+        }
+
+        const sorted = Array.from(groups.values())
+            .sort((a, b) => {
+                if (b.count !== a.count) return b.count - a.count;
+
+                const typeCompare = `${a.type}`.localeCompare(`${b.type}`, 'de');
+                if (typeCompare !== 0) return typeCompare;
+
+                const codeCompare = `${a.code}`.localeCompare(`${b.code}`, 'de');
+                if (codeCompare !== 0) return codeCompare;
+
+                return `${a.message}`.localeCompare(`${b.message}`, 'de');
+            });
+
+        return sorted.map((entry, index) => ({
+            id: `stats_${entry.type}_${entry.code}_${index}`,
+            rank: index + 1,
+            count: entry.count,
+            plots: entry.plotKeys.size,
+            type: entry.type,
+            code: entry.code,
+            source: Array.from(entry.sources).sort((a, b) => a.localeCompare(b, 'de')).join(', '),
+            message: entry.message
+        }));
+    });
+
+    const activeColDefs = computed(() => isStatisticsView.value ? statisticsColDefs.value : colDefs.value);
+    const activeRows = computed(() => isStatisticsView.value ? groupedValidationRows.value : validationRows.value);
 
     function sortByPlotName(a, b) {
         const aNumber = Number(a.plot_name);
@@ -208,23 +308,37 @@
     }
 
     function downloadCsv() {
-        if (!validationRows.value.length) {
+        const rows = activeRows.value;
+        if (!rows.length) {
             return;
         }
 
-        const headers = ['Trakt', 'Ecke', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad'];
-        const rows = validationRows.value.map((row) => [
-            row.cluster_name,
-            row.plot_name,
-            row.source,
-            row.severity,
-            row.code,
-            row.message,
-            row.note,
-            row.path
-        ]);
+        const headers = isStatisticsView.value
+            ? ['Rang', 'Vorkommen', 'Plots', 'Typ', 'Code', 'Quelle', 'Beispiel']
+            : ['Trakt', 'Ecke', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad'];
 
-        const csvContent = [headers, ...rows]
+        const csvRows = isStatisticsView.value
+            ? rows.map((row) => [
+                row.rank,
+                row.count,
+                row.plots,
+                row.type,
+                row.code,
+                row.source,
+                row.message
+            ])
+            : rows.map((row) => [
+                row.cluster_name,
+                row.plot_name,
+                row.source,
+                row.severity,
+                row.code,
+                row.message,
+                row.note,
+                row.path
+            ]);
+
+        const csvContent = [headers, ...csvRows]
             .map((line) => line.map(csvEscape).join(';'))
             .join('\n');
 
@@ -234,7 +348,9 @@
 
         const link = document.createElement('a');
         link.href = csvUrl;
-        link.download = `bulk_validation_${timestamp}.csv`;
+        link.download = isStatisticsView.value
+            ? `bulk_validation_statistics_${timestamp}.csv`
+            : `bulk_validation_${timestamp}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -515,16 +631,41 @@ ${plausibilityTxt}
                         :is_loading="loadingVersion"
                         :key="'bulk_validation_' + (records[0]?.id || 'none')"
                     />
-                    <v-btn
+                    <v-btn-toggle
+                        rounded="xl"
+                        variant="outlined"
+                        v-model="viewMode"
                         class="ms-auto"
+                        mandatory
+                        divided
+                        density="comfortable"
+                        :disabled="isValidating"
+                    >
+                        <v-btn value="details" prepend-icon="mdi-format-list-bulleted">
+                            Details
+                        </v-btn>
+                        <v-btn value="statistics" prepend-icon="mdi-chart-bar">
+                            Typ/Code
+                        </v-btn>
+                    </v-btn-toggle>
+                    <v-btn
+                        rounded="xl"
                         variant="tonal"
                         prepend-icon="mdi-download"
-                        :disabled="!validationRows.length || isValidating"
+                        :disabled="!activeRows.length || isValidating"
                         @click="downloadCsv"
                     >
                         CSV herunterladen
                     </v-btn>
                 </div>
+
+                <v-alert
+                    v-if="isStatisticsView && !isValidating && validationRows.length > 0 && activeRows.length === 0"
+                    type="success"
+                    variant="tonal"
+                    class="mb-3"
+                    text="Keine Fehler vorhanden. Es wurden nur gueltige Datensaetze gefunden."
+                />
 
                 <v-alert
                     v-if="normalizedSelectedIds.length === 0"
@@ -571,8 +712,8 @@ ${plausibilityTxt}
                 <ag-grid-vue
                     v-if="records.length > 0 && hasValidationDependencies"
                     :gridOptions="gridOptions"
-                    :columnDefs="colDefs"
-                    :rowData="validationRows"
+                    :columnDefs="activeColDefs"
+                    :rowData="activeRows"
                     :theme="currentTheme"
                     style="height: 580px; width: 100%;"
                 />
