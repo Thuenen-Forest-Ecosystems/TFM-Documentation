@@ -19,6 +19,19 @@
     let map = null;
     const OTHER_RECORDS_SOURCE_ID = 'other-records-source';
     const OTHER_RECORDS_LAYER_ID = 'other-records-layer';
+    const HISTORICAL_POSITIONS_SOURCE_ID = 'historical-positions-source';
+    const HISTORICAL_POSITIONS_LAYER_ID = 'historical-positions-layer';
+
+    const HISTORICAL_INTERVAL_COLORS = {
+        bwi2012: '#8E24AA',
+        bwi2022: '#FB8C00',
+        bwi2002: '#43A047',
+        bwi1987: '#6D4C41'
+    };
+
+    const FALLBACK_HISTORICAL_COLORS = ['#00897B', '#1E88E5', '#E53935', '#3949AB', '#6D4C41'];
+    const selectedHistoricalIntervals = ref([]);
+    const historicalSelectionInitialized = ref(false);
 
     const position = computed(() => props.record?.properties?.position);
 
@@ -27,6 +40,52 @@
         if (value.coordinates && value.coordinates.length === 2) return value.coordinates;
         if (value.longitude != null && value.latitude != null) return [value.longitude, value.latitude];
         return null;
+    }
+
+    function toFiniteNumber(value) {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (typeof value === 'string') {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+    }
+
+    function coordinatesFromLatitudeLongitude(latitude, longitude) {
+        const lat = toFiniteNumber(latitude);
+        const lng = toFiniteNumber(longitude);
+        if (lat == null || lng == null) return null;
+        return [lng, lat];
+    }
+
+    function readPreviousPositionData(record) {
+        const rawValue = record?.previous_position_data
+            ?? record?.previousPositionData
+            ?? record?.properties?.previous_position_data
+            ?? null;
+
+        if (!rawValue) return {};
+
+        if (typeof rawValue === 'string') {
+            try {
+                const parsed = JSON.parse(rawValue);
+                return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+            } catch (error) {
+                console.warn('Could not parse previous_position_data as JSON', error);
+                return {};
+            }
+        }
+
+        return typeof rawValue === 'object' && !Array.isArray(rawValue) ? rawValue : {};
+    }
+
+    function getHistoricalIntervalColor(intervalKey, index) {
+        return HISTORICAL_INTERVAL_COLORS[intervalKey]
+            || FALLBACK_HISTORICAL_COLORS[index % FALLBACK_HISTORICAL_COLORS.length];
+    }
+
+    function formatIntervalLabel(intervalKey) {
+        return String(intervalKey || '').toUpperCase();
     }
 
     function getRecordPositionMedian(record) {
@@ -57,6 +116,71 @@
         return getRecordPlotCoordinates(props.record);
     });
 
+    const previousPositionData = computed(() => {
+        return readPreviousPositionData(props.record);
+    });
+
+    const historicalPositionSeries = computed(() => {
+        return Object.entries(previousPositionData.value)
+            .filter(([_, intervalData]) => intervalData && typeof intervalData === 'object')
+            .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
+            .map(([intervalKey, intervalData], index) => {
+                const color = getHistoricalIntervalColor(intervalKey, index);
+                const median = coordinatesFromLatitudeLongitude(
+                    intervalData.latitude_median,
+                    intervalData.longitude_median
+                );
+                const mean = coordinatesFromLatitudeLongitude(
+                    intervalData.latitude_mean,
+                    intervalData.longitude_mean
+                );
+
+                const points = [
+                    median
+                        ? {
+                            id: `${intervalKey}-median`,
+                            intervalKey,
+                            intervalLabel: formatIntervalLabel(intervalKey),
+                            pointType: 'median',
+                            pointLabel: 'Median',
+                            center: median,
+                            color
+                        }
+                        : null,
+                    mean
+                        ? {
+                            id: `${intervalKey}-mean`,
+                            intervalKey,
+                            intervalLabel: formatIntervalLabel(intervalKey),
+                            pointType: 'mean',
+                            pointLabel: 'Mittel',
+                            center: mean,
+                            color
+                        }
+                        : null
+                ].filter(Boolean);
+
+                return {
+                    key: intervalKey,
+                    label: formatIntervalLabel(intervalKey),
+                    color,
+                    points
+                };
+            })
+            .filter(series => series.points.length > 0);
+    });
+
+    const allHistoricalPoints = computed(() => {
+        return historicalPositionSeries.value.flatMap(series => series.points);
+    });
+
+    const selectedHistoricalPoints = computed(() => {
+        const selectedSet = new Set(selectedHistoricalIntervals.value);
+        return historicalPositionSeries.value
+            .filter(series => selectedSet.has(series.key))
+            .flatMap(series => series.points);
+    });
+
     const otherRecordPoints = computed(() => {
         const activeId = props.record?.id;
         const records = Array.isArray(props.records) ? props.records : [];
@@ -70,24 +194,70 @@
             .filter(point => !!point.center);
     });
 
+    const allAvailableMapPoints = computed(() => {
+        return [
+            positionMedian.value,
+            positionMean.value,
+            plotCoordinates.value,
+            ...allHistoricalPoints.value.map(point => point.center),
+            ...otherRecordPoints.value.map(point => point.center)
+        ].filter(Boolean);
+    });
+
     const allMapPoints = computed(() => {
         return [
             positionMedian.value,
             positionMean.value,
             plotCoordinates.value,
+            ...selectedHistoricalPoints.value.map(point => point.center),
             ...otherRecordPoints.value.map(point => point.center)
         ].filter(Boolean);
     });
 
-    const mapCenter = computed(() => positionMedian.value || positionMean.value || plotCoordinates.value || otherRecordPoints.value[0]?.center || null);
+    const mapCenter = computed(() =>
+        positionMedian.value
+        || positionMean.value
+        || plotCoordinates.value
+        || selectedHistoricalPoints.value[0]?.center
+        || allHistoricalPoints.value[0]?.center
+        || otherRecordPoints.value[0]?.center
+        || null
+    );
 
-    const hasPosition = computed(() => allMapPoints.value.length > 0);
+    const hasPosition = computed(() => allAvailableMapPoints.value.length > 0);
 
     const mapRenderSignature = computed(() => JSON.stringify({
         activeRecordId: props.record?.id,
         activePoints: [positionMedian.value, positionMean.value, plotCoordinates.value],
+        historicalPoints: historicalPositionSeries.value.map(series => ({
+            key: series.key,
+            points: series.points.map(point => point.center)
+        })),
         otherPoints: otherRecordPoints.value.map(point => ({ id: point.id, center: point.center }))
     }));
+
+    watch(() => props.record?.id, () => {
+        historicalSelectionInitialized.value = false;
+    });
+
+    watch(historicalPositionSeries, (series) => {
+        const availableKeys = series.map(item => item.key);
+
+        if (availableKeys.length === 0) {
+            selectedHistoricalIntervals.value = [];
+            historicalSelectionInitialized.value = false;
+            return;
+        }
+
+        if (!historicalSelectionInitialized.value) {
+            selectedHistoricalIntervals.value = [...availableKeys];
+            historicalSelectionInitialized.value = true;
+            return;
+        }
+
+        selectedHistoricalIntervals.value = selectedHistoricalIntervals.value
+            .filter(key => availableKeys.includes(key));
+    }, { immediate: true });
 
     const hdop = computed(() => position.value?.hdop_mean);
     const pdop = computed(() => position.value?.pdop_mean);
@@ -178,6 +348,8 @@
                 .addTo(map);
         }
 
+        updateHistoricalPositionsLayer();
+
         addOtherRecordPointsLayer();
 
         // Fit bounds if multiple points exist
@@ -187,6 +359,78 @@
             points.forEach(p => bounds.extend(p));
             map.fitBounds(bounds, { padding: 80, maxZoom: 18 });
         }
+    }
+
+    function updateHistoricalPositionsLayer() {
+        if (!map) return;
+
+        const featureCollection = {
+            type: 'FeatureCollection',
+            features: selectedHistoricalPoints.value.map(point => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: point.center
+                },
+                properties: {
+                    id: point.id,
+                    intervalKey: point.intervalKey,
+                    intervalLabel: point.intervalLabel,
+                    pointType: point.pointType,
+                    pointLabel: point.pointLabel,
+                    color: point.color
+                }
+            }))
+        };
+
+        if (map.getSource(HISTORICAL_POSITIONS_SOURCE_ID)) {
+            map.getSource(HISTORICAL_POSITIONS_SOURCE_ID).setData(featureCollection);
+            return;
+        }
+
+        if (featureCollection.features.length === 0) {
+            return;
+        }
+
+        map.addSource(HISTORICAL_POSITIONS_SOURCE_ID, {
+            type: 'geojson',
+            data: featureCollection
+        });
+
+        map.addLayer({
+            id: HISTORICAL_POSITIONS_LAYER_ID,
+            type: 'circle',
+            source: HISTORICAL_POSITIONS_SOURCE_ID,
+            paint: {
+                'circle-radius': ['case', ['==', ['get', 'pointType'], 'median'], 7, 5],
+                'circle-color': ['get', 'color'],
+                'circle-stroke-color': '#FFFFFF',
+                'circle-stroke-width': 2,
+                'circle-opacity': 0.9
+            }
+        });
+
+        map.on('mouseenter', HISTORICAL_POSITIONS_LAYER_ID, () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', HISTORICAL_POSITIONS_LAYER_ID, () => {
+            map.getCanvas().style.cursor = '';
+        });
+
+        map.on('click', HISTORICAL_POSITIONS_LAYER_ID, (event) => {
+            const feature = event.features?.[0];
+            const coordinates = feature?.geometry?.coordinates;
+            if (!Array.isArray(coordinates) || coordinates.length !== 2) return;
+
+            const intervalLabel = feature?.properties?.intervalLabel || 'Historisch';
+            const pointLabel = feature?.properties?.pointLabel || 'Position';
+
+            new maplibregl.Popup()
+                .setLngLat(coordinates)
+                .setHTML(`<strong>${intervalLabel}</strong><br>${pointLabel}`)
+                .addTo(map);
+        });
     }
 
     function addOtherRecordPointsLayer() {
@@ -268,6 +512,11 @@
         }
     });
 
+    watch(selectedHistoricalPoints, () => {
+        if (!map || !map.isStyleLoaded()) return;
+        updateHistoricalPositionsLayer();
+    }, { deep: true });
+
     onBeforeUnmount(() => {
         if (map) {
             map.remove();
@@ -310,6 +559,30 @@
                                 <v-icon color="blue-grey-darken-1" size="small">mdi-circle</v-icon>
                                 <span class="text-caption">Weitere Ecken ({{ otherRecordPoints.length }})</span>
                             </div>
+                            <div
+                                class="d-flex align-center ga-2"
+                                v-for="series in historicalPositionSeries.filter(item => selectedHistoricalIntervals.includes(item.key))"
+                                :key="series.key"
+                            >
+                                <span class="historical-interval-dot" :style="{ backgroundColor: series.color }"></span>
+                                <span class="text-caption">{{ series.label }}</span>
+                            </div>
+                        </div>
+
+                        <div v-if="historicalPositionSeries.length" class="mt-3">
+                            <v-chip-group v-model="selectedHistoricalIntervals" multiple>
+                                <v-chip
+                                    v-for="series in historicalPositionSeries"
+                                    :key="series.key"
+                                    :value="series.key"
+                                    filter
+                                    size="small"
+                                    variant="outlined"
+                                >
+                                    <span class="historical-interval-dot me-2" :style="{ backgroundColor: series.color }"></span>
+                                    {{ series.label }}
+                                </v-chip>
+                            </v-chip-group>
                         </div>
 
                         <v-table density="compact" class="mt-2">
@@ -371,6 +644,15 @@
         width: 100%;
         height: 350px;
         min-height: 250px;
+    }
+
+    .historical-interval-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        flex: 0 0 auto;
     }
 
     :deep(.maplibregl-popup-content) {
