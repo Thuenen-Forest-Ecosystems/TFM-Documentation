@@ -53,11 +53,6 @@
             initialLoading.value = false;
         }
     });
-    
-    watch(selectedVersion, (newVersion, oldVersion) => {
-        console.log('Version changed from', oldVersion, 'to', newVersion);
-        loadValidationResources();
-    }, { immediate: true });
 
     const sheet = shallowRef(false)
     const compareDialog = ref(false);
@@ -126,6 +121,11 @@
     }
     
     const loadingVersion = ref(false);
+
+    watch(selectedVersion, (newVersion, oldVersion) => {
+        console.log('Version changed from', oldVersion, 'to', newVersion);
+        loadValidationResources();
+    }, { immediate: true });
 
     async function loadValidationResources() {
         const versionDir = selectedVersion.value?.directory;

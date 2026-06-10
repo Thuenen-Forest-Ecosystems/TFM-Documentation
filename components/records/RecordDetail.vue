@@ -18,6 +18,7 @@
         withSavedPlausibilityNote,
         withSavedValidationNote
     } from '../validation/errorNotes';
+    import { resolveSchemaLookups } from '../validation/lookup';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -36,6 +37,8 @@
 
     const dataTab = ref('CI2027');
     const contentTab = ref(null);
+
+    const useApiForEnumOnly = false; // Set to true to use API for enum values only, false to use schema names first for all lookups
 
     const props = defineProps({
         record: {
@@ -346,7 +349,7 @@
             const schemaTxt = await schemaResult.data.text();
             const plausibilityTxt = await plausibilityResult.data.text();
             const schemaJson = JSON.parse(schemaTxt);
-            const schemaItems = schemaJson.properties?.plot?.items || null;
+            const schemaItems = await resolveSchemaLookups(schemaJson.properties?.plot?.items, supabase, useApiForEnumOnly) || null;
             await new Promise(resolve => setTimeout(resolve, 100));
             const compiledValidate = ajv.compile(schemaItems);
             eval(plausibilityTxt);
