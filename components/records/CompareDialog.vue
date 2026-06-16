@@ -746,9 +746,20 @@
         return normalizedIncludedFieldRules.some((ruleEntry) => matchesIncludedFieldRule(path, ruleEntry.rule));
     }
 
+    // Exclude any path that has a key segment starting with an underscore,
+    // even when nested (e.g. properties.tree[10]._deprecated).
+    function hasUnderscoreSegment(path) {
+        if (!path) return false;
+        return String(path).split('.').some((segment) => {
+            const key = segment.split('[')[0];
+            return key.startsWith('_');
+        });
+    }
+
     const configuredRows = computed(() => {
         return allRows.value
             .filter((row) => isFieldIncluded(row.path))
+            .filter((row) => !hasUnderscoreSegment(row.path))
             .map((row) => {
                 const hardcodedTitle = getHardcodedFieldTitle(row.path);
                 return {
