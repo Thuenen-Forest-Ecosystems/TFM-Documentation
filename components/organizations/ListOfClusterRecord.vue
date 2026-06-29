@@ -298,13 +298,20 @@
                     workflows: workflows
                 },
                 //sortingOrder: ['asc', 'desc'],
-                tooltipValueGetter: (params) => workflows.find(wf => wf.id === params.value)?.tooltip || params.value,
+                tooltipValueGetter: (params) => params.data?.completed_at_state != null
+                    ? 'Akzeptiert (Landesinventurleitung)'
+                    : (workflows.find(wf => wf.id === params.value)?.tooltip || params.value),
                 valueGetter: (params) => params.data?.state_by_user,
                 cellRenderer: (params) => {
                     const workflow = workflows.find(wf => wf.id === params.value);
-                    const color = workflow?.searchText || 'transparent';
-                    const icon = color === 'red' ? 'mdi-close-octagon' : color === 'yellow' ? 'mdi-alert' : color === 'green' ? 'mdi-check' : '';
-                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${workflow?.tooltip || ''}"></span></div>`;
+                    // Accepted by the Landesinventurleitung -> double-check, regardless of workflow color.
+                    const isAccepted = params.data?.completed_at_state != null;
+                    const color = isAccepted ? 'green' : (workflow?.searchText || 'transparent');
+                    const icon = isAccepted
+                        ? 'mdi-check-all'
+                        : (color === 'red' ? 'mdi-close-octagon' : color === 'yellow' ? 'mdi-alert' : color === 'green' ? 'mdi-check' : '');
+                    const tooltip = isAccepted ? 'Akzeptiert (Landesinventurleitung)' : (workflow?.tooltip || '');
+                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${tooltip}"></span></div>`;
                 }
             },
             /*{ 
