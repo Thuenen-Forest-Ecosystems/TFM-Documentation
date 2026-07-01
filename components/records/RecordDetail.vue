@@ -14,7 +14,6 @@
         getPlausibilitySchemaPath,
         getPlausibilityType,
         normalizePlausibilityInstancePath,
-        parseErrorField,
         withSavedPlausibilityNote,
         withSavedValidationNote
     } from '../validation/errorNotes';
@@ -231,7 +230,7 @@
             valByTab[tid].push(err);
         }
 
-        // Plausibility errors (TFM + stored acknowledged)
+        // Plausibility errors (live TFM only; stored plausibility_errors contribute saved notes only)
         if (activeTfm.value && props.record) {
             try {
                 const result = await activeTfm.value.runPlots(
@@ -243,14 +242,6 @@
                 const livePlausibility = rawPlaus
                     .map(err => ({
                         ...err,
-                        instancePath: normalizePlausibilityInstancePath(err?.instancePath)
-                    }))
-                    .map(err => withSavedPlausibilityNote(err, savedAcknowledgedErrors.value));
-
-                const storedPlausibility = parseErrorField(props.record?.plausibility_errors)
-                    .map(err => ({
-                        ...err,
-                        source: err?.source || 'tfm',
                         instancePath: normalizePlausibilityInstancePath(err?.instancePath)
                     }))
                     .map(err => withSavedPlausibilityNote(err, savedAcknowledgedErrors.value));
@@ -270,7 +261,6 @@
                 }
 
                 livePlausibility.forEach(pushUniquePlausibility);
-                storedPlausibility.forEach(pushUniquePlausibility);
 
                 const plausByTab = {};
                 const warnCounts = {};
