@@ -80,7 +80,8 @@ function buildColDefs() {
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
     { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
     { field: "completed_as_troop_latest", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
-    { field: "wald2027", headerName: "Waldentscheid", filter: "agNumberColumnFilter" }
+    { field: "wald2027", headerName: "Waldentscheid", filter: "agNumberColumnFilter" },
+    { field: "begehbar2027", headerName: "Begehbarkeit", filter: "agNumberColumnFilter" }
   ];
 }
 
@@ -108,7 +109,7 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
       // 1. Query-Objekt initialisieren (ohne await!)
       let query = supabase
         .from('v_stats_troop_completed_latest')
-        .select('responsible_state, responsible_administration, responsible_provider, responsible_troop, lil, cluster_name, plot_name,  troop_name, kt, completed_as_troop_latest, wald2027')
+        .select('responsible_state, responsible_administration, responsible_provider, responsible_troop, lil, cluster_name, plot_name,  troop_name, kt, completed_as_troop_latest, wald2027, begehbar2027')
         .or(orFilters.join(','))
 
       // 2. Bedingung prüfen und Filter dynamisch anhängen
