@@ -308,16 +308,16 @@
     watch(selectedVersion, () => loadValidationResources());
 
     async function loadValidationResources() {
-        const versionDir = selectedVersion.value?.directory;
-        if (!versionDir) {
+        const versionId = selectedVersion.value?.id;
+        if (!versionId) {
             internalSchema.value = null;
             internalValidate.value = null;
             internalTfm.value = null;
             internalStyleMap.value = null;
             return;
         }
-        if (validatorCache.has(versionDir)) {
-            const cached = validatorCache.get(versionDir);
+        if (validatorCache.has(versionId)) {
+            const cached = validatorCache.get(versionId);
             internalSchema.value = cached.schema;
             internalValidate.value = cached.validate;
             internalTfm.value = cached.tfm;
@@ -326,31 +326,26 @@
             return;
         }
         loadingVersion.value = true;
-        const [schemaResult, plausibilityResult] = await Promise.all([
-            supabase.storage.from('validation').download(`${versionDir}/validation.json`),
-            supabase.storage.from('validation').download(`${versionDir}/bundle.umd.js`)
-        ]);
-        if (schemaResult.error || plausibilityResult.error) {
+        const { data: schemaRow, error: schemaError } = await supabase
+            .from('schemas')
+            .select('schema, plausability_script, style_default')
+            .eq('id', versionId)
+            .single();
+        if (schemaError || !schemaRow?.schema || !schemaRow?.plausability_script) {
             loadingVersion.value = false;
-            console.error('Error fetching validation resources:', schemaResult.error || plausibilityResult.error);
+            console.error('Error fetching validation resources:', schemaError || 'schema or plausability_script missing in schemas row');
             return;
         }
         try {
-            const schemaTxt = await schemaResult.data.text();
-            const plausibilityTxt = await plausibilityResult.data.text();
-            const schemaJson = JSON.parse(schemaTxt);
+            const schemaJson = schemaRow.schema;
+            const plausibilityTxt = schemaRow.plausability_script;
             const schemaItems = await resolveSchemaLookups(schemaJson.properties?.plot?.items, supabase, useApiForEnumOnly) || null;
             await new Promise(resolve => setTimeout(resolve, 100));
             const compiledValidate = ajv.compile(schemaItems);
             eval(plausibilityTxt);
             const tfmInstance = new TFM(url + '/', apikey);
-            const { data: schemaRow } = await supabase
-                .from('schemas')
-                .select('style_default')
-                .eq('id', selectedVersion.value.id)
-                .single();
-            const fetchedStyleMap = schemaRow?.style_default || null;
-            validatorCache.set(versionDir, {
+            const fetchedStyleMap = schemaRow.style_default || null;
+            validatorCache.set(versionId, {
                 schema: schemaItems,
                 validate: compiledValidate,
                 tfm: tfmInstance,

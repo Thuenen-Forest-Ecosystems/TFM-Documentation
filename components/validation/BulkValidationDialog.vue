@@ -450,16 +450,16 @@
     }
 
     async function loadValidationResources() {
-        const versionDir = selectedVersion.value?.directory;
-        if (!versionDir) {
+        const versionId = selectedVersion.value?.id;
+        if (!versionId) {
             validate.value = null;
             tfm.value = null;
             loadingVersion.value = false;
             return;
         }
 
-        if (validatorCache.has(versionDir)) {
-            const cached = validatorCache.get(versionDir);
+        if (validatorCache.has(versionId)) {
+            const cached = validatorCache.get(versionId);
             validate.value = cached.validate;
             tfm.value = cached.tfm;
             loadingVersion.value = false;
@@ -469,20 +469,20 @@
         loadingVersion.value = true;
 
         try {
-            const [schemaResult, plausibilityResult] = await Promise.all([
-                supabase.storage.from('validation').download(`${versionDir}/validation.json`),
-                supabase.storage.from('validation').download(`${versionDir}/bundle.umd.js`)
-            ]);
+            const { data: schemaRow, error: schemaError } = await supabase
+                .from('schemas')
+                .select('schema, plausability_script')
+                .eq('id', versionId)
+                .single();
 
-            if (schemaResult.error || plausibilityResult.error) {
-                console.error('Error fetching validation resources:', schemaResult.error || plausibilityResult.error);
+            if (schemaError || !schemaRow?.schema || !schemaRow?.plausability_script) {
+                console.error('Error fetching validation resources:', schemaError || 'schema or plausability_script missing in schemas row');
                 return;
             }
 
-            const schemaTxt = await schemaResult.data.text();
-            const plausibilityTxt = await plausibilityResult.data.text();
+            const plausibilityTxt = schemaRow.plausability_script;
 
-            const schemaJson = JSON.parse(schemaTxt);
+            const schemaJson = schemaRow.schema;
             const schemaItems = schemaJson.properties?.plot?.items || null;
             const compiledValidate = ajv.compile(schemaItems);
 
@@ -502,7 +502,7 @@ ${plausibilityTxt}
 
             const tfmInstance = new tfmConstructor(url + '/', apikey);
 
-            validatorCache.set(versionDir, {
+            validatorCache.set(versionId, {
                 validate: compiledValidate,
                 tfm: tfmInstance
             });
