@@ -6,7 +6,7 @@ layout: home
      imports and prepares any components or utilities needed by the template. -->
 <script setup>
     /*  Import the specific Stats component from its relative path.*/
-    import Stats from '../../../components/statistics/TroopStatistics/PerformanceByTroopCumulativeByMonth.vue';
+    import Stats from '../../../components/statistics/PlotStatistics/ForestStatusChangeByTroop.vue';
 </script>
 
 <!-- Markdown heading that will be rendered as an <h1> element.
@@ -14,7 +14,7 @@ layout: home
 [← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
 
 
-# Kumulative Leistung pro Inventurtrupp (abgegebene Trakte) pro Monat (View)
+# Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Anzahl pro Trupp (View)
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.

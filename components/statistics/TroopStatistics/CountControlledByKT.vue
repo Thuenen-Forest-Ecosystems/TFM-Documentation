@@ -252,7 +252,7 @@ function onGridReady2(params) { gridApi2.value = params.api; }
 // ──────────────────────────────────────────────────────────────────────────────
 function onBtnExport1() {
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat3_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_count_controlled_by_kt_${new Date().toISOString().slice(0, 10)}.csv`
   });
 }
 </script>

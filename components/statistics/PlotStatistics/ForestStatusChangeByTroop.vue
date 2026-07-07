@@ -77,8 +77,8 @@ function buildColDefs() {
     { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
     { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "woche", headerName: "Woche", filter: "agTextColumnFilter" },
-    { field: "anzahl", headerName: "Anzahl", filter: "agNumberColumnFilter" } 
+    { field: "aenderung_waldentscheid", headerName: "Änderung Waldentscheid zw. 2022 und 2027", filter: "agTextColumnFilter" },
+    { field: "aenderung_begehbar", headerName: "Änderung Begehbarkeit zw. 2022 und 2027", filter: "agTextColumnFilter" } 
   ];
 }
 
@@ -91,10 +91,7 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
   const ids = selectedOrganisations.value.join(','); // CSV list of org UUIDs
   // Build an OR‑filter that matches any of the four organisation‑type columns
   const orFilters = [
-    `responsible_administration.in.(${ids})`,
-    `responsible_state.in.(${ids})`,
-    `responsible_provider.in.(${ids})`,
-    `responsible_troop.in.(${ids})`
+    `responsible_state.in.(${ids})`
   ];
   console.log("Selected Orgs for batch fetch:", selectedOrganisations.value);
 
@@ -105,21 +102,9 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
     while (hasMore) {
       // 1. Query-Objekt initialisieren (ohne await!)
       let query = supabase
-        .from('v_stats_performance_by_troop_cumulative_by_week')
-        .select('lil, troop_name, kt, woche, anzahl, responsible_state, responsible_administration, responsible_provider, responsible_troop')
+        .from('v_stats_forest_status_changed_by_troop')
+        .select('lil, troop_name, kt, aenderung_waldentscheid, aenderung_begehbar, responsible_state')
         .or(orFilters.join(','))
-
-      // 2. Bedingung prüfen und Filter dynamisch anhängen
-/*       const filterTrainingData = CheckboxExcludeTrainingTest.value; // Deine Variable/Bedingung
-
-      if (filterTrainingData) {
-        console.warn("Excluding training/test tracks from batch fetch.");
-        query = query
-          // 1. Schließt alle Werte aus, die kleiner als 100000 sind
-          .not('cluster_name', 'gt', 1000000000) 
-          // 2. Erlaubt nur Werte außerhalb des Bereichs (Werte müssen < 9900000 ODER > 10000000 sein)
-          .or('cluster_name.lt.9999900,cluster_name.gt.10000000'); 
-      } */
 
       // 3. Range anhängen und Query mit await ausführen
       const { data, error } = await query.range(from, to);
@@ -253,7 +238,7 @@ function onGridReady2(params) { gridApi2.value = params.api; }
 // ──────────────────────────────────────────────────────────────────────────────
 function onBtnExport1() {
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat3_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_forest_status_changed_by_troop_${new Date().toISOString().slice(0, 10)}.csv`
   });
 }
 </script>
@@ -272,10 +257,6 @@ function onBtnExport1() {
       chips
       closable-chips
     />
-<!--     <v-checkbox
-     v-model="CheckboxExcludeTrainingTest"
-     :label="`Test-/Trainingstrakte ausschließen`"
-    /> -->
   </v-card>
 
 

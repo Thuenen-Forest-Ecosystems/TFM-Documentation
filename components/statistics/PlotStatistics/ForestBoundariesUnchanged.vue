@@ -81,7 +81,9 @@ function buildColDefs() {
     { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
     { field: "completed_at_troop", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
     { field: "grenznummer", headerName: "Grenznummer", filter: "agNumberColumnFilter" }, 
-    { field: "grenzart", headerName: "Grenzart", filter: "agTextColumnFilter" }
+    { field: "grenzart", headerName: "Grenzart", filter: "agTextColumnFilter" },
+    { field: "vorgelagerter_bestand", headerName: "Vorgelagerter Bestand", filter: "agNumberColumnFilter" },
+    { field: "vorgelagerter_bestand_text", headerName: "Vorgelagerter Bestand (Text)", filter: "agTextColumnFilter" }
   ];
 }
 
@@ -109,7 +111,7 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
       // 1. Query-Objekt initialisieren (ohne await!)
       let query = supabase
         .from('v_stats_forest_boundaries_unchanged')
-        .select('lil, cluster_name, plot_name,  troop_name, kt, completed_at_troop, grenznummer, grenzart, responsible_state, responsible_administration, responsible_provider, responsible_troop')
+        .select('lil, cluster_name, plot_name,  troop_name, kt, completed_at_troop, grenznummer, grenzart, vorgelagerter_bestand, vorgelagerter_bestand_text, responsible_state, responsible_administration, responsible_provider, responsible_troop')
         .or(orFilters.join(','))
 
       // 2. Bedingung prüfen und Filter dynamisch anhängen
@@ -256,7 +258,7 @@ function onGridReady2(params) { gridApi2.value = params.api; }
 // ──────────────────────────────────────────────────────────────────────────────
 function onBtnExport1() {
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat3_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_forest_boundaries_unchanged_${new Date().toISOString().slice(0, 10)}.csv`
   });
 }
 </script>
