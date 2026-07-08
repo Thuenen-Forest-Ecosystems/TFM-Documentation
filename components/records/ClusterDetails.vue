@@ -128,8 +128,8 @@
     }, { immediate: true });
 
     async function loadValidationResources() {
-        const versionDir = selectedVersion.value?.directory;
-        if (!versionDir) {
+        const versionId = selectedVersion.value?.id;
+        if (!versionId) {
             console.warn('No version selected, skipping schema fetch.', selectedVersion.value);
             schema.value = null;
             validate.value = null;
@@ -138,9 +138,9 @@
             return;
         }
 
-        if (validatorCache.has(versionDir)) {
-            console.log('✅ Using cached validator for:', versionDir);
-            const cached = validatorCache.get(versionDir);
+        if (validatorCache.has(versionId)) {
+            console.log('✅ Using cached validator for:', versionId);
+            const cached = validatorCache.get(versionId);
             schema.value = cached.schema;
             validate.value = cached.validate;
             tfm.value = cached.tfm;
@@ -152,23 +152,23 @@
 
         loadingVersion.value = true;
         console.log('Loading resources for:', selectedVersion.value);
-        
-        const [schemaResult, plausibilityResult] = await Promise.all([
-            supabase.storage.from('validation').download(`${versionDir}/validation.json`),
-            supabase.storage.from('validation').download(`${versionDir}/bundle.umd.js`)
-        ]);
-        
-        if (schemaResult.error || plausibilityResult.error) {
+
+        const { data: schemaRow, error: schemaError } = await supabase
+            .from('schemas')
+            .select('schema, plausability_script, style_default')
+            .eq('id', versionId)
+            .single();
+
+        if (schemaError || !schemaRow?.schema || !schemaRow?.plausability_script) {
             loadingVersion.value = false;
-            console.error('Error fetching validation resources:', schemaResult.error || plausibilityResult.error);
+            console.error('Error fetching validation resources:', schemaError || 'schema or plausability_script missing in schemas row');
             return;
         }
 
         try {
-            const schemaTxt = await schemaResult.data.text();
-            const plausibilityTxt = await plausibilityResult.data.text();
+            const plausibilityTxt = schemaRow.plausability_script;
 
-            const schemaJson = JSON.parse(schemaTxt);
+            const schemaJson = schemaRow.schema;
             const schemaItems = schemaJson.properties?.plot?.items || null;
 
             console.log('📋 Schema loaded:', {
@@ -181,7 +181,7 @@
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const compiledValidate = ajv.compile(schemaItems);
-            console.log('✓ AJV validator compiled for:', versionDir);
+            console.log('✓ AJV validator compiled for:', versionId);
 
             // Evaluate Plausibility bundle
             // NOTE: eval executes in the current scope. We rely on the bundle assigning to window.TFM or similar if it's UMD.
@@ -200,15 +200,9 @@
             // For now, pass empty object as third parameter
             const tfmInstance = new TFM(url+'/', apikey);
 
-            // Fetch style_default from schemas table
-            const { data: schemaRow } = await supabase
-                .from('schemas')
-                .select('style_default')
-                .eq('id', selectedVersion.value.id)
-                .single();
-            const fetchedStyleMap = schemaRow?.style_default || null;
+            const fetchedStyleMap = schemaRow.style_default || null;
 
-            validatorCache.set(versionDir, {
+            validatorCache.set(versionId, {
                 schema: schemaItems,
                 validate: compiledValidate,
                 tfm: tfmInstance,
@@ -221,7 +215,7 @@
             styleMap.value = fetchedStyleMap;
 
             loadingVersion.value = false;
-            console.log('✅ All resources loaded for', versionDir, '- schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value, 'tfm.validationSchema:', !!tfm.value?.validationSchema);
+            console.log('✅ All resources loaded for', versionId, '- schema:', !!schema.value, 'validate:', !!validate.value, 'tfm:', !!tfm.value, 'tfm.validationSchema:', !!tfm.value?.validationSchema);
 
         } catch (error) {
             loadingVersion.value = false;

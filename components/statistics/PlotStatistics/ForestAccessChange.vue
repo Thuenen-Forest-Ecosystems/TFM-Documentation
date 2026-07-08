@@ -79,8 +79,11 @@ function buildColDefs() {
     { field: "plot_name", headerName: "Ecke", filter: "agNumberColumnFilter" },
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
     { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "completed_as_troop_latest", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
-    { field: "wald2027", headerName: "Waldentscheid", filter: "agNumberColumnFilter" }
+    { field: "completed_at_troop", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
+    { field: "wald2027", headerName: "Waldentscheid_2027", filter: "agNumberColumnFilter" }, 
+    { field: "wald_vorgaenger", headerName: "Waldentscheid_Vorgänger", filter: "agNumberColumnFilter" },
+    { field: "begehbar2027_text", headerName: "Begehbarkeit_2027", filter: "agNumberColumnFilter" },
+    { field: "begehbar_vorgaenger_text", headerName: "Begehbarkeit_Vorgänger", filter: "agNumberColumnFilter" }
   ];
 }
 
@@ -107,8 +110,8 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
     while (hasMore) {
       // 1. Query-Objekt initialisieren (ohne await!)
       let query = supabase
-        .from('v_stats_troop_completed_latest')
-        .select('responsible_state, responsible_administration, responsible_provider, responsible_troop, lil, cluster_name, plot_name,  troop_name, kt, completed_as_troop_latest, wald2027')
+        .from('v_stats_forest_access_change')
+        .select('lil, cluster_name, plot_name,  troop_name, kt, completed_at_troop, wald2027, wald_vorgaenger, begehbar2027_text, begehbar_vorgaenger_text, responsible_state, responsible_administration, responsible_provider, responsible_troop')
         .or(orFilters.join(','))
 
       // 2. Bedingung prüfen und Filter dynamisch anhängen
@@ -255,7 +258,7 @@ function onGridReady2(params) { gridApi2.value = params.api; }
 // ──────────────────────────────────────────────────────────────────────────────
 function onBtnExport1() {
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat3_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_forest_access_change_${new Date().toISOString().slice(0, 10)}.csv`
   });
 }
 </script>

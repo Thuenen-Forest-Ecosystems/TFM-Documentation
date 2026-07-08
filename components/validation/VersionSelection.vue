@@ -40,10 +40,11 @@
             if (!fetchPromise) {
                 fetchPromise = supabase
                     .from('schemas')
-                    .select('id, directory, version, title')
+                    .select('id, version, title')
                     .eq('interval_name', 'ci2027')
                     .eq('is_visible', true)
-                    .not('directory', 'is', null)
+                    .not('schema', 'is', null)
+                    .not('plausability_script', 'is', null)
                     .not('version', 'is', null)
                     .not('title', 'is', null)
                     .order('version', { ascending: false });
@@ -61,8 +62,7 @@
                 const newVersions = data.map(d => ({
                     id: d.id,
                     version: d.version,
-                    name: d.title,
-                    directory: d.directory
+                    name: d.title
                 }));
                 cachedVersions = newVersions;
                 versions.value = newVersions;

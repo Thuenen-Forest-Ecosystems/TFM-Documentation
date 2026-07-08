@@ -11,22 +11,33 @@ const availableStats = ref([
     "id": "TroopStatistics",
     "name": "1. Truppstatistiken",
     "stats": [
-      { "id": "PerformanceByTroopCumulative", "name": "1. Kumulative Leistung pro Inventurtrupp" },
-      { "id": "PerformanceByTroopAverage", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
+    //  { "id": "PerformanceByTroopCumulative", "name": "1. Kumulative Leistung pro Inventurtrupp" },
+      { "id": "PlotsDeliveredByTroopAndDate", "name": "1.1 Abgabe von Ecken durch Trupp nach Datum (View)" },
+      { "id": "PerformanceByTroopByMonth", "name": "1.2.1 Leistung pro Inventurtrupp (abgegebene Trakte) pro Monat" },
+      { "id": "PerformanceByTroopByWeek", "name": "1.2.2 Leistung pro Inventurtrupp (abgegebene Trakte) pro Woche" },
+      { "id": "CountControlledByKT", "name": "1.3.1 Kontrollierte Trakte pro Inventurtrupp (letztes Datum)" }//,
+    //  { "id": "PerformanceByTroopAverage", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
     //  { "id": "PlotsDeliveredByToopAndDate_old", "name": "3. Abgabe von Ecken durch Trupp nach Datum" },
-      { "id": "PlotsDeliveredByToopAndDate", "name": "3. Abgabe von Ecken durch Trupp nach Datum (View)" }
+
 
     ]
-  }//,
-/*   {
-    "id": "g2",
-    "name": "2. Gruppe (noch leer)",
+  },
+   {
+    "id": "PlotStatistics",
+    "name": "2. Plot/Traktstatistiken",
     "stats": [
-      { "id": "s1", "name": "Stat2.1"},
-      { "id": "s2", "name": "Stat2.2"},
-      { "id": "s3", "name": "Stat2.3"}
+      { "id": "PlotsNewMarker2", "name": "2.1.1 Alle Ecken bei denen die alte Markierung nicht wiedergefunden, jedoch Ecke eindeutig identifiziert wurde und neue Marke gesetzt wurde"},
+      { "id": "PlotsNewMarker3", "name": "2.1.2 Alle Ecken bei denen die Markierung erstmals neu gesetzt wurde"},
+      { "id": "PlotsNewMarker4", "name": "2.1.3 Alle Ecken bei denen die alte Markierung nicht wieder gefunden wurde, eine neue Markierung gesetzt wurde und eine Neuaufnahme erfolgte"},
+      { "id": "ForestAccessChange", "name": "2.2 Statistik zur geänderten Begehbarkeit gegenüber der Vorgängerinventur"},
+      { "id": "ForestStatusChange", "name": "2.3.1 Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Traktecken"},
+      { "id": "ForestStatusChangeByTroop", "name": "2.3.2 Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Anzahl pro Trupp"},
+      { "id": "ForestBoundariesUnchanged", "name": "2.4 Statistik zu übernommenen Bestandesgrenzen (42)" },
+      { "id": "PlotsNotAccessibleDueToCalamities", "name": "2.6 Statistik zu nicht begehbaren Traktecken wegen Kalamitäten" }
+/*      { "id": "s2", "name": "Stat2.2"},
+      { "id": "s3", "name": "Stat2.3"}*/
     ]
-  } */
+  }
 ]);
 
 // Hier werden die Auswahlen gespeichert
