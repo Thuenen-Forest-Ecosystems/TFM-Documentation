@@ -602,10 +602,41 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
     
 }
 /**
+ * Whether the currently logged-in user is a database admin
+ * (users_profile.is_database_admin).
+ * @param {*} supabase
+ * @returns {Promise<boolean>}
+ */
+export async function getIsDatabaseAdmin(supabase) {
+    if (!supabase) return false;
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+        console.error('Error fetching session data:', sessionError);
+        return false;
+    }
+
+    const userId = sessionData?.session?.user?.id;
+    if (!userId) return false;
+
+    const { data, error } = await supabase
+        .from('users_profile')
+        .select('is_database_admin')
+        .eq('id', userId)
+        .single();
+
+    if (error) {
+        console.error('Error fetching user profile:', error);
+        return false;
+    }
+
+    return data?.is_database_admin === true;
+}
+/**
  * Get user permissions for a specific organization.
- * @param {*} supabase 
- * @param {*} organizationId 
- * @returns 
+ * @param {*} supabase
+ * @param {*} organizationId
+ * @returns
  */
 export async function getUsersPermissions(supabase, organizationId) {
     if (!supabase || !organizationId) {

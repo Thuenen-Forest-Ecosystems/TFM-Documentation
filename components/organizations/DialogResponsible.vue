@@ -10,6 +10,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     const troops = ref([]);
     const selectedTroop = ref(null);
+    const selectedControlTroop = ref(null);
 
     const companies = ref([]);
     const selectedCompany = ref(null);
@@ -19,6 +20,17 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     const responibilityAlreadySet = ref(0);
     const troopAlreadySet = ref(0);
+    const controlTroopAlreadySet = ref(0);
+
+    const deselectChip = { id: 'deselect', name: 'VERANTWORTLICHKEIT ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' };
+    const recordingTroops = computed(() => [
+        ...troops.value.filter(troop => troop.is_control_troop !== true),
+        deselectChip
+    ]);
+    const controlTroops = computed(() => {
+        const controls = troops.value.filter(troop => troop.is_control_troop === true);
+        return controls.length ? [...controls, deselectChip] : [];
+    });
 
     const additionalNote = ref('');
 
@@ -34,6 +46,8 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         organizationId: String,
         organizationType: String,
         selectedRows: Array,
+        // Kontrolltrupp assignment is only shown to database admins
+        isDatabaseAdmin: { type: Boolean, default: false },
     });
 
     const emit = defineEmits(['close', 'confirm', 'update:modelValue']);
@@ -41,11 +55,13 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
     // Call this when user confirms
     const savingChanges = ref(false);
     function confirmAction() {
-        const troopValue = selectedTroop.value === 'deselect' ? null : selectedTroop.value;
-        const companyValue = selectedCompany.value === 'deselect' ? null : selectedCompany.value;
+        // undefined = untouched, null = unassign (deselect chip), uuid = assign
+        const troopValue = selectedTroop.value === 'deselect' ? null : (selectedTroop.value || undefined);
+        const companyValue = selectedCompany.value === 'deselect' ? null : (selectedCompany.value || undefined);
+        const controlTroopValue = selectedControlTroop.value === 'deselect' ? null : (selectedControlTroop.value || undefined);
 
         savingChanges.value = true;
-        emit('confirm', companyValue, troopValue, additionalNote.value || null);
+        emit('confirm', companyValue, troopValue, controlTroopValue, additionalNote.value || null);
         //emit('confirm', props.selected, losName.value);
         emit('update:modelValue', false); // Close the dialog
         resetSelection();
@@ -85,8 +101,10 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
         if(props.selectedRows && props.selectedRows.length > 0){
             troopAlreadySet.value = props.selectedRows.filter(row => row.responsible_troop !== null).length;
+            controlTroopAlreadySet.value = props.selectedRows.filter(row => row.responsible_control_troop_id != null).length;
         }else{
             troopAlreadySet.value = 0;
+            controlTroopAlreadySet.value = 0;
         }
 
     }
@@ -95,6 +113,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         savingChanges.value = false;
         selectedTroop.value = null;
         selectedCompany.value = null;
+        selectedControlTroop.value = null;
     }
 
     // Call this when user cancels
@@ -113,6 +132,10 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         selectedCompany.value = null; // Reset selected company when a troop is selected
         updateLos();
     }
+    function _selectControlTroop() {
+        // Control troop assignment is independent of the Aufnahmetrupp/company
+        // responsibility path - intentionally no reset of the other selections.
+    }
 
     async function _getTroops() {
         if (!props.organizationId) return [];
@@ -126,9 +149,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                 return [];
             }
             troops.value = data || [];
-
-            // Add null to unassign troop
-            troops.value.push({ id: 'deselect', name: 'VERANTWORTLICHKEIT ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
+            // deselect chip is appended per group via recordingTroops/controlTroops
 
         } catch (e) {
             console.error('An unexpected error occurred while fetching troops:', e);
@@ -241,7 +262,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         </v-chip>
                     </v-chip-group>
                 </v-card>
-                <v-card variant="tonal" title="Trupps" class="my-2">
+                <v-card variant="tonal" title="Aufnahmetrupps" class="my-2">
                     <v-chip-group
                         selected-class="text-primary"
                         column
@@ -249,8 +270,8 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         @update:model-value="_selectTroop"
                     >
                         <v-chip
-                            v-for="troop in troops"
-                            v-if="troops.length"
+                            v-for="troop in recordingTroops"
+                            v-if="recordingTroops.length"
                             :key="troop.id === null ? 'deselect' : troop.id"
                             :value="troop.id"
                             class="ma-1"
@@ -258,9 +279,29 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         >
                             <v-icon v-if="troop.icon" :icon="troop.icon" start :color="troop.color"></v-icon>
                             {{ troop.name || troop.entityName || 'unknown' }}
-                            <span class="text-caption">
-                            {{ troop.is_control_troop === true ? '(Kontrolltrupp) ' : (troop.is_control_troop === false ? '(Aufnahmetrupp)' : '') }}
-                            </span>
+                        </v-chip>
+                    </v-chip-group>
+                </v-card>
+                <v-card variant="tonal" title="Kontrolltrupps" class="my-2" v-if="props.isDatabaseAdmin && controlTroops.length">
+                    <v-card-subtitle class="text-wrap">
+                        Ecken werden zusätzlich an den Kontrolltrupp synchronisiert.
+                        Der Kontrolltrupp kann erst bearbeiten, wenn der Aufnahmetrupp abgeschlossen hat.
+                    </v-card-subtitle>
+                    <v-chip-group
+                        selected-class="text-primary"
+                        column
+                        v-model="selectedControlTroop"
+                        @update:model-value="_selectControlTroop"
+                    >
+                        <v-chip
+                            v-for="troop in controlTroops"
+                            :key="troop.id === null ? 'deselect' : troop.id"
+                            :value="troop.id"
+                            class="ma-1"
+                            :color="troop.color || 'primary'"
+                        >
+                            <v-icon v-if="troop.icon" :icon="troop.icon" start :color="troop.color"></v-icon>
+                            {{ troop.name || troop.entityName || 'unknown' }}
                         </v-chip>
                     </v-chip-group>
                 </v-card>
@@ -287,6 +328,16 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         Mit der Bestätigung werden {{ troopAlreadySet }} bestehende Verantwortlichkeiten (Trupp) für Ecken überschrieben.
                     </p>
                 </v-alert>
+                <v-alert
+                    class="mx-2"
+                    v-if="selectedControlTroop && controlTroopAlreadySet > 0"
+                    color="warning"
+                    variant="outlined"
+                >
+                    <p class="mt-2 text">
+                        Mit der Bestätigung werden {{ controlTroopAlreadySet }} bestehende Kontrolltrupp-Zuweisungen für Ecken überschrieben.
+                    </p>
+                </v-alert>
 
                 <v-divider color="info" class="my-5"></v-divider>
 
@@ -309,7 +360,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     rounded="xl"
                     color="primary"
                     :loading="savingChanges"
-                    :disabled="savingChanges || (!selectedCompany && !selectedTroop)"
+                    :disabled="savingChanges || (!selectedCompany && !selectedTroop && !selectedControlTroop)"
                     :loading-text="savingChanges ? 'Änderungen werden gespeichert...' : ''"
                     @click="confirmAction"
                 ></v-btn>
