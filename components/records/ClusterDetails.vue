@@ -327,6 +327,7 @@
                 ></v-alert>
 
                 <v-card title="Zuständigkeiten" variant="tonal" class="ma-3">
+
                     <ResponsibleByRecord :record="activeRecord" class="ma-1" />
                 </v-card>
 

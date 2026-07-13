@@ -191,8 +191,6 @@ layout: home
                     completed_at_state,
                     completed_at_administration,
                     completed_at_troop,
-                    completed_at_control_troop,
-                    responsible_control_troop,
                     is_valid,
                     is_plausible,
                     note,
@@ -205,10 +203,9 @@ layout: home
                 .eq(companyType, organizationId)
                 .order('cluster_id', { ascending: true });
 
-            // Conditionally add troop filter (regular troop OR control troop)
+            // Conditionally add troop filter
             if (troopFilter && troopFilter.length > 0) {
-                const idList = troopFilter.join(',');
-                query = query.or(`responsible_troop.in.(${idList}),responsible_control_troop.in.(${idList})`);
+                query = query.in('responsible_troop', troopFilter);
             }
 
             const { data, error } = await query.range(start, end);

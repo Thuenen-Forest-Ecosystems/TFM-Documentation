@@ -15,7 +15,7 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
+    import { getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -255,7 +255,6 @@
 
     }
     const colDefs = ref([]);
-    const isDatabaseAdmin = ref(false);
     function setColDefs(){
         colDefs.value = [
             {
@@ -411,7 +410,7 @@
                         }
                     },
                     {
-                        columnGroupShow: 'open',
+                        columnGroupShow: 'open', 
                         field: 'completed_at_troop',
                         headerName: "Abgeschlossen",
                         filter: true,
@@ -428,37 +427,6 @@
                         },
                         valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
                     },
-                    // Kontrolltrupp columns are only visible to database admins
-                    ...(isDatabaseAdmin.value ? [
-                        {
-                            columnGroupShow: 'open',
-                            field: "responsible_control_troop",
-                            headerName: "Kontrolltrupp",
-                            filter: true,
-                            sortable: true,
-                            pinned: 'right',
-                            tooltipField: "responsible_control_troop",
-                            editable: false,
-                        },
-                        {
-                            columnGroupShow: 'open',
-                            field: 'completed_at_control_troop',
-                            headerName: "Kontrolle abgeschlossen",
-                            filter: true,
-                            sortable: true,
-                            pinned: 'right',
-                            headerTooltip: "records.completed_at_control_troop",
-                            tooltipField: "completed_at_control_troop",
-                            cellDataType: "date",
-                            filter: "agDateColumnFilter",
-                            valueGetter: (params) => {
-                                if (!params.data.completed_at_control_troop) return null;
-                                const date = new Date(params.data.completed_at_control_troop);
-                                return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                            },
-                            valueFormatter: (params) => params.data.completed_at_control_troop ? params.data.completed_at_control_troop.toLocaleString() : '',
-                        },
-                    ] : []),
                 ]
             },
             {
@@ -714,7 +682,6 @@
             const clusterData = clusterMap.get(record.cluster_id);
 
             const troop = troopsMap.get(record.responsible_troop);
-            const controlTroop = troopsMap.get(record.responsible_control_troop);
 
             return {
                 is_selectable: computeSelectable(record),
@@ -732,7 +699,6 @@
                 completed_at_state: record.completed_at_state ? new Date(record.completed_at_state) : null,
                 completed_at_administration: record.completed_at_administration ? new Date(record.completed_at_administration) : null,
                 completed_at_troop: record.completed_at_troop ? new Date(record.completed_at_troop) : null,
-                completed_at_control_troop: record.completed_at_control_troop ? new Date(record.completed_at_control_troop) : null,
 
                 
                 note: record.note,
@@ -740,8 +706,6 @@
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
                 responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
-                responsible_control_troop_id: record.responsible_control_troop ?? null,
-                responsible_control_troop: controlTroop ? controlTroop.name : record.responsible_control_troop,
 
                 //administration_los: record.administration_los,
                 //state_los: record.state_los,
@@ -1020,7 +984,6 @@
                     responsible_provider,
                     responsible_administration,
                     responsible_troop,
-                    responsible_control_troop,
                     is_valid,
                     federal_state,
                     growth_district,
@@ -1035,7 +998,6 @@
                     completed_at_state,
                     completed_at_administration,
                     completed_at_troop,
-                    completed_at_control_troop,
                     is_valid,
                     is_plausible,
                     note,
@@ -1362,10 +1324,6 @@
 
     onMounted(async () => {
 
-        // Kontrolltrupp columns/assignment are only shown to database admins,
-        // so resolve the flag before building the column definitions.
-        isDatabaseAdmin.value = await getIsDatabaseAdmin(supabase);
-
         setColDefs();
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
@@ -1614,13 +1572,10 @@
                     responsible_state: updatedRecord.responsible_state,
                     responsible_provider: updatedRecord.responsible_provider,
                     responsible_troop: updatedRecord.responsible_troop,
-                    responsible_control_troop: updatedRecord.responsible_control_troop,
-                    responsible_control_troop_id: updatedRecord.responsible_control_troop_id,
                     note: updatedRecord.note,
                     completed_at_state: updatedRecord.completed_at_state,
                     completed_at_administration: updatedRecord.completed_at_administration,
                     completed_at_troop: updatedRecord.completed_at_troop,
-                    completed_at_control_troop: updatedRecord.completed_at_control_troop,
                     updated_at: updatedRecord.updated_at,
                     is_selectable: updatedRecord.is_selectable,
                     state_by_user: updatedRecord.state_by_user
@@ -1629,47 +1584,34 @@
             }
         });
     };
-    async function _handleConfirm (selectedCompany, selectedTroop, selectedControlTroop, additionalNote) {
-
-        // undefined = untouched, null = unassign, uuid = assign (see DialogResponsible)
-        const responsibilityTouched = selectedCompany !== undefined || selectedTroop !== undefined;
-        const controlTroopTouched = selectedControlTroop !== undefined;
-
-        if (!responsibilityTouched && !controlTroopTouched) return;
+    async function _handleConfirm (selectedCompany, selectedTroop, additionalNote) {
 
         const update = {
+            responsible_troop: selectedTroop || null,
             note: additionalNote || null
         }
 
-        if (responsibilityTouched) {
-            update.responsible_troop = selectedTroop ?? null;
 
-            switch (props.organization_type) {
-                case 'root':
-                    update.responsible_state = selectedCompany ?? null;
-                    update.responsible_provider = null;
-                    update.completed_at_administration = null; // reset completed at administration
-                    update.completed_at_state = null; // reset completed at state
-                    update.completed_at_troop = null; // reset completed at troop
-                    break;
-                case 'country':
-                    update.responsible_provider = selectedCompany ?? null;
-                    update.completed_at_state = null; // reset completed at state
-                    update.completed_at_troop = null; // reset completed at troop
-                    break;
-                case 'provider':
-                    update.completed_at_troop = null; // reset completed at troop
-                    break;
-                default:
-                    console.error('Unknown organization type:', props.organization_type);
-                    return;
-            };
-        }
-
-        if (controlTroopTouched) {
-            update.responsible_control_troop = selectedControlTroop; // uuid or null (unassign)
-            update.completed_at_control_troop = null; // reset control completion on (re/un)assignment
-        }
+        switch (props.organization_type) {
+            case 'root':
+                update.responsible_state = selectedCompany || null;
+                update.responsible_provider = null;
+                update.completed_at_administration = null; // reset completed at administration
+                update.completed_at_state = null; // reset completed at state
+                update.completed_at_troop = null; // reset completed at troop
+                break;
+            case 'country':
+                update.responsible_provider = selectedCompany || null;
+                update.completed_at_state = null; // reset completed at state
+                update.completed_at_troop = null; // reset completed at troop
+                break;
+            case 'provider':
+                update.completed_at_troop = null; // reset completed at troop
+                break;
+            default:    
+                console.error('Unknown organization type:', props.organization_type);
+                return;
+        };
 
         const selectedLos = currentGrid.value.api.getSelectedRows();
         const clusterIds = selectedLos.map(row => row.cluster_id);
@@ -2151,7 +2093,6 @@
             :organizationId="props.organization_id"
             :organizationType="props.organization_type"
             :selectedRows="selectedRows"
-            :isDatabaseAdmin="isDatabaseAdmin"
             @close="_handleClose"
             @confirm="_handleConfirm"
         />
