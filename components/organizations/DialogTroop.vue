@@ -18,6 +18,7 @@
         troopId: String,
         name: String,
         isControlTroop: Boolean,
+        isReadOnly: Boolean,
         organization_id: String,
         title: String,
         text: String,
@@ -40,24 +41,30 @@
     // local, writable state — do NOT emit on change
     const modelValue = ref(!!props.modelValue);
     const name = ref(props.name || '');
-    const isControlTroop = ref(!!props.isControlTroop);
+
+    // 'record' (Aufnahme-Trupp) | 'control' (Kontroll-Trupp) |
+    // 'readonly' (Admin-Gruppe, nur Leserechte)
+    function _troopTypeFromProps() {
+        return props.isReadOnly ? 'readonly' : (props.isControlTroop ? 'control' : 'record');
+    }
+    const troopType = ref(_troopTypeFromProps());
 
     watch(() => props.modelValue, (newVal) => {
         modelValue.value = newVal;
     });
 
     watch(() => props.name, v => { name.value = v || ''; });
-    watch(() => props.isControlTroop, v => { isControlTroop.value = !!v; });
+    watch(() => [props.isControlTroop, props.isReadOnly], () => { troopType.value = _troopTypeFromProps(); });
 
-    
+
     function cancelAction() {
         emit('update:modelValue', false);
     }
 
 
     async function onSubmit() {
-        upsertTroop( name.value, isControlTroop.value, props.troopId );
-        isControlTroop.value = false;
+        upsertTroop( name.value, troopType.value, props.troopId );
+        troopType.value = 'record';
         name.value = '';
     }
 
@@ -67,8 +74,13 @@
         disabled: value => !(props.disabled.includes(value.toLowerCase()) && !name.value) || 'Name schon vergeben'
     };
 
-    async function upsertTroop(troopName, isControlTroop, troopId = null) {
-       
+    async function upsertTroop(troopName, troopType, troopId = null) {
+
+        const typeColumns = {
+            is_control_troop: troopType === 'control',
+            is_read_only: troopType === 'readonly'
+        };
+
         if (troopName && props.organization_id) {
             if (troopId) {
 
@@ -76,7 +88,7 @@
 
                 const { data: updateData, error: updateError } = await supabase
                     .from('troop')
-                    .update({ name: troopName, is_control_troop: isControlTroop })
+                    .update({ name: troopName, ...typeColumns })
                     .eq('id', troopId)
                     .select();
 
@@ -95,7 +107,7 @@
                 
                 const { data: insertData, error: insertError } = await supabase
                     .from('troop')
-                    .insert({ name: troopName, organization_id: props.organization_id, is_control_troop: isControlTroop })
+                    .insert({ name: troopName, organization_id: props.organization_id, ...typeColumns })
                     .select();
 
                 loading.value = false;
@@ -161,9 +173,10 @@
                         autocomplete="off"
                     ></v-text-field>
 
-                    <v-chip-group v-model="isControlTroop" selected-class="text-primary" column>
-                        <v-chip :value="false" filter>Aufnahme-Trupp</v-chip>
-                        <v-chip :value="true" filter>Kontroll-Trupp</v-chip>
+                    <v-chip-group v-model="troopType" selected-class="text-primary" column mandatory>
+                        <v-chip value="record" filter>Aufnahme-Trupp</v-chip>
+                        <v-chip value="control" filter>Kontroll-Trupp</v-chip>
+                        <v-chip value="readonly" filter>Admin (nur Leserechte)</v-chip>
                     </v-chip-group>
 
                     <v-btn type="submit" block :disabled="!valid" :loading="loading"  rounded="xl" color="primary"  class="my-3">

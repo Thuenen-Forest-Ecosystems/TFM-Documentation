@@ -15,7 +15,7 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
+    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -85,6 +85,9 @@
     const globalIsDark = inject('globalIsDark');
     const currentTheme = globalIsDark?.value ? darkTheme : lightTheme;
     const usersPermissions = ref([]);
+    // Testphase: die Spalte "Admin (nur Leserechte)" ist vorerst nur für
+    // Datenbank-Admins sichtbar; Gate entfernen, um sie für alle freizugeben.
+    const showReadOnlyTroopColumn = ref(false);
 
     const selectedClusterIdsInput = ref([]);
     const searchInput = ref('');
@@ -409,8 +412,19 @@
                             values: [...troops.value.map(troop => troop.name), null],
                         }
                     },
+                    ...(showReadOnlyTroopColumn.value ? [{
+                        columnGroupShow: 'open',
+                        field: "responsible_read_only_troop",
+                        headerName: "Admin (nur Leserechte)",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        headerTooltip: "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App",
+                        tooltipField: "responsible_read_only_troop",
+                        editable: false,
+                    }] : []),
                     {
-                        columnGroupShow: 'open', 
+                        columnGroupShow: 'open',
                         field: 'completed_at_troop',
                         headerName: "Abgeschlossen",
                         filter: true,
@@ -682,6 +696,7 @@
             const clusterData = clusterMap.get(record.cluster_id);
 
             const troop = troopsMap.get(record.responsible_troop);
+            const readOnlyTroop = troopsMap.get(record.responsible_read_only_troop);
 
             return {
                 is_selectable: computeSelectable(record),
@@ -706,6 +721,7 @@
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
                 responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
+                responsible_read_only_troop: readOnlyTroop ? readOnlyTroop.name : record.responsible_read_only_troop,
 
                 //administration_los: record.administration_los,
                 //state_los: record.state_los,
@@ -984,6 +1000,7 @@
                     responsible_provider,
                     responsible_administration,
                     responsible_troop,
+                    responsible_read_only_troop,
                     is_valid,
                     federal_state,
                     growth_district,
@@ -1326,6 +1343,11 @@
 
         setColDefs();
 
+        getIsDatabaseAdmin(supabase).then((isDatabaseAdmin) => {
+            showReadOnlyTroopColumn.value = isDatabaseAdmin;
+            setColDefs(); // rebuild columns once the admin check resolved
+        });
+
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 
         if (props.tab_active) {
@@ -1572,6 +1594,7 @@
                     responsible_state: updatedRecord.responsible_state,
                     responsible_provider: updatedRecord.responsible_provider,
                     responsible_troop: updatedRecord.responsible_troop,
+                    responsible_read_only_troop: updatedRecord.responsible_read_only_troop,
                     note: updatedRecord.note,
                     completed_at_state: updatedRecord.completed_at_state,
                     completed_at_administration: updatedRecord.completed_at_administration,
@@ -1584,33 +1607,44 @@
             }
         });
     };
-    async function _handleConfirm (selectedCompany, selectedTroop, additionalNote) {
+    async function _handleConfirm (selectedCompany, selectedTroop, additionalNote, selectedReadOnlyTroop) {
 
-        const update = {
-            responsible_troop: selectedTroop || null,
-            note: additionalNote || null
-        }
+        let update;
 
+        if (selectedReadOnlyTroop) {
+            // Read-only group (Admin (nur Leserechte)): only writes
+            // responsible_read_only_troop — pure viewing access in the app, so
+            // the survey workflow (responsible_* / completed_at_*) stays untouched.
+            update = {
+                responsible_read_only_troop: selectedReadOnlyTroop === 'deselect' ? null : selectedReadOnlyTroop,
+                note: additionalNote || null
+            };
+        } else {
+            update = {
+                responsible_troop: selectedTroop || null,
+                note: additionalNote || null
+            };
 
-        switch (props.organization_type) {
-            case 'root':
-                update.responsible_state = selectedCompany || null;
-                update.responsible_provider = null;
-                update.completed_at_administration = null; // reset completed at administration
-                update.completed_at_state = null; // reset completed at state
-                update.completed_at_troop = null; // reset completed at troop
-                break;
-            case 'country':
-                update.responsible_provider = selectedCompany || null;
-                update.completed_at_state = null; // reset completed at state
-                update.completed_at_troop = null; // reset completed at troop
-                break;
-            case 'provider':
-                update.completed_at_troop = null; // reset completed at troop
-                break;
-            default:    
-                console.error('Unknown organization type:', props.organization_type);
-                return;
+            switch (props.organization_type) {
+                case 'root':
+                    update.responsible_state = selectedCompany || null;
+                    update.responsible_provider = null;
+                    update.completed_at_administration = null; // reset completed at administration
+                    update.completed_at_state = null; // reset completed at state
+                    update.completed_at_troop = null; // reset completed at troop
+                    break;
+                case 'country':
+                    update.responsible_provider = selectedCompany || null;
+                    update.completed_at_state = null; // reset completed at state
+                    update.completed_at_troop = null; // reset completed at troop
+                    break;
+                case 'provider':
+                    update.completed_at_troop = null; // reset completed at troop
+                    break;
+                default:
+                    console.error('Unknown organization type:', props.organization_type);
+                    return;
+            }
         };
 
         const selectedLos = currentGrid.value.api.getSelectedRows();

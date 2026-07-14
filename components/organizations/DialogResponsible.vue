@@ -4,12 +4,21 @@
 
     import { color } from 'echarts';
 import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
+    import { getIsDatabaseAdmin } from '../Utils';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
 
+    // Testphase: die Karte "Admin (nur Leserechte)" ist vorerst nur für
+    // Datenbank-Admins sichtbar; Gate entfernen, um sie für alle freizugeben.
+    const showReadOnlyTroopCard = ref(false);
+    onMounted(async () => {
+        showReadOnlyTroopCard.value = await getIsDatabaseAdmin(supabase);
+    });
+
     const troops = ref([]);
     const selectedTroop = ref(null);
+    const selectedReadOnlyTroop = ref(null);
 
     const companies = ref([]);
     const selectedCompany = ref(null);
@@ -19,6 +28,22 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     const responibilityAlreadySet = ref(0);
     const troopAlreadySet = ref(0);
+    const readOnlyTroopAlreadySet = ref(0);
+
+    // Working troops (Aufnahme- und Kontrolltrupps): assignable as
+    // responsible_troop. Read-only groups are excluded — assigning them there
+    // would grant write access. The deselect pseudo entry stays in this list.
+    const workTroops = computed(() => troops.value.filter(t => t.is_read_only !== true));
+
+    // Read-only groups (troop.is_read_only, Admin (nur Leserechte)):
+    // assignable as responsible_read_only_troop — pure viewing access in the app.
+    const readOnlyTroops = computed(() => {
+        const list = troops.value.filter(t => t.is_read_only === true);
+        if (list.length) {
+            list.push({ id: 'deselect', name: 'LESERECHTE ENTZIEHEN', color: 'red', icon: 'mdi-close-circle' });
+        }
+        return list;
+    });
 
     const additionalNote = ref('');
 
@@ -45,7 +70,9 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         const companyValue = selectedCompany.value === 'deselect' ? null : selectedCompany.value;
 
         savingChanges.value = true;
-        emit('confirm', companyValue, troopValue, additionalNote.value || null);
+        // selectedReadOnlyTroop is passed raw ('deselect' included) — the parent
+        // maps it to responsible_read_only_troop = null and skips workflow resets.
+        emit('confirm', companyValue, troopValue, additionalNote.value || null, selectedReadOnlyTroop.value || null);
         //emit('confirm', props.selected, losName.value);
         emit('update:modelValue', false); // Close the dialog
         resetSelection();
@@ -85,8 +112,10 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
         if(props.selectedRows && props.selectedRows.length > 0){
             troopAlreadySet.value = props.selectedRows.filter(row => row.responsible_troop !== null).length;
+            readOnlyTroopAlreadySet.value = props.selectedRows.filter(row => row.responsible_read_only_troop !== null && row.responsible_read_only_troop !== undefined).length;
         }else{
             troopAlreadySet.value = 0;
+            readOnlyTroopAlreadySet.value = 0;
         }
 
     }
@@ -95,6 +124,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
         savingChanges.value = false;
         selectedTroop.value = null;
         selectedCompany.value = null;
+        selectedReadOnlyTroop.value = null;
     }
 
     // Call this when user cancels
@@ -106,12 +136,19 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
     function _selectCompany() {
         //selectedCompany.value = selectedCompany.value || null;
         selectedTroop.value = null; // Reset selected troop when a company is selected
+        selectedReadOnlyTroop.value = null;
         updateLos();
     }
     function _selectTroop(troop) {
         //selectedTroop.value = troop.id;
         selectedCompany.value = null; // Reset selected company when a troop is selected
+        selectedReadOnlyTroop.value = null;
         updateLos();
+    }
+    function _selectReadOnlyTroop() {
+        // Read-only group assignment is exclusive of the workflow assignments
+        selectedCompany.value = null;
+        selectedTroop.value = null;
     }
 
     async function _getTroops() {
@@ -249,8 +286,8 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         @update:model-value="_selectTroop"
                     >
                         <v-chip
-                            v-for="troop in troops"
-                            v-if="troops.length"
+                            v-for="troop in workTroops"
+                            v-if="workTroops.length"
                             :key="troop.id === null ? 'deselect' : troop.id"
                             :value="troop.id"
                             class="ma-1"
@@ -261,6 +298,30 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                             <span class="text-caption">
                             {{ troop.is_control_troop === true ? '(Kontrolltrupp) ' : (troop.is_control_troop === false ? '(Aufnahmetrupp)' : '') }}
                             </span>
+                        </v-chip>
+                    </v-chip-group>
+                </v-card>
+
+                <v-card variant="tonal" title="Admin (nur Leserechte)" class="my-2" v-if="showReadOnlyTroopCard && readOnlyTroops.length">
+                    <v-card-subtitle class="text-wrap">
+                        Die Gruppe erhält reinen Lesezugriff auf die Ecken in der App.
+                        Der Aufnahme-Workflow (Trupp, Abschlüsse) bleibt unverändert.
+                    </v-card-subtitle>
+                    <v-chip-group
+                        selected-class="text-primary"
+                        column
+                        v-model="selectedReadOnlyTroop"
+                        @update:model-value="_selectReadOnlyTroop"
+                    >
+                        <v-chip
+                            v-for="troop in readOnlyTroops"
+                            :key="troop.id"
+                            :value="troop.id"
+                            class="ma-1"
+                            :color="troop.color || 'primary'"
+                        >
+                            <v-icon v-if="troop.icon" :icon="troop.icon" start :color="troop.color"></v-icon>
+                            {{ troop.name || troop.entityName || 'unknown' }}
                         </v-chip>
                     </v-chip-group>
                 </v-card>
@@ -287,6 +348,16 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                         Mit der Bestätigung werden {{ troopAlreadySet }} bestehende Verantwortlichkeiten (Trupp) für Ecken überschrieben.
                     </p>
                 </v-alert>
+                <v-alert
+                    class="mx-2"
+                    v-if="selectedReadOnlyTroop && readOnlyTroopAlreadySet > 0"
+                    color="warning"
+                    variant="outlined"
+                >
+                    <p class="mt-2 text">
+                        Mit der Bestätigung werden {{ readOnlyTroopAlreadySet }} bestehende Leserechte-Zuweisungen (Admin (nur Leserechte)) für Ecken überschrieben.
+                    </p>
+                </v-alert>
 
                 <v-divider color="info" class="my-5"></v-divider>
 
@@ -309,7 +380,7 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
                     rounded="xl"
                     color="primary"
                     :loading="savingChanges"
-                    :disabled="savingChanges || (!selectedCompany && !selectedTroop)"
+                    :disabled="savingChanges || (!selectedCompany && !selectedTroop && !selectedReadOnlyTroop)"
                     :loading-text="savingChanges ? 'Änderungen werden gespeichert...' : ''"
                     @click="confirmAction"
                 ></v-btn>

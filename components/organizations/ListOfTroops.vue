@@ -14,6 +14,7 @@
     const editTroopId = ref('');
     const editname = ref('');
     const editIsControlTroop = ref(false);
+    const editIsReadOnly = ref(false);
     const existingTroops = ref([]);
     const addTroopLoading = ref(false);
 
@@ -110,6 +111,7 @@
         editTroopId.value = troop.id;
         editname.value = troop.name;
         editIsControlTroop.value = troop.is_control_troop;
+        editIsReadOnly.value = troop.is_read_only;
         editDialog.value = true;
     }
     async function refresh(updatedTroops) {
@@ -239,7 +241,7 @@
         <v-btn icon="mdi-account-group" variant="text"></v-btn>
         <v-toolbar-title>{{ props.title }}</v-toolbar-title>
         <!-- Only if Admin -->
-        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="_editTroop({ id: null, name: '', is_control_troop: false })">
+        <v-btn v-if="props.is_admin" rounded="xl" variant="tonal" @click="_editTroop({ id: null, name: '', is_control_troop: false, is_read_only: false })">
             neu
             <template v-slot:append>
                 <v-icon>mdi-account-multiple-plus</v-icon>
@@ -256,7 +258,8 @@
     <v-card  v-for="troop in troops" :key="troop.id" class="mb-4" variant="tonal">
         <v-card-item>
             <v-card-title>{{ troop.name }}</v-card-title>
-            <v-card-subtitle v-if="troop.is_control_troop">Kontroll-Trupp</v-card-subtitle>
+            <v-card-subtitle v-if="troop.is_read_only">Admin (nur Leserechte)</v-card-subtitle>
+            <v-card-subtitle v-else-if="troop.is_control_troop">Kontroll-Trupp</v-card-subtitle>
             <v-card-subtitle v-else>Aufnahme-Trupp</v-card-subtitle>
             <template v-slot:append  v-if="props.is_admin">
                 <v-menu>
@@ -327,6 +330,7 @@
         :name="editname"
         :troopId="editTroopId"
         :isControlTroop="editIsControlTroop"
+        :isReadOnly="editIsReadOnly"
         :organization_id="props.organization_id"
         :title="'Trupp bearbeiten'"
         :text="'Bitte gib den Namen des Trupps ein, den du bearbeiten möchtest.'"
