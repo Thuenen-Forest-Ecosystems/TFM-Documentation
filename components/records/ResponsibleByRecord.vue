@@ -1,5 +1,5 @@
 <script setup>
-    import { ref, onMounted, getCurrentInstance } from 'vue';
+    import { ref, computed, onMounted, getCurrentInstance } from 'vue';
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -19,6 +19,16 @@
     });
 
     const troopMembers = ref([]);
+    const troopSubtitle = ref('Trupp');
+    const updatedByUser = ref(null);
+
+    const updatedAtFormatted = computed(() => {
+        if (!props.record?.updated_at) return null;
+        return new Date(props.record.updated_at).toLocaleString('de-DE', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        });
+    });
 
     onMounted(async () => {
 
@@ -41,7 +51,7 @@
 
             const { data: troopData, error: troopError } = await supabase
                 .from('troop')
-                .select('id, name')
+                .select('id, name, is_control_troop')
                 .in('id', troopIds);
 
             if (error || troopError) {
@@ -57,22 +67,59 @@
                     provider: nameMap[props.record.responsible_provider] || '-',
                     troop: troopNameMap[props.record.responsible_troop] || props.record.responsible_troop || '-'
                 };
+
+                const responsibleTroop = troopData.find(troop => troop.id === props.record.responsible_troop);
+                if (responsibleTroop?.is_control_troop === true) {
+                    troopSubtitle.value = 'Kontrolltrupp';
+                } else if (responsibleTroop?.is_control_troop === false) {
+                    troopSubtitle.value = 'Aufnahmetrupp';
+                }
             }
         }
 
-        // Fetch troop member profiles
-        if (props.record.current_troop_members && props.record.current_troop_members.length > 0) {
-            const { data: memberData, error: memberError } = await supabase
+        // Fetch profile of the user who last updated the record
+        if (props.record.updated_by) {
+            const { data: updatedByData, error: updatedByError } = await supabase
                 .from('users_profile')
                 .select('id, email, user_name')
-                .in('id', props.record.current_troop_members);
+                .eq('id', props.record.updated_by)
+                .single();
 
-            if (memberError) {
-                console.error('Error fetching troop members:', memberError);
+            if (updatedByError) {
+                console.error('Error fetching updated_by user:', updatedByError);
             } else {
-                troopMembers.value = memberData || [];
+                updatedByUser.value = updatedByData;
             }
         }
+
+        // Truppmitglieder vorerst ausgeblendet — zum Wiederanzeigen diesen Block
+        // und den <v-card-text>-Block im Template einkommentieren.
+        // Wichtig: Mitglieder aus troop.user_ids laden (aktuelle Besetzung des
+        // zuständigen Trupps), NICHT aus record.current_troop_members — das ist
+        // nur ein Snapshot vom Zeitpunkt des Trupp-Abschlusses und passt nach
+        // einer Neuzuweisung (z.B. an einen Kontrolltrupp) nicht mehr zum Truppnamen.
+        // if (props.record.responsible_troop) {
+        //     const { data: troopRow, error: troopRowError } = await supabase
+        //         .from('troop')
+        //         .select('user_ids')
+        //         .eq('id', props.record.responsible_troop)
+        //         .single();
+        //
+        //     if (troopRowError) {
+        //         console.error('Error fetching troop user_ids:', troopRowError);
+        //     } else if (troopRow?.user_ids?.length > 0) {
+        //         const { data: memberData, error: memberError } = await supabase
+        //             .from('users_profile')
+        //             .select('id, email, user_name')
+        //             .in('id', troopRow.user_ids);
+        //
+        //         if (memberError) {
+        //             console.error('Error fetching troop members:', memberError);
+        //         } else {
+        //             troopMembers.value = memberData || [];
+        //         }
+        //     }
+        // }
     });
 </script>
 
@@ -109,10 +156,18 @@
         <v-col cols="12" sm="6" md="3">
             <v-card
                 variant="tonal"
-                class="pa-2" 
-                subtitle="Trupp" 
+                class="pa-2"
+                :subtitle="troopSubtitle"
                 :title="organizationNames.troop"
             >
+                <v-card-text v-if="updatedByUser || updatedAtFormatted">
+                    <div class="text-caption text-medium-emphasis">Zuletzt synchronisiert</div>
+                    <div v-if="updatedByUser" class="text-body-2">{{ updatedByUser.user_name || updatedByUser.email }}</div>
+                    <!--<div v-if="updatedByUser?.user_name" class="text-caption text-medium-emphasis">{{ updatedByUser.email }}</div>-->
+                    <div v-if="updatedAtFormatted" class="text-caption text-medium-emphasis">{{ updatedAtFormatted }}</div>
+                </v-card-text>
+                <!-- Truppmitglieder vorerst ausgeblendet — zusammen mit dem
+                     auskommentierten Block in onMounted wieder einkommentieren.
                 <v-card-text v-if="troopMembers.length > 0">
                     <v-list density="compact" class="pa-0">
                         <v-list-item
@@ -126,6 +181,7 @@
                         </v-list-item>
                     </v-list>
                 </v-card-text>
+                -->
             </v-card>
         </v-col>
     </v-row>
