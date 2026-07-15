@@ -15,7 +15,7 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows } from '../Utils';
+    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -144,6 +144,10 @@
             type: Array,
             default: null
         },
+        records_loading: {
+            type: Boolean,
+            default: false
+        },
         tab_active: {
             type: Boolean,
             default: true
@@ -168,6 +172,9 @@
     const totalRecords = ref(0); // Total number of records, can be fetched from
 
     const loading = ref(false);
+    // Skeleton while the parent is still fetching records (e.g. after the
+    // Waldtrakte toggle) or while this component hydrates the grid itself.
+    const isLoading = computed(() => loading.value || props.records_loading);
 
     const records = ref([]);
     const organizations = ref([]);
@@ -963,7 +970,9 @@
 
             rowData.value = _preRenderRecords(activeRecords);
 
-            const mapRecords = _hasMapGeometry(activeRecords)
+            // An empty records prop means the parent is still loading; wait for
+            // the props.records watcher instead of fetching everything ourselves.
+            const mapRecords = (activeRecords.length === 0 || _hasMapGeometry(activeRecords))
                 ? activeRecords
                 : await _requestPlots(props.organization_type, props.organization_id);
 
@@ -988,7 +997,7 @@
             const start = currentPage * pageSize;
             const end = start + pageSize - 1;
 
-            const { data, error } = await supabase
+            let query = supabase
                 .from(tableName)
                 .select(`
                     cluster_id,
@@ -1026,8 +1035,12 @@
                     previous_properties
                 `)
                 .eq(companyType, organizationId)
-                .order('cluster_id', { ascending: true })
-                .range(start, end); // <<-- deterministic order
+                .order('cluster_id', { ascending: true });
+
+            // Keep the map fallback consistent with the Waldtrakte toggle
+            query = applyForestStatusFilter(query);
+
+            const { data, error } = await query.range(start, end); // <<-- deterministic order
 
             if (error) {
                 console.error('Error fetching paginated data:', error);
@@ -1326,17 +1339,39 @@
             return;
         }
 
-        await Promise.all([
-            _ensureLookupTablesLoaded(),
-            _ensureReferenceDataLoaded()
-        ]);
+        // Invalidate any in-flight _hydrateGridData run so its late results
+        // cannot overwrite the newer records we are about to render. Since the
+        // invalidated run then skips its own loading cleanup, the loading flag
+        // is managed here as well.
+        const runId = ++hydrateVersion;
+        loading.value = true;
 
-        rowData.value = _preRenderRecords(newRecords);
+        try {
+            await Promise.all([
+                _ensureLookupTablesLoaded(),
+                _ensureReferenceDataLoaded()
+            ]);
 
-        const mapRecords = _hasMapGeometry(newRecords)
-            ? newRecords
-            : await _requestPlots(props.organization_type, props.organization_id);
-        createGeojsonFeatureCollection(mapRecords || newRecords);
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            rowData.value = _preRenderRecords(newRecords);
+
+            const mapRecords = (newRecords.length === 0 || _hasMapGeometry(newRecords))
+                ? newRecords
+                : await _requestPlots(props.organization_type, props.organization_id);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            createGeojsonFeatureCollection(mapRecords || newRecords);
+        } finally {
+            if (runId === hydrateVersion) {
+                loading.value = false;
+            }
+        }
     });
 
     onMounted(async () => {
@@ -1869,7 +1904,7 @@
     </v-card>-->
     <ag-grid-vue
         ref="currentGrid"
-        v-if="!loading"
+        v-if="!isLoading"
         @selection-changed="onSelectionChanged"
         @filter-changed="onFilterChanged"
         @sort-changed="onSortChanged"
@@ -1883,7 +1918,7 @@
         style="height: 700px"
     >
     </ag-grid-vue>
-    <div v-if="loading" class="text-center">
+    <div v-if="isLoading" class="text-center">
         <v-skeleton-loader  type="table" />
     </div>
 
@@ -1908,7 +1943,7 @@
             <v-toolbar-title>Vorauswahl von Trakten treffen</v-toolbar-title>
             <VimeoPlayer vimeoId="1121223526" h="94c0033551" btnTitle="Anleitung GIS" title="Export/Import von Trakt-Auswahl nach Koordinaten" :iconOnly="false" />
         </v-toolbar>
-        <div class="d-flex align-center ga-11 mt-2" v-if="!loading">
+        <div class="d-flex align-center ga-11 mt-2" v-if="!isLoading">
             <div class="flex-grow-1 d-flex flex-row ga-2">
                 
                 <v-text-field
@@ -1995,7 +2030,7 @@
         </div>
     </v-card>
     
-    <v-card v-if="!loading" class="position-fixed bottom-0 left-0 w-100" style="z-index: 12; border-top: 1px solid rgba(150, 150, 150, 0.12);">
+    <v-card v-if="!isLoading" class="position-fixed bottom-0 left-0 w-100" style="z-index: 12; border-top: 1px solid rgba(150, 150, 150, 0.12);">
         <v-card-text>
             <v-row class="ma-1">
                 <v-btn

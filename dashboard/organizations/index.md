@@ -5,11 +5,12 @@ layout: home
 ---
 
 <script setup>
-    import { onMounted, onUnmounted, ref, getCurrentInstance } from 'vue';
+    import { onMounted, onUnmounted, ref, watch, getCurrentInstance } from 'vue';
     import { onBeforeRouteLeave } from 'vue-router';
 
     import Firewall from '../../components/Firewall.vue';
     import { withBase } from "vitepress";
+    import { FOREST_FILTER_FOREST, FOREST_FILTER_NON_FOREST, getForestStatusFilter, setForestStatusFilter, applyForestStatusFilter } from '../../components/Utils';
 
     import ListOfOrganizations from '../../components/organizations/ListOfOrganizations.vue';
     import OrganizationsAdmins from '../../components/organizations/OrganizationsAdmins.vue';
@@ -36,8 +37,26 @@ layout: home
     const currentOrganization = ref({});
     const cluster = ref([]);
     const loadingClusters = ref(false);
+    const troopIds = ref([]);
 
-    const tab = ref('0'); // Default tab
+    // Waldtrakte (forst_status != 0) vs. Nicht-Waldtrakte (forst_status = 0);
+    // persisted in localStorage, only the selected subset is loaded.
+    const forestFilter = ref(getForestStatusFilter());
+    watch(forestFilter, async (newFilter) => {
+        setForestStatusFilter(newFilter);
+        if (!currentOrganization.value || !currentOrganization.value.id) {
+            return;
+        }
+        await _requestPlots(currentOrganization.value.type, currentOrganization.value.id, troopIds.value);
+    });
+
+    // Cancel-and-restart bookkeeping: each _requestPlots call aborts a still
+    // running load, and only the newest request may write records and clear
+    // the loading state.
+    let plotsRequestId = 0;
+    let plotsAbortController = null;
+
+    const tab = ref('3'); // Default tab
 
     const records = ref([]);
 
@@ -116,15 +135,13 @@ layout: home
         // Check if at least one permission with organization_id equals organizationId is_organization_admin equals true
         isAdmin.value = allPermissions.value.some(perm => perm.organization_id === organizationId && perm.is_organization_admin);
 
-        let troopIds = [];
         if(!isAdmin.value) {
             permission.value = allPermissions.value.find(perm => perm.organization_id === organizationId && !perm.is_organization_admin) || {};
             const troops = await _getTroopsByOrganizationIdAndUserId(organizationId);
-            troopIds = troops.map(troop => troop.id);
+            troopIds.value = troops.map(troop => troop.id);
         }
 
-        await _requestPlots(currentOrganization.value.type, currentOrganization.value.id, troopIds);
-        loadingClusters.value = false;
+        await _requestPlots(currentOrganization.value.type, currentOrganization.value.id, troopIds.value);
 
 
         //window.addEventListener('beforeunload', handleBeforeUnload);
@@ -156,12 +173,16 @@ layout: home
     };
 
     // Globaly load records
-    async function fetchAllDataPaginated(tableName, organizationId, companyType, troopFilter = null) {
+    async function fetchAllDataPaginated(tableName, organizationId, companyType, troopFilter = null, signal = null) {
         let allData = [];
         let currentPage = 0;
         const pageSize = 10000; // Choose an appropriate page size
 
         while (true) {
+            if (signal && signal.aborted) {
+                return null;
+            }
+
             const start = currentPage * pageSize;
             const end = start + pageSize - 1;
 
@@ -203,14 +224,24 @@ layout: home
                 .eq(companyType, organizationId)
                 .order('cluster_id', { ascending: true });
 
+            // Only load Waldtrakte or Nicht-Waldtrakte depending on the toggle
+            query = applyForestStatusFilter(query, forestFilter.value);
+
             // Conditionally add troop filter
             if (troopFilter && troopFilter.length > 0) {
                 query = query.in('responsible_troop', troopFilter);
             }
 
+            if (signal) {
+                query = query.abortSignal(signal);
+            }
+
             const { data, error } = await query.range(start, end);
 
             if (error) {
+                if (signal && signal.aborted) {
+                    return null; // request was cancelled, a newer one took over
+                }
                 console.error('Error fetching paginated data:', error);
                 return null;
             }
@@ -242,23 +273,44 @@ layout: home
         }
         if (!companyType) {
             console.warn('No company type or filter row defined for organization type:', organizationType);
+            loadingClusters.value = false;
             return;
         }
 
-        records.value = await fetchAllDataPaginated('view_records_details', organizationId, companyType, troopIds);
-
-        if (records.value && records.value.length > 0) {
-            snackbarText.value = `${records.value.length} Datensätze erfolgreich geladen.`;
-            snackbarColor.value = 'success';
-            snackbar.value = true;
-
-        } else {
-            snackbarText.value = 'Keine Datensätze gefunden für die Organisation.';
-            snackbarColor.value = 'warning';
-            snackbar.value = true;
+        // Cancel a still running load; the newest request wins.
+        if (plotsAbortController) {
+            plotsAbortController.abort();
         }
+        plotsAbortController = new AbortController();
+        const requestId = ++plotsRequestId;
 
-        return records || [];
+        loadingClusters.value = true;
+        try {
+            const data = await fetchAllDataPaginated('view_records_details', organizationId, companyType, troopIds, plotsAbortController.signal);
+
+            if (requestId !== plotsRequestId) {
+                return; // superseded by a newer request
+            }
+
+            records.value = data;
+
+            if (records.value && records.value.length > 0) {
+                snackbarText.value = `${records.value.length} Datensätze erfolgreich geladen.`;
+                snackbarColor.value = 'success';
+                snackbar.value = true;
+
+            } else {
+                snackbarText.value = 'Keine Datensätze gefunden für die Organisation.';
+                snackbarColor.value = 'warning';
+                snackbar.value = true;
+            }
+
+            return records || [];
+        } finally {
+            if (requestId === plotsRequestId) {
+                loadingClusters.value = false;
+            }
+        }
     }
 </script>
 
@@ -293,7 +345,7 @@ layout: home
         </v-btn>
         <template v-slot:extension>
             <v-tabs v-model="tab" align-tabs="center" class="mt-6">
-                <v-tab value="0">Statistik</v-tab>
+                <!--<v-tab value="0">Statistik</v-tab>-->
                 <v-tab value="3">
                     Ecken
                 </v-tab>
@@ -304,17 +356,28 @@ layout: home
 </v-toolbar>
 
 <v-tabs-window v-model="tab" class="mt-4">
-    <v-tabs-window-item value="0">
+    <!--<v-tabs-window-item value="0">
         <OrganizationsStatistics :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :records="records" :loading="loadingClusters" />
-    </v-tabs-window-item>
+    </v-tabs-window-item>-->
     <v-tabs-window-item value="3">
-        <v-row class="mb-2">
+        <v-row class="my-2">
+            <v-col>
+                <!-- Toggle between Waldtrakte (forst_status!=0) und nicht waldtrakte (forst_status=0) -->
+                <v-btn-toggle v-model="forestFilter" mandatory variant="outlined" rounded="xl" density="comfortable" divided>
+                    <v-btn value="forest">
+                        Waldtrakte
+                    </v-btn>
+                    <v-btn value="nonforest">
+                        Nicht-Waldtrakte
+                    </v-btn>
+                </v-btn-toggle>
+            </v-col>
             <v-spacer></v-spacer>
-                <v-col class="d-flex justify-end" cols="12" md="4">
-                    <VimeoPlayer vimeoId="1132162497" h="8de2faac57" :btnTitle="'Tutorial'" title="Trakte verwalten" :iconOnly="false" />
-                </v-col>
+            <v-col class="d-flex justify-end" cols="12" md="4">
+                <VimeoPlayer vimeoId="1132162497" h="8de2faac57" :btnTitle="'Tutorial'" title="Trakte verwalten" :iconOnly="false" />
+            </v-col>
             </v-row>
-        <ListOfClusterRecord :tab_active="tab == 3" :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" />
+        <ListOfClusterRecord :tab_active="tab == 3" :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" :records_loading="loadingClusters" />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
         <ListOfOrganizations

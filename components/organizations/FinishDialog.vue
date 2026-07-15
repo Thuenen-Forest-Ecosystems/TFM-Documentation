@@ -174,12 +174,11 @@
                 if(isAdmin.value) {
                     if (props.organizationType === 'root') {
                         query = query.not('completed_at_state', 'is', null);
-                        query = query.not('completed_at_troop', 'is', null);
+                        //query = query.not('completed_at_troop', 'is', null);
                     } else if (props.organizationType === 'country') {
                         // Add specific conditions if needed
                     }
                 } else {
-                    console.log('Adding null filters for non-admin user');
                     query = query.is('completed_at_state', null);
                     query = query.is('completed_at_administration', null);
                     query = query.is('completed_at_troop', null);
