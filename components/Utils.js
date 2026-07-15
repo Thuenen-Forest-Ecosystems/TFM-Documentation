@@ -671,8 +671,8 @@ export async function getIsDatabaseAdmin(supabase) {
     return data?.is_database_admin === true;
 }
 /**
- * Toggle between Waldtrakte (forest_status_bwi2022 != 0) and
- * Nicht-Waldtrakte (forest_status_bwi2022 = 0). The selection is persisted
+ * Toggle between Waldtrakte (cluster_status in (1, 2, 3, 6)) and
+ * Nicht-Waldtrakte (all other cluster_status). The selection is persisted
  * in localStorage so it survives reloads; only the selected subset is
  * fetched from the server.
  */
@@ -694,13 +694,17 @@ export function setForestStatusFilter(filter) {
 
 /**
  * Apply the persisted forest status filter to a supabase query on
- * view_records_details. Records without an archived bwi2022 plot
- * (forest_status_bwi2022 IS NULL) are kept in the Waldtrakte view so no
- * record disappears from both views.
+ * view_records_details. Waldtrakte are cluster_status 1, 2, 3 and 6
+ * (lookup_cluster_status: Waldtrakt vorangegangene Inventur, neu anzulegen,
+ * Wald/Nichtwald ungewiss, Waldtrakt außerhalb Landeswald); Nicht-Waldtrakte
+ * are cluster_status 4 and 5 (Nichtwaldtrakt in bebautem Gebiet/Gewässer,
+ * in offener Landschaft). Records without an archived cluster
+ * (cluster_status IS NULL) are kept in the Waldtrakte view so no record
+ * disappears from both views.
  */
 export function applyForestStatusFilter(query, filter = getForestStatusFilter()) {
     if (filter === FOREST_FILTER_NON_FOREST) {
-        return query.eq('forest_status_bwi2022', 0);
+        return query.or('cluster_status.in.(4,5),cluster_status.is.null');
     }
-    return query.or('forest_status_bwi2022.neq.0,forest_status_bwi2022.is.null');
+    return query.in('cluster_status', [1, 2, 3, 6]); //.or('cluster_status.is.null');
 }

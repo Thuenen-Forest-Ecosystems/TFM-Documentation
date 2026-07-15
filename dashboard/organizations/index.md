@@ -39,7 +39,7 @@ layout: home
     const loadingClusters = ref(false);
     const troopIds = ref([]);
 
-    // Waldtrakte (forst_status != 0) vs. Nicht-Waldtrakte (forst_status = 0);
+    // Waldtrakte (cluster_status in (1,2,3,6)) vs. Nicht-Waldtrakte (4,5);
     // persisted in localStorage, only the selected subset is loaded.
     const forestFilter = ref(getForestStatusFilter());
     watch(forestFilter, async (newFilter) => {
@@ -362,7 +362,7 @@ layout: home
     <v-tabs-window-item value="3">
         <v-row class="my-2">
             <v-col>
-                <!-- Toggle between Waldtrakte (forst_status!=0) und nicht waldtrakte (forst_status=0) -->
+                <!-- Toggle between Waldtrakte (cluster_status in (1,2,3,6)) und Nicht-Waldtrakte (cluster_status in (4,5)) -->
                 <v-btn-toggle v-model="forestFilter" mandatory variant="outlined" rounded="xl" density="comfortable" divided>
                     <v-btn value="forest">
                         Waldtrakte
