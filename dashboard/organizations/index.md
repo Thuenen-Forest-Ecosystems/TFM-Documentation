@@ -370,6 +370,9 @@ layout: home
                     <v-btn value="nonforest">
                         Nicht-Waldtrakte
                     </v-btn>
+                    <v-btn value="all">
+                        Alle
+                    </v-btn>
                 </v-btn-toggle>
             </v-col>
             <v-spacer></v-spacer>

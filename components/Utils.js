@@ -679,17 +679,22 @@ export async function getIsDatabaseAdmin(supabase) {
 export const FOREST_STATUS_FILTER_KEY = 'forestStatusFilter';
 export const FOREST_FILTER_FOREST = 'forest';
 export const FOREST_FILTER_NON_FOREST = 'nonforest';
+export const FOREST_FILTER_ALL = 'all';
 
 export function getForestStatusFilter() {
     if (typeof window === 'undefined') return FOREST_FILTER_FOREST;
-    return window.localStorage.getItem(FOREST_STATUS_FILTER_KEY) === FOREST_FILTER_NON_FOREST
-        ? FOREST_FILTER_NON_FOREST
+    const stored = window.localStorage.getItem(FOREST_STATUS_FILTER_KEY);
+    return stored === FOREST_FILTER_NON_FOREST || stored === FOREST_FILTER_ALL
+        ? stored
         : FOREST_FILTER_FOREST;
 }
 
 export function setForestStatusFilter(filter) {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(FOREST_STATUS_FILTER_KEY, filter === FOREST_FILTER_NON_FOREST ? FOREST_FILTER_NON_FOREST : FOREST_FILTER_FOREST);
+    const value = filter === FOREST_FILTER_NON_FOREST || filter === FOREST_FILTER_ALL
+        ? filter
+        : FOREST_FILTER_FOREST;
+    window.localStorage.setItem(FOREST_STATUS_FILTER_KEY, value);
 }
 
 /**
@@ -700,9 +705,12 @@ export function setForestStatusFilter(filter) {
  * are cluster_status 4 and 5 (Nichtwaldtrakt in bebautem Gebiet/Gewässer,
  * in offener Landschaft). Records without an archived cluster
  * (cluster_status IS NULL) are kept in the Waldtrakte view so no record
- * disappears from both views.
+ * disappears from both views. 'all' applies no cluster_status filter.
  */
 export function applyForestStatusFilter(query, filter = getForestStatusFilter()) {
+    if (filter === FOREST_FILTER_ALL) {
+        return query;
+    }
     if (filter === FOREST_FILTER_NON_FOREST) {
         return query.or('cluster_status.in.(4,5),cluster_status.is.null');
     }
