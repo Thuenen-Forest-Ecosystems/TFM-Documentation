@@ -198,6 +198,7 @@ layout: home
                     responsible_provider,
                     responsible_administration,
                     responsible_troop,
+                    responsible_read_only_troop,
                     is_valid,
                     federal_state,
                     growth_district,
