@@ -19,44 +19,20 @@ const organizationId = ref(null)  // set from ?organization= URL param
 const fetchSchema = async () => {
   const { data, error: err } = await supabase
     .from('schemas')
-    .select('id, title, version, directory, bucket_schema_file_name')
+    .select('id, title, version, schema')
     .eq('is_visible', true)
     .eq('is_deprecated', false)
     .order('version', { ascending: false })
     .limit(1)
     .single()
 
-  if (err) {
-    console.error('Error fetching schema metadata:', err)
+  if (err || !data?.schema) {
+    console.error('Error fetching schema:', err || 'schema missing in schemas row')
     return
   }
 
   schemaVersion.value = data
-
-  // Download the full JSON schema from storage
-  const versionDir = data.directory || data.title?.toLowerCase().replace(/\s+/g, '')
-  const fileName = data.bucket_schema_file_name || 'validation.json'
-  const path = `${versionDir}/${fileName}`
-
-  const { data: blob, error: dlErr } = await supabase.storage
-    .from('validation')
-    .download(path)
-
-  if (dlErr) {
-    // fallback: try validation.json directly
-    const { data: blob2, error: dlErr2 } = await supabase.storage
-      .from('validation')
-      .download(`${versionDir}/validation.json`)
-    if (dlErr2) {
-      console.error('Error downloading schema:', dlErr, dlErr2)
-      return
-    }
-    const txt = await blob2.text()
-    schema.value = JSON.parse(txt)
-  } else {
-    const txt = await blob.text()
-    schema.value = JSON.parse(txt)
-  }
+  schema.value = data.schema
 }
 
 // ── 2. Derive column structure from schema ──────────────────────────────────
