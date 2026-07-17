@@ -1,5 +1,5 @@
 <script setup>
-    import { getCurrentInstance, onMounted, useAttrs, ref, watch } from 'vue';
+    import { getCurrentInstance, onMounted, useAttrs, ref, watch, computed } from 'vue';
     import DialogTroop from './DialogTroop.vue';
     import { withBase } from 'vitepress'
 
@@ -9,6 +9,11 @@
     const attrs = useAttrs();
     const troops = ref([]);
     const users = ref([]);
+
+    // Active troops first, deprecated (deleted) troops at the bottom
+    const sortedTroops = computed(() =>
+        [...troops.value].sort((a, b) => (a.deleted ? 1 : 0) - (b.deleted ? 1 : 0))
+    );
 
     const editDialog = ref(false);
     const editTroopId = ref('');
@@ -104,6 +109,49 @@
             })
             .finally(() => {
                 deleting.value[troopId] = false; // Reset loading state
+            });
+    }
+
+    const updatingDeleted = ref({});
+    function _setTroopDeleted(e, troop, deleted) {
+        e.stopPropagation(); // Prevent the click from propagating to the list item
+        if (!troop?.id) {
+            console.error('Error: troop.id is required.');
+            return;
+        }
+
+        // Only empty troops can be marked as deprecated
+        if (deleted && (troop.user_ids || []).length > 0) {
+            console.warn('Only empty troops can be marked as deprecated.');
+            return;
+        }
+
+        if (deleted && !confirm('Sind Sie sicher, dass Sie diesen Trupp als veraltet markieren möchten?')) {
+            return;
+        }
+
+        updatingDeleted.value[troop.id] = true; // Set loading state
+        supabase
+            .from('troop')
+            .update({ deleted })
+            .eq('id', troop.id)
+            .select()
+            .single()
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('Error updating troop:', error);
+                } else {
+                    const index = troops.value.findIndex(t => t.id === data.id);
+                    if (index !== -1) {
+                        troops.value[index] = data;
+                    }
+                }
+            })
+            .catch((e) => {
+                console.error('An unexpected error occurred while updating troop:', e);
+            })
+            .finally(() => {
+                updatingDeleted.value[troop.id] = false; // Reset loading state
             });
     }
 
@@ -255,14 +303,23 @@
         </v-alert>
     </div>
     
-    <v-card  v-for="troop in troops" :key="troop.id" class="mb-4" variant="tonal">
+    <template v-for="(troop, index) in sortedTroops" :key="troop.id">
+    <div v-if="troop.deleted && (index === 0 || !sortedTroops[index - 1].deleted)" class="d-flex align-center my-6">
+        <v-divider></v-divider>
+        <span class="mx-4 text-body-2 text-medium-emphasis">Veraltete&nbsp;Trupps</span>
+        <v-divider></v-divider>
+    </div>
+    <v-card class="mb-4" variant="tonal" :class="{ 'troop-deprecated': troop.deleted }">
         <v-card-item>
-            <v-card-title>{{ troop.name }}</v-card-title>
+            <v-card-title>
+                {{ troop.name }}
+                <v-chip v-if="troop.deleted" size="small" color="grey" class="ml-2">Veraltet</v-chip>
+            </v-card-title>
             <v-card-subtitle v-if="troop.is_read_only">Admin (nur Leserechte)</v-card-subtitle>
             <v-card-subtitle v-else-if="troop.is_control_troop">Kontroll-Trupp</v-card-subtitle>
             <v-card-subtitle v-else>Aufnahme-Trupp</v-card-subtitle>
             <template v-slot:append  v-if="props.is_admin">
-                <v-menu>
+                <v-menu v-if="!troop.deleted">
                     <template v-slot:activator="{ props: menuProps }">
                         <!-- Disable button if no troops available -->
                         <v-btn variant="tonal"
@@ -304,6 +361,23 @@
                     variant="text"
                     @click="_editTroop(troop)"
                 ></v-btn>
+                <v-btn
+                    v-if="!troop.deleted"
+                    icon="mdi-delete"
+                    variant="text"
+                    :disabled="troop.user_ids.length > 0 || updatingDeleted[troop.id]"
+                    :loading="updatingDeleted[troop.id]"
+                    :title="troop.user_ids.length > 0 ? 'Nur leere Trupps können als veraltet markiert werden' : 'Trupp als veraltet markieren'"
+                    @click="(e) => _setTroopDeleted(e, troop, true)"
+                ></v-btn>
+                <v-btn
+                    v-else
+                    icon="mdi-delete-restore"
+                    variant="text"
+                    :loading="updatingDeleted[troop.id]"
+                    title="Trupp reaktivieren"
+                    @click="(e) => _setTroopDeleted(e, troop, false)"
+                ></v-btn>
                 <!--<v-btn icon="mdi-state-machine" v-if="props.is_admin"variant="text" @click="_toDetails(troop)"></v-btn>-->
             </template>
         </v-card-item>
@@ -323,8 +397,9 @@
             </v-list-item>
         </v-card-text>
     </v-card>
+    </template>
 
-    
+
     <DialogTroop
         v-model="editDialog"
         :name="editname"
@@ -342,3 +417,9 @@
         @success="refresh"
     />
 </template>
+
+<style scoped>
+    .troop-deprecated {
+        opacity: 0.6;
+    }
+</style>

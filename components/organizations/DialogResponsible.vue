@@ -157,7 +157,8 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
             const { data, error } = await supabase
                 .from('troop')
                 .select('*')
-                .eq('organization_id', props.organizationId);
+                .eq('organization_id', props.organizationId)
+                .eq('deleted', false); // Exclude deprecated troops
             if (error) {
                 console.error('Error fetching troops:', error);
                 return [];
