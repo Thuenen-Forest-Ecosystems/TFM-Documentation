@@ -87,7 +87,7 @@
     const usersPermissions = ref([]);
     // Testphase: die Spalte "Admin (nur Leserechte)" ist vorerst nur für
     // Datenbank-Admins sichtbar; Gate entfernen, um sie für alle freizugeben.
-    const showReadOnlyTroopColumn = ref(false);
+    const showReadOnlyTroopColumn = ref(true);
 
     const selectedClusterIdsInput = ref([]);
     const searchInput = ref('');
@@ -1378,10 +1378,10 @@
 
         setColDefs();
 
-        getIsDatabaseAdmin(supabase).then((isDatabaseAdmin) => {
+        /*getIsDatabaseAdmin(supabase).then((isDatabaseAdmin) => {
             showReadOnlyTroopColumn.value = isDatabaseAdmin;
             setColDefs(); // rebuild columns once the admin check resolved
-        });
+        });*/
 
         usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
 

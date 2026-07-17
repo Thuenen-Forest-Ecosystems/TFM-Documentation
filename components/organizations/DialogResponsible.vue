@@ -11,9 +11,9 @@ import { getCurrentInstance, onMounted, ref, watch, computed } from 'vue';
 
     // Testphase: die Karte "Admin (nur Leserechte)" ist vorerst nur für
     // Datenbank-Admins sichtbar; Gate entfernen, um sie für alle freizugeben.
-    const showReadOnlyTroopCard = ref(false);
+    const showReadOnlyTroopCard = ref(true);
     onMounted(async () => {
-        showReadOnlyTroopCard.value = await getIsDatabaseAdmin(supabase);
+        //showReadOnlyTroopCard.value = await getIsDatabaseAdmin(supabase);
     });
 
     const troops = ref([]);
