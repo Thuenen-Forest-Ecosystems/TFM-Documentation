@@ -75,9 +75,12 @@ function buildColDefs() {
   MyColDefs1.value = [
   //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
     { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
+    { field: "cluster_name", headerName: "Trakt", filter: "agNumberColumnFilter" },
+    { field: "plot_name", headerName: "Traktecke", filter: "agNumberColumnFilter" },
     { field: "aufnahmetrupp", headerName: "Aufnahmetrupp", filter: "agTextColumnFilter" },
-    { field: "anzahl_abgabe_at", headerName: "Anzahl_abgegebener_Ecken_AT", filter: "agNumberColumnFilter" },
-    { field: "anzahl_kontrolliert", headerName: "Anzahl_kontrollierter_Ecken_KT_abgegeben", filter: "agNumberColumnFilter" }
+    { field: "abgabe_at", headerName: "Abgabedatum_AT", filter: "agDateColumnFilter" },
+    { field: "kontrolltrupp", headerName: "Kontrolltrupp", filter: "agTextColumnFilter" }, 
+    { field: "abgabe_kt", headerName: "Abgabedatum_KT", filter: "agDateColumnFilter" }
   ];
 }
 
@@ -104,8 +107,8 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
     while (hasMore) {
       // 1. Query-Objekt initialisieren (ohne await!)
       let query = supabase
-        .from('v_stats_count_controlled_by_kt')
-        .select('lil, aufnahmetrupp, anzahl_abgabe_at, anzahl_kontrolliert, responsible_state, responsible_administration, responsible_provider')
+        .from('v_stats_list_controlled_by_kt')
+        .select('lil, cluster_name, plot_name, aufnahmetrupp, abgabe_at, kontrolltrupp, abgabe_kt, responsible_state, responsible_administration, responsible_provider')
         .or(orFilters.join(','))
 
       // 2. Bedingung prüfen und Filter dynamisch anhängen
