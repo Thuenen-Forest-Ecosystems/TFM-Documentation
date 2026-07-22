@@ -77,7 +77,6 @@ function buildColDefs() {
     { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
     { field: "aufnahmetrupp", headerName: "Aufnahmetrupp", filter: "agTextColumnFilter" },
     { field: "anzahl_abgabe_at", headerName: "Anzahl_abgegebener_Ecken_AT", filter: "agNumberColumnFilter" },
-    { field: "kontrolltrupp", headerName: "Kontrolltrupp", filter: "agTextColumnFilter" }, 
     { field: "anzahl_kontrolliert", headerName: "Anzahl_kontrollierter_Ecken_KT_abgegeben", filter: "agNumberColumnFilter" }
   ];
 }
@@ -93,7 +92,8 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
   const orFilters = [
     `responsible_administration.in.(${ids})`,
     `responsible_state.in.(${ids})`,
-    `responsible_provider.in.(${ids})`
+    `responsible_provider.in.(${ids})`,
+    `responsible_troop.in.(${ids})`
   ];
   console.log("Selected Orgs for batch fetch:", selectedOrganisations.value);
 
@@ -105,7 +105,7 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
       // 1. Query-Objekt initialisieren (ohne await!)
       let query = supabase
         .from('v_stats_count_controlled_by_kt')
-        .select('lil, aufnahmetrupp, anzahl_abgabe_at, kontrolltrupp, anzahl_kontrolliert, responsible_state, responsible_administration, responsible_provider')
+        .select('lil, aufnahmetrupp, anzahl_abgabe_at, anzahl_kontrolliert, responsible_state, responsible_administration, responsible_provider')
         .or(orFilters.join(','))
 
       // 2. Bedingung prüfen und Filter dynamisch anhängen

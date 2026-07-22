@@ -95,7 +95,8 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
   const orFilters = [
     `responsible_administration.in.(${ids})`,
     `responsible_state.in.(${ids})`,
-    `responsible_provider.in.(${ids})`
+    `responsible_provider.in.(${ids})`,
+    `responsible_troop.in.(${ids})`
   ];
   console.log("Selected Orgs for batch fetch:", selectedOrganisations.value);
 
