@@ -112,17 +112,17 @@ async function fetchRecordChangesInBatches(batchSize = 1000) {
         .select('responsible_state, responsible_administration, responsible_provider, responsible_troop, lil, cluster_name, plot_name,  troop_name, kt, completed_as_troop_latest, wald2027, begehbar2027')
         .or(orFilters.join(','))
 
-      // 2. Bedingung prüfen und Filter dynamisch anhängen
-      const filterTrainingData = CheckboxExcludeTrainingTest.value; // Deine Variable/Bedingung
+      // // 2. Bedingung prüfen und Filter dynamisch anhängen
+      // const filterTrainingData = CheckboxExcludeTrainingTest.value; // Deine Variable/Bedingung
 
-      if (filterTrainingData) {
-        console.warn("Excluding training/test tracks from batch fetch.");
-        query = query
-          // 1. Schließt alle Werte aus, die kleiner als 100000 sind
-          .not('cluster_name', 'gt', 1000000000) 
-          // 2. Erlaubt nur Werte außerhalb des Bereichs (Werte müssen < 9900000 ODER > 10000000 sein)
-          .or('cluster_name.lt.9999900,cluster_name.gt.10000000'); 
-      }
+      // if (filterTrainingData) {
+      //   console.warn("Excluding training/test tracks from batch fetch.");
+      //   query = query
+      //     // 1. Schließt alle Werte aus, die kleiner als 100000 sind
+      //     .not('cluster_name', 'gt', 1000000000) 
+      //     // 2. Erlaubt nur Werte außerhalb des Bereichs (Werte müssen < 9900000 ODER > 10000000 sein)
+      //     .or('cluster_name.lt.9999900,cluster_name.gt.10000000'); 
+      // }
 
       // 3. Range anhängen und Query mit await ausführen
       const { data, error } = await query.range(from, to);
@@ -274,11 +274,12 @@ function onBtnExport1() {
       multiple
       chips
       closable-chips
+      label="Organisation(en) auswählen"
     />
-    <v-checkbox
+<!--     <v-checkbox
      v-model="CheckboxExcludeTrainingTest"
      :label="`Test-/Trainingstrakte ausschließen`"
-    />
+    /> -->
   </v-card>
 
 

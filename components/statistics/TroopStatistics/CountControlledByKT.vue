@@ -270,6 +270,7 @@ function onBtnExport1() {
       multiple
       chips
       closable-chips
+      label="Organisation(en) auswählen"
     />
 <!--     <v-checkbox
      v-model="CheckboxExcludeTrainingTest"
