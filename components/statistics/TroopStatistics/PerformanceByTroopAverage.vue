@@ -359,7 +359,7 @@ function onBtnExport2() {
     <v-card-title>Organisationen auswählen:</v-card-title>
     <!-- Multi‑select with chips – lets the user pick one or more orgs -->
     <v-select v-model="selectedOrganisations" :items="organisationsList" item-title="name" item-value="id" multiple
-      chips closable-chips />
+      chips closable-chips label="Organisation(en) auswählen" />
   </v-card>
 
   <!-- DEBUG: show selected org IDs (can be removed later) -->
