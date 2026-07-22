@@ -15,7 +15,8 @@ const availableStats = ref([
       { "id": "PlotsDeliveredByTroopAndDate", "name": "1.1 Abgabe von Ecken durch Trupp nach Datum (View)" },
       { "id": "PerformanceByTroopByMonth", "name": "1.2.1 Leistung pro Inventurtrupp (abgegebene Trakte) pro Monat" },
       { "id": "PerformanceByTroopByWeek", "name": "1.2.2 Leistung pro Inventurtrupp (abgegebene Trakte) pro Woche" },
-      { "id": "CountControlledByKT", "name": "1.3.1 Kontrollierte Trakte pro Inventurtrupp (letztes Datum)" }//,
+      { "id": "ListControlledByKT", "name": "1.3.1 Liste kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp" },
+      { "id": "CountControlledByKT", "name": "1.3.2 Anzahl abgegebener und kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp"}//,
     //  { "id": "PerformanceByTroopAverage", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
     //  { "id": "PlotsDeliveredByToopAndDate_old", "name": "3. Abgabe von Ecken durch Trupp nach Datum" },
 

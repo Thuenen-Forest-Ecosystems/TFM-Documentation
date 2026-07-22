@@ -6,7 +6,7 @@ layout: home
      imports and prepares any components or utilities needed by the template. -->
 <script setup>
     /*  Import the specific Stats component from its relative path.*/
-    import Stats from '../../../components/statistics/TroopStatistics/CountControlledByKT.vue';
+    import Stats from '../../../components/statistics/TroopStatistics/ListControlledByKT.vue';
 </script>
 
 <!-- Markdown heading that will be rendered as an <h1> element.
@@ -14,12 +14,12 @@ layout: home
 [← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
 
 
-# Statistik kontrollierter Trakte pro Inventurtrupp (letztes Datum)  (View)
+# Liste kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp  (View)
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.
 
-(Version 260702)
+(Version 260722)
 :::
 
 <!-- Vuetify application wrapper with a transparent background.
