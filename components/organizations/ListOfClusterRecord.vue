@@ -276,7 +276,7 @@
                 headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
                 //checkboxSelectionFilteredOnly: true, // This ensures only filtered rows are selectable
                 pinned: 'left', // Pins the column to the left
-                width: 80, // Breit genug, damit neben der Checkbox das Sortier-Icon (unSortIcon) sichtbar ist
+                width: 81, // Breit genug, damit neben der Checkbox das Sortier-Icon (unSortIcon) sichtbar ist
                 sortable: true,
                 // 1. Klick: Ausgewählte zuerst, 2. Klick: Ausgewählte zuletzt,
                 // 3. Klick: keine Sortierung
