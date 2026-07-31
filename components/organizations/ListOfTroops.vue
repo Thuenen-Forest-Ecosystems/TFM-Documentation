@@ -243,6 +243,10 @@
             console.warn('User is already in this troop.');
             return; // User already in the troop
         }
+        if (userIds.length >= 3) {
+            console.warn('Troop already has the maximum of 3 members.');
+            return; // Max troop size reached
+        }
 
 
         supabase
@@ -323,8 +327,8 @@
                     <template v-slot:activator="{ props: menuProps }">
                         <!-- Disable button if no troops available -->
                         <v-btn variant="tonal"
-                            rounded="xl" v-if="props.is_admin" v-bind="menuProps" :disabled="users.length === 0" @click="_getListOfUserInOrganization(props.organization_id)">
-                            Trupp-Personal Hinzufügen
+                            rounded="xl" v-if="props.is_admin" v-bind="menuProps" :disabled="users.length === 0 || (troop.user_ids || []).length >= 3" @click="_getListOfUserInOrganization(props.organization_id)">
+                            Trupp-Personal Hinzufügen (max. 3)
                             <template v-slot:append>
                                 <v-icon>mdi-account-plus</v-icon>
                             </template>
