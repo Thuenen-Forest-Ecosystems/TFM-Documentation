@@ -233,19 +233,6 @@
                 defaultJoinOperator: 'OR'
             }
         },
-        postSortRows: (params) => {
-            const selected = [];
-            const unselected = [];
-            params.nodes.forEach(node => {
-                if (node.isSelected()) {
-                    selected.push(node);
-                } else {
-                    unselected.push(node);
-                }
-            });
-            params.nodes.length = 0;
-            params.nodes.push(...selected, ...unselected);
-        },
     }
     async function saveTroopResponsible(column, value, id){
         const {data, error} = await supabase
@@ -283,13 +270,21 @@
                 }
             },
             {
+                colId: 'selected',
                 headerCheckboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
                 checkboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
                 headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
                 //checkboxSelectionFilteredOnly: true, // This ensures only filtered rows are selectable
                 pinned: 'left', // Pins the column to the left
-                width: 50,
-                sortable: false,
+                width: 80, // Breit genug, damit neben der Checkbox das Sortier-Icon (unSortIcon) sichtbar ist
+                sortable: true,
+                // 1. Klick: Ausgewählte zuerst, 2. Klick: Ausgewählte zuletzt,
+                // 3. Klick: keine Sortierung
+                sortingOrder: ['desc', 'asc', null],
+                unSortIcon: true,
+                valueGetter: (params) => params.node?.isSelected() ? 1 : 0,
+                valueFormatter: () => '', // Sortierwert (1/0) nicht in der Zelle anzeigen
+                headerTooltip: 'Klicken, um nach Auswahl zu sortieren',
                 filter: false,
                 suppressHeaderMenuButton: true,
                 lockPosition: 'left',
@@ -1128,7 +1123,7 @@
                 feature.properties.isSelected = selectedPlotIds.has(feature.properties.plot_id);
             });
             
-            // Re-sort so selected rows float to the top via postSortRows
+            // Re-sort so an active sort on the selection column reflects the new selection
             currentGrid.value.api.refreshClientSideRowModel('sort');
             
             loadingSelection.value = false;
@@ -1397,7 +1392,12 @@
             if (savedState) {
                 try {
                     const state = JSON.parse(savedState);
-                    currentGrid.value.api.applyColumnState({ state: state.columnState, applyOrder: true });
+                    // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
+                    // übernehmen, damit die feste Breite aus den colDefs gilt
+                    const columnState = state.columnState?.map(col =>
+                        col.colId === 'selected' ? { ...col, width: undefined } : col
+                    );
+                    currentGrid.value.api.applyColumnState({ state: columnState, applyOrder: true });
                     if (state.filterModel) {
                         currentGrid.value.api.setFilterModel(state.filterModel);
                     }
