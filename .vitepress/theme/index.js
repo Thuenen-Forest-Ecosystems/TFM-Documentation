@@ -9,16 +9,12 @@ import DefaultTheme from 'vitepress/theme';
 
 import './custom.css';
 
-let url = 'https://ci.thuenen.de';
-let apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
-let redirectTo = 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
-
-// Local development
-if (import.meta.env.DEV) {
-  // url = 'http://127.0.0.1:54321';
-  // apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-  // redirectTo = 'http://localhost:5173/TFM-Documentation';
-}
+// Server configuration — set via .env / .env.local (see .env.example),
+// falls back to the remote production server.
+const url = import.meta.env.VITE_SUPABASE_URL || 'https://ci.thuenen.de';
+const apikey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
+const redirectTo = import.meta.env.VITE_REDIRECT_TO || 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
+const syncUrl = import.meta.env.VITE_SYNC_URL || `${url}/sync`;
 
 // Create Supabase client - single instance to avoid multiple client warnings
 let supabase = null;
@@ -128,6 +124,7 @@ export default {
 
     app.config.globalProperties.$apikey = apikey;
     app.config.globalProperties.$url = url;
+    app.config.globalProperties.$syncUrl = syncUrl;
     app.config.globalProperties.$redirectTo = redirectTo;
   },
   setup() {

@@ -15,7 +15,7 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter } from '../Utils';
+    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, workflowCodes, getWorkflowCode, applyForestStatusFilter } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -319,6 +319,19 @@
                     return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${tooltip}"></span></div>`;
                 }
             },
+            /*{
+                field: 'workflow_code',
+                headerName: 'Status',
+                pinned: 'left',
+                width: 80,
+                sortable: true,
+                filter: 'agNumberColumnFilter',
+                headerTooltip: 'Eckenstatus-Code (Issue #14)',
+                tooltipValueGetter: (params) => {
+                    const wf = workflowCodes.find(w => w.code === params.value);
+                    return wf ? `${wf.code} – ${wf.label} (${wf.description})` : null;
+                }
+            },*/
             /*{ 
                 field: "validity",
                 headerName: "Gültigkeit",
@@ -706,6 +719,7 @@
                 plot_id: record.plot_id,
 
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).id,
+                workflow_code: getWorkflowCode(record, { isControlTroop: !!troop?.is_control_troop })?.code ?? null,
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
@@ -1636,7 +1650,8 @@
                     completed_at_troop: updatedRecord.completed_at_troop,
                     updated_at: updatedRecord.updated_at,
                     is_selectable: updatedRecord.is_selectable,
-                    state_by_user: updatedRecord.state_by_user
+                    state_by_user: updatedRecord.state_by_user,
+                    workflow_code: updatedRecord.workflow_code
                 } };
                 rowNode.setData(newData);
             }

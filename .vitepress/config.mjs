@@ -3,14 +3,16 @@ import vuetify from 'vite-plugin-vuetify'
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 
+const base = '/TFM-Documentation/';
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "BWI",
   description: "Documentation for accessing Inventory of Forest Ecosystems",
   lang: 'en',
   head: [
-    ['link', { rel: 'icon', href: '/TFM-Documentation/thuenen.png' }],
-    ["meta", { "name": "og:image", "content": "/TFM-Documentation/bwi_og_image.png" }]
+    ['link', { rel: 'icon', href: `${base}thuenen.png` }],
+    ["meta", { "name": "og:image", "content": `${base}bwi_og_image.png` }]
 
   ],
   ignoreDeadLinks: true,
@@ -90,7 +92,16 @@ export default defineConfig({
           ]
         }*/
       ],
-      '/authentication/': []
+      '/authentication/': [],
+
+      '/server/': [
+        {
+          text: 'Server',
+          items: [
+            { text: 'Deploy on Linux (Production)', link: '/server/deploy-linux' }
+          ]
+        }
+      ]
     },
 
     socialLinks: [
@@ -98,10 +109,10 @@ export default defineConfig({
     ],
     footer: {
       message: 'Service of the <b>Thünen Institute</b>',
-      copyright: '<a href="https://www.thuenen.de/en/legal-notice-and-data-privacy">Legal notice</a> . <a href="https://www.thuenen.de/en/data-protection-statement">Data Protection Statement</a> . <a href="https://thuenen-forest-ecosystems.github.io/TFM-Documentation/health-check">Health Check</a>'
+      copyright: `<a href="https://www.thuenen.de/en/legal-notice-and-data-privacy">Legal notice</a> . <a href="https://www.thuenen.de/en/data-protection-statement">Data Protection Statement</a> . <a href="${base}health-check">Health Check</a>`
     }
   },
-  base: '/TFM-Documentation/',
+  base: base,
   vite: {
     esbuild: {
       drop: ['console', 'debugger'],

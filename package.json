@@ -5,7 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "docs:dev": "vitepress dev",
+    "docs:dev:remote": "dotenv -e .env.remote -- vitepress dev",
+    "docs:dev:local": "dotenv -e .env.local-server -- vitepress dev",
     "docs:build": "vitepress build",
+    "docs:build:remote": "dotenv -e .env.remote -- vitepress build",
+    "docs:build:local": "dotenv -e .env.local-server -- vitepress build",
     "docs:preview": "vitepress preview",
     "create-md": "node .migration/create-md.js"
   },
@@ -15,6 +19,7 @@
   "description": "",
   "devDependencies": {
     "@mdi/font": "^7.4.47",
+    "dotenv-cli": "^11.0.0",
     "vite-plugin-vuetify": "^2.1.0",
     "vitepress": "^1.6.4",
     "vuetify": "^3.7.18",

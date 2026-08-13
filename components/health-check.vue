@@ -4,9 +4,16 @@
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
     const url = instance.appContext.config.globalProperties.$url;
+    const apikey = instance.appContext.config.globalProperties.$apikey;
+    const syncUrl = (instance.appContext.config.globalProperties.$syncUrl || `${url}/sync`).replace(/\/+$/, '');
+
+    const syncProbeUrl = `${syncUrl}/probes/startup`;
+    const wsUrl = syncUrl.replace(/^http/, 'ws') + '/';
+    const wsTarget = new URL(wsUrl);
+    const wsHostDisplay = wsTarget.port ? wsTarget.host : `${wsTarget.hostname}:${wsTarget.protocol === 'wss:' ? '443' : '80'}`;
 
     const dbIsHealthy = ref(false);
-    const dbLoading = ref(false);
+    const dbLoading = ref(true);
     const dbErrorMessage = ref('');
 
     const ciLoading = ref(true);
@@ -50,7 +57,7 @@
         }, 10000);
 
         try {
-            ws = new WebSocket('wss://ci.thuenen.de/sync/');
+            ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
                 clearTimeout(timeout);
@@ -82,9 +89,11 @@
     }
 
     function syncHealthTest(){
-        fetch('https://ci.thuenen.de/sync/probes/startup').then(response => {
+        syncLoading.value = true;
+        syncIsHealthy.value = false;
+        syncErrorMessage.value = '';
+        fetch(syncProbeUrl).then(response => {
             if (response.ok) {
-                dbHealthTest();
                 syncIsHealthy.value = true;
             } else {
                 syncErrorMessage.value = `API responded with status ${response.status}`;
@@ -97,10 +106,13 @@
     }
     function ciHealthTest(){
         ciLoading.value = true;
-        fetch(url).then(response => {
-            syncHealthTest();
-            wsHealthTest();
-            
+        // The bare root URL responds without CORS headers on local Supabase (Kong 404),
+        // so probe the auth health endpoint instead. The apikey goes in the query string
+        // to avoid a CORS preflight; the remote Kong requires it.
+        fetch(`${url}/auth/v1/health?apikey=${apikey}`).then(response => {
+            if (!response.ok) {
+                throw new Error(`Server responded with status ${response.status}`);
+            }
             ciIsHealthy.value = true;
         }).catch(error => {
             ciIsHealthy.value = false;
@@ -108,11 +120,15 @@
         }).finally(() => {
             ciLoading.value = false;
         });
-        wsHealthTest();
     }
 
     onMounted(() => {
+        // All checks are independent — one failing service must not hide
+        // the results of the others.
         ciHealthTest();
+        dbHealthTest();
+        syncHealthTest();
+        wsHealthTest();
     });
 </script>
 
@@ -136,7 +152,7 @@
             </v-alert>
             <div v-else>
                 <v-alert v-if="ciErrorMessage" type="warning" class="mt-4">
-                    The connection to the server (https://ci.thuenen.de) could not be established.
+                    The connection to the server ({{ url }}) could not be established.
                     <ul>
                         <li>Check your <b>network connection</b>.</li>
                         <li>Check your <b>firewall</b> settings.</li>
@@ -213,7 +229,7 @@
                     <ul class="mt-2">
                         <li>WebSocket is required for PowerSync data synchronization</li>
                         <li>Your proxy/firewall may be blocking WebSocket connections (wss://)</li>
-                        <li>Contact your IT department to allow WebSocket to: <code>ci.thuenen.de:443</code></li>
+                        <li>Contact your IT department to allow WebSocket to: <code>{{ wsHostDisplay }}</code></li>
                         <li>Required: HTTP CONNECT method for WebSocket tunneling</li>
                     </ul>
                     <p class="mt-2">
