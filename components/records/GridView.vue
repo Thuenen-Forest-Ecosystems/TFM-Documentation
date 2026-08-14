@@ -95,6 +95,14 @@
         return { ...schema, properties: filteredProps };
     }
 
+    // Column list of a style-map datagrid item, defining column order/grouping/visibility.
+    // Comes either as a `columns` dict ({fieldName: config}) or as the item's `items` array.
+    function getStyleColumns(item) {
+        if (!item) return null;
+        if (item.columns && typeof item.columns === 'object') return item.columns;
+        return Array.isArray(item.items) ? item.items : null;
+    }
+
     // Resolve data for a dotted property path like "subplots_relative_position.items"
     function getNestedData(propertyPath) {
         if (!propertyPath) return null;
@@ -259,6 +267,7 @@
                 v-if="styleTab.component === 'datagrid' && styleTab.property"
                 :data="props.data?.[styleTab.property] || []"
                 :schema="props.schema?.properties?.[styleTab.property]?.items"
+                :style-columns="getStyleColumns(styleTab)"
                 :property-name="styleTab.property"
                 :validation-errors="errorsForProperty(styleTab.property).validation"
                 :plausibility-errors="errorsForProperty(styleTab.property).plausibility"
@@ -300,6 +309,7 @@
                             v-if="nestedItem.component === 'datagrid' && getCardListNestedSchema(styleTab.property, nestedItem.name)"
                             :data="Array.isArray(rowData?.[nestedItem.name]) ? rowData[nestedItem.name] : []"
                             :schema="getCardListNestedSchema(styleTab.property, nestedItem.name)"
+                            :style-columns="getStyleColumns(nestedItem)"
                             :property-name="nestedItem.name"
                             :validation-errors="errorsForCardListRow(styleTab.property, rowIndex).validation"
                             :plausibility-errors="errorsForCardListRow(styleTab.property, rowIndex).plausibility"
@@ -364,6 +374,7 @@
                                         v-else-if="subItem.component === 'datagrid' && subItem.property"
                                         :data="props.data?.[subItem.property] || []"
                                         :schema="props.schema?.properties?.[subItem.property]?.items"
+                                        :style-columns="getStyleColumns(subItem)"
                                         :property-name="subItem.property"
                                         :validation-errors="errorsForProperty(subItem.property).validation"
                                         :plausibility-errors="errorsForProperty(subItem.property).plausibility"
@@ -378,6 +389,7 @@
                         v-else-if="item.component === 'datagrid' && item.property"
                         :data="props.data?.[item.property] || []"
                         :schema="props.schema?.properties?.[item.property]?.items"
+                        :style-columns="getStyleColumns(item)"
                         :property-name="item.property"
                         :validation-errors="errorsForProperty(item.property).validation"
                         :plausibility-errors="errorsForProperty(item.property).plausibility"
@@ -399,6 +411,7 @@
                         v-if="t.component === 'datagrid' && t.property && props.data"
                         :data="props.data[t.property] || []"
                         :schema="props.schema?.properties[t.property]?.items"
+                        :style-columns="getStyleColumns(t)"
                     />
                     <div v-else-if="t.type === 'column'" class="pa-1">
                         <template v-for="card in (t.items || [])" :key="card.id">

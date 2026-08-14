@@ -38,6 +38,14 @@
             type: Number,
             default: 700
         },
+        // Column list from style-map datagrid item: ordered array of
+        // {name, pinned, display, columnGroupShow, ...} / {type: 'group', label, items}
+        // or the dict form {fieldName: config}. Defines column order, grouping and
+        // visibility; the schema still supplies titles, enums, units and formatting.
+        styleColumns: {
+            type: [Array, Object],
+            default: null
+        },
     });
 
     const gridOptions = ref({
@@ -99,81 +107,87 @@
             };
         });
     }*/
+    // Base column definition for a schema property: title, formatting, error styling.
+    // Shared by the schema-driven and the style-map-driven column builders.
+    function createBaseColDef(key, property) {
+        const formConfig = property?.$tfm?.form || {};
+
+        // Check if the field should be hidden
+        const hide = formConfig?.['ui:options']?.display === false;
+
+        // Check if the property has an enum and a corresponding name_de
+        const hasEnum = Array.isArray(property.enum);
+        const hasNameDe = property?.$tfm?.name_de && Array.isArray(property.$tfm.name_de);
+
+        // Check if the property has a unit_short
+        const unitShort = property?.$tfm?.unit_short;
+
+        // Get pinned configuration
+        const pinned = formConfig?.['ui:options']?.pinned || null;
+
+        // Check if the property is numeric (number or integer) but not an enum
+        const isNumeric = !hasEnum && (property.type === 'number' || property.type === 'integer' ||
+            (Array.isArray(property.type) && (property.type.includes('number') || property.type.includes('integer'))));
+
+        return {
+            headerName: property.title || key,
+            field: key,
+            sortable: true,
+            filter: true,
+            hide, // Set hide to true if display is false
+            pinned, // AG Grid supports 'left' or 'right'
+            headerTooltip: property.description || '', // Add tooltip if description exists
+            cellClass: isNumeric ? 'ag-right-aligned-cell' : '',
+            cellStyle: params => {
+                const k = `${params.rowIndex}_${key}`;
+                const cell = cellErrorMap.value[k];
+                if (!cell) return null;
+                if (cell.hasError) return { backgroundColor: 'rgba(239,83,80,0.15)', borderLeft: '3px solid #ef5350' };
+                if (cell.hasWarning) return { backgroundColor: 'rgba(255,167,38,0.15)', borderLeft: '3px solid #ffa726' };
+                return null;
+            },
+            valueFormatter: params => {
+                let value = params.value;
+
+                // If the property has an enum and name_de, map the value
+                if (hasEnum && hasNameDe) {
+                    const index = property.enum.indexOf(params.value);
+                    value = index !== -1 ? property.$tfm.name_de[index] : params.value;
+                }
+
+                // Append unit_short if it exists
+                if (unitShort) {
+                    value = `${value} ${unitShort}`;
+                }
+
+                // Append raw value in parentheses if different from displayed value
+                if (hasEnum && hasNameDe && property.enum.includes(params.value) && value !== params.value) {
+                    value = `${params.value} | ${value}`;
+                }
+
+                return value;
+            }
+        };
+    }
+
     function createColumnDefsFromJsonSchema(jsonSchema) {
-         
+
         if (!jsonSchema || !jsonSchema.properties) return;
 
         // First, create column definitions with metadata
         const columns = Object.keys(jsonSchema.properties).map((key, index) => {
             const property = jsonSchema.properties[key];
             const formConfig = property?.$tfm?.form || {};
-            
-            console.log('Mounted GridViewTableTab with data:', formConfig);
-            // Check if the field should be hidden
-            const hide = formConfig?.['ui:options']?.display === false;
-
-            // Check if the property has an enum and a corresponding name_de
-            const hasEnum = Array.isArray(property.enum);
-            const hasNameDe = property?.$tfm?.name_de && Array.isArray(property.$tfm.name_de);
-
-            // Check if the property has a unit_short
-            const unitShort = property?.$tfm?.unit_short;
-
-            // Get pinned configuration
-            const pinned = formConfig?.['ui:options']?.pinned || null;
 
             // Get sortBy for ordering - if not specified, use large number + schema index to preserve order
             const hasSortBy = formConfig?.sortBy !== undefined;
             const sortBy = hasSortBy ? formConfig.sortBy : 10000 + index;
 
-            // Get groupBy configuration
-            const groupBy = formConfig?.groupBy || null;
-
-            // Check if the property is numeric (number or integer) but not an enum
-            const isNumeric = !hasEnum && (property.type === 'number' || property.type === 'integer' || 
-                (Array.isArray(property.type) && (property.type.includes('number') || property.type.includes('integer'))));
-
             return {
-                headerName: property.title || key,
-                field: key,
-                sortable: true,
-                filter: true,
-                hide, // Set hide to true if display is false
-                pinned, // AG Grid supports 'left' or 'right'
-                headerTooltip: property.description || '', // Add tooltip if description exists
-                cellClass: isNumeric ? 'ag-right-aligned-cell' : '',
-                cellStyle: params => {
-                    const k = `${params.rowIndex}_${key}`;
-                    const cell = cellErrorMap.value[k];
-                    if (!cell) return null;
-                    if (cell.hasError) return { backgroundColor: 'rgba(239,83,80,0.15)', borderLeft: '3px solid #ef5350' };
-                    if (cell.hasWarning) return { backgroundColor: 'rgba(255,167,38,0.15)', borderLeft: '3px solid #ffa726' };
-                    return null;
-                },
-                valueFormatter: params => {
-                    let value = params.value;
-
-                    // If the property has an enum and name_de, map the value
-                    if (hasEnum && hasNameDe) {
-                        const index = property.enum.indexOf(params.value);
-                        value = index !== -1 ? property.$tfm.name_de[index] : params.value;
-                    }
-
-                    // Append unit_short if it exists
-                    if (unitShort) {
-                        value = `${value} ${unitShort}`;
-                    }
-
-                    // Append raw value in parentheses if different from displayed value
-                    if (hasEnum && hasNameDe && property.enum.includes(params.value) && value !== params.value) {
-                        value = `${params.value} | ${value}`;
-                    }
-
-                    return value;
-                },
+                ...createBaseColDef(key, property),
                 // Metadata for processing
                 _sortBy: sortBy,
-                _groupBy: groupBy
+                _groupBy: formConfig?.groupBy || null
             };
         });
 
@@ -198,10 +212,11 @@
                 if (col.pinned) {
                     grouped[groupName].pinned = col.pinned;
                 }
-                // Get columnGroupShow from schema - don't set a default
-                // undefined = always visible, 'open' = only when expanded, 'closed' = only when collapsed
-                if (col._groupBy.columnGroupShow) {
-                    col.columnGroupShow = col._groupBy.columnGroupShow;
+                // Translate TFM semantics ('open' = always visible, unset = only when
+                // expanded) to AG Grid's (unset = always visible, 'open' = only when expanded)
+                const groupShow = toAgGroupShow(col._groupBy.columnGroupShow);
+                if (groupShow) {
+                    col.columnGroupShow = groupShow;
                 }
                 grouped[groupName].children.push(col);
             } else {
@@ -261,8 +276,102 @@
         // Combine: columns with sortBy, then grouped columns, then columns without sortBy
         const dataCols = [...ungroupedWithSort, ...sortedGroups, ...ungroupedWithoutSort];
 
-        // Prepend pinned error-indicator column — click opens a dialog with all error messages
-        const errorIndicatorCol = {
+        gridOptions.value.columnDefs = [createErrorIndicatorCol(), ...dataCols];
+    }
+
+    // TFM config semantics for columnGroupShow are the reverse of AG Grid's:
+    // TFM 'open' = always visible, unset = only visible while the group is expanded;
+    // AG Grid unset = always visible, 'open' = only visible while expanded.
+    function toAgGroupShow(tfmValue) {
+        if (tfmValue === 'open') return undefined;
+        if (tfmValue) return tfmValue;
+        return 'open';
+    }
+
+    // Normalize both style-map column shapes to an ordered array:
+    // array form [{name, ...}, {type: 'group', ...}] stays as-is,
+    // dict form {fieldName: config} becomes [{name: fieldName, ...config}]
+    // (object key order is preserved and defines the column order).
+    function normalizeStyleColumns(styleColumns) {
+        if (Array.isArray(styleColumns)) return styleColumns;
+        if (styleColumns && typeof styleColumns === 'object') {
+            return Object.entries(styleColumns).map(([name, config]) => ({ name, ...(config || {}) }));
+        }
+        return [];
+    }
+
+    function createColDefFromStyleItem(item, jsonSchema) {
+        const key = item?.name;
+        if (!key) return null;
+        const property = jsonSchema?.properties?.[key];
+        // Columns without a schema property (e.g. app-calculated ones like
+        // basal_area_factor) have no stored value to show — skip them.
+        if (!property) return null;
+
+        const col = createBaseColDef(key, property);
+        if (item.display === false) col.hide = true;
+        if (item.pinned) col.pinned = item.pinned === true ? 'left' : item.pinned;
+        if (item.width) col.width = item.width;
+        return col;
+    }
+
+    // Build column definitions in the order defined by the style-map's column list.
+    // Returns [] when no usable style columns exist so callers can fall back to the schema.
+    function createColumnDefsFromStyleColumns(styleColumns, jsonSchema) {
+        const defs = [];
+        for (const item of normalizeStyleColumns(styleColumns)) {
+            if (item?.type === 'group') {
+                const children = (item.items || [])
+                    .map(child => {
+                        const col = createColDefFromStyleItem(child, jsonSchema);
+                        if (!col) return null;
+                        const groupShow = toAgGroupShow(child.columnGroupShow);
+                        if (groupShow) col.columnGroupShow = groupShow;
+                        return col;
+                    })
+                    .filter(Boolean);
+                if (children.length === 0) continue;
+
+                // Keep at least one column visible while collapsed so the group
+                // is openable and always has visible content
+                if (!children.some(col => !col.columnGroupShow)) {
+                    delete children[0].columnGroupShow;
+                }
+
+                const group = {
+                    headerName: item.label || '',
+                    children,
+                    marryChildren: true, // Keep group header when columns are moved
+                    openByDefault: false // Groups are collapsed by default
+                };
+                // If any child is pinned, pin the entire group
+                const pinnedChild = children.find(col => col.pinned);
+                if (pinnedChild) {
+                    group.pinned = pinnedChild.pinned;
+                    children.forEach(col => { col.pinned = pinnedChild.pinned; });
+                }
+                defs.push(group);
+            } else {
+                const col = createColDefFromStyleItem(item, jsonSchema);
+                if (col) defs.push(col);
+            }
+        }
+        return defs;
+    }
+
+    // Style-map columns define order and visibility when provided; otherwise the schema does
+    function rebuildColumnDefs() {
+        const styleDefs = createColumnDefsFromStyleColumns(props.styleColumns, props.schema);
+        if (styleDefs.length > 0) {
+            gridOptions.value.columnDefs = [createErrorIndicatorCol(), ...styleDefs];
+        } else {
+            createColumnDefsFromJsonSchema(props.schema);
+        }
+    }
+
+    // Pinned error-indicator column — click opens a dialog with all error messages
+    function createErrorIndicatorCol() {
+        return {
             headerName: '',
             field: '_errorIndicator',
             width: 40,
@@ -293,8 +402,6 @@
                 return `<div style="display:flex;align-items:center;justify-content:center;height:100%;cursor:pointer;"><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="${color}"/></svg></div>`;
             }
         };
-
-        gridOptions.value.columnDefs = [errorIndicatorCol, ...dataCols];
     }
     function createRowDataFromData(data){
         if (!data) return [];
@@ -398,8 +505,8 @@
     });
 
     onMounted(() => {
-       
-        createColumnDefsFromJsonSchema(props.schema);
+
+        rebuildColumnDefs();
         gridOptions.value.rowData = createRowDataFromData(props.data);
 
         // Auto-size all columns after the grid is ready
@@ -408,9 +515,9 @@
         });
     });
 
-    // Rebuild columns and row data when schema or data changes
-    watch(() => [props.data, props.schema], () => {
-        createColumnDefsFromJsonSchema(props.schema);
+    // Rebuild columns and row data when schema, style columns or data change
+    watch(() => [props.data, props.schema, props.styleColumns], () => {
+        rebuildColumnDefs();
         gridOptions.value.rowData = createRowDataFromData(props.data);
         nextTick(() => {
             currentGrid.value?.api?.sizeColumnsToFit();
