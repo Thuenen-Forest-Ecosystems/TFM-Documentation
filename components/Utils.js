@@ -572,12 +572,12 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
     }
 
     let allData = [];
-    let currentPage = 0;
-    const pageSize = 10000; // Choose an appropriate page size
+    let offset = 0;
+    const pageSize = 10000; // Requested page size; the server may cap responses lower (PGRST_DB_MAX_ROWS)
 
     while (true) {
-        const start = currentPage * pageSize;
-        const end = start + pageSize - 1;
+        const start = offset;
+        const end = offset + pageSize - 1;
 
         const { data, error } = await supabase
             .from(tableName)
@@ -622,7 +622,9 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
         }
 
         allData = allData.concat(data);
-        currentPage++;
+        // Advance by the rows actually returned; a page capped below
+        // pageSize by the server would otherwise skip rows.
+        offset += data.length;
     }
 
     return allData;

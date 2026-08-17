@@ -156,11 +156,11 @@ async function fetchRecordChangesInBatches(batchSize = 20000) {
       console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`);
       
       allRecords.push(...data);
-      from += batchSize;
-      to += batchSize;
-      if (data.length < batchSize) {
-        hasMore = false;
-      }
+      // Advance by the rows actually returned; the server may cap a batch
+      // below batchSize (PGRST_DB_MAX_ROWS), so a short batch does not mean
+      // the data is exhausted.
+      from += data.length;
+      to = from + batchSize - 1;
     }
     
     // Sort logic tailored to WorkflowMap table criteria

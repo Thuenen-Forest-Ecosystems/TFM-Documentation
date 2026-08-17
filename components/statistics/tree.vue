@@ -61,16 +61,13 @@
             
             allData = allData.concat(batch);
             totalFetched += batch.length;
-            offset += batchSize;
-            
+            // Advance by the rows actually returned; the server may cap a
+            // batch below batchSize (PGRST_DB_MAX_ROWS), so a short batch
+            // does not mean the data is exhausted.
+            offset += batch.length;
+
             console.log(`Fetched ${batch.length} plots, total: ${totalFetched}`);
-            
-            // If we got less than the batch size, we've reached the end
-            if (batch.length < batchSize) {
-                console.log('Reached end of data (batch smaller than expected)');
-                break;
-            }
-            
+
             // Apply limit if specified
             if (limit && totalFetched >= limit) {
                 console.log(`Reached limit of ${limit} plots`);
