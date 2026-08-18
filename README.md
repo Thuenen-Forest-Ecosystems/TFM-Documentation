@@ -27,10 +27,7 @@ To install TFM, follow these steps:
    ```bash
    npm install
    ```
-4. Install dotenv:
-  ```bash
-   npm install dotenv
-   ```
+
 
 ## Configuration (.env files)
 The server URLs (Supabase API, PowerSync sync service) are configured through environment variables instead of being hardcoded. Vite only exposes variables prefixed with `VITE_`:
