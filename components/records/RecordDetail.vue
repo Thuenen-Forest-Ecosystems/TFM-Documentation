@@ -86,7 +86,45 @@
             : props.record?.properties;
     });
 
-    const styleMapTabs = computed(() => (internalStyleMap.value || props.styleMap)?.layout?.items ?? null);
+    // "vergangene Inventuren" shows previous_properties; style entries flagged
+    // "previousOnly" are rendered only there.
+    const isPreviousData = computed(() => dataTab.value === 'BWI2022');
+
+    // Style entries flagged "previousOnly" carry archive provenance (e.g. the tree's
+    // acquisition_date, i.e. the inventory a tree was taken over from). properties
+    // inherits those values from the archive too, where they are meaningless — so
+    // strip them from the layout for the CI2027 view. Returns new objects; the
+    // fetched style map is cached and must not be mutated.
+    function stripPreviousOnly(node) {
+        if (Array.isArray(node)) {
+            return node
+                .filter(child => !(child && typeof child === 'object' && child.previousOnly === true))
+                .map(stripPreviousOnly);
+        }
+        if (node && typeof node === 'object') {
+            const out = {};
+            for (const [key, value] of Object.entries(node)) {
+                // datagrid columns come as an array (`items`/`properties`) or a dict (`columns`)
+                if (key === 'columns' && value && typeof value === 'object' && !Array.isArray(value)) {
+                    out[key] = Object.fromEntries(
+                        Object.entries(value).filter(([, cfg]) => !(cfg && cfg.previousOnly === true))
+                    );
+                } else if (key === 'items' || key === 'properties') {
+                    out[key] = stripPreviousOnly(value);
+                } else {
+                    out[key] = value;
+                }
+            }
+            return out;
+        }
+        return node;
+    }
+
+    const styleMapTabs = computed(() => {
+        const items = (internalStyleMap.value || props.styleMap)?.layout?.items ?? null;
+        if (!items) return null;
+        return isPreviousData.value ? items : stripPreviousOnly(items);
+    });
 
     const activeValidate = computed(() => internalValidate.value || props.validate || null);
     const activeTfm = computed(() => internalTfm.value || props.tfm || null);
