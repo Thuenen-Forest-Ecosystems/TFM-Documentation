@@ -161,33 +161,12 @@ export function stateByOrganizationType(organizationId, organization_type, recor
         text: 'Keine Informationen',
     };
 }
-// Eckenstatus-Codes nach der Tabelle in
-// https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/14#issuecomment-5087566466
-// Die dort verwendeten Spalten at_state/at_troop/at_control_troop,
-// completed_at_control_troop und responsible_control_troop existieren nicht in
-// public.records (responsible_control_troop wurde in Migration
-// 20260714000000_read_only_troop zu responsible_read_only_troop umbenannt;
-// Kontrolltrupps laufen über responsible_troop + troop.is_control_troop).
-// Codes, die sich nur über fehlende Spalten unterscheiden, fallen daher auf den
-// Basis-Code zurück: 32 -> 31, 42/43 -> 41 bzw. 50, 44/45 -> 60.
-// Reihenfolge = Priorität: der erste zutreffende Eintrag gewinnt (spätester Meilenstein zuerst).
-export const workflowCodes = [
-    { code: 70, label: 'Akzeptiert BIL', description: 'Ecke abgeschlossen', matches: (r, ctx) => !!r.completed_at_administration },
-    { code: 60, label: 'Qualitätskontrolle BIL', description: 'nach akzeptiert LIL', matches: (r, ctx) => !!r.completed_at_state },
-    { code: 50, label: 'Kontrolle/Korrektur im Feld', description: 'Kontrolltrupp erhebt Daten', matches: (r, ctx) => !!r.responsible_troop && !!ctx.isControlTroop },
-    { code: 41, label: 'Qualitätskontrolle LIL', description: 'nach Erstaufnahme', matches: (r, ctx) => !!r.completed_at_troop },
-    { code: 31, label: 'Aufnahme im Feld AT', description: 'Erstaufnahme', matches: (r, ctx) => !!r.responsible_troop },
-    { code: 20, label: 'Vorarbeiten LIL', description: 'Anlage Dienstleister, Trupps, Zuweisung Aufnahme-Trupp, Vorklärung', matches: (r, ctx) => !!r.responsible_state },
-    { code: 10, label: 'Vorarbeiten BIL', description: 'Initialisierung, Zuweisung LIL', matches: (r, ctx) => !!r.responsible_administration }
-];
-// Liefert den Workflow-Eintrag ({ code, label, description }) zu einer Ecke
-// (records- bzw. view_records_details-Zeile) oder null, wenn nichts zutrifft.
-// context.isControlTroop: true, wenn der unter responsible_troop zugewiesene
-// Trupp ein Kontrolltrupp ist (troop.is_control_troop) — nötig für Code 50.
-export function getWorkflowCode(record, context = {}) {
-    if (!record) return null;
-    return workflowCodes.find(wf => wf.matches(record, context)) || null;
-}
+// Der Eckenstatus wird in der Datenbank abgeleitet, nicht mehr hier:
+// public.record_workflow_code() speist die Spalte workflow_code in
+// view_records_details, die Bezeichnungen stehen in
+// lookup.lookup_workflow_status (Migration 20260825000000_workflow_code).
+// Eine zweite Implementierung an dieser Stelle wuerde zwangslaeufig von der
+// Liste, der Workflow-Karte und der App abweichen.
 export const workflows_deprecated = [
     {
         id:0,

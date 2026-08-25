@@ -15,7 +15,7 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, workflowCodes, getWorkflowCode, applyForestStatusFilter } from '../Utils';
+    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -68,6 +68,7 @@
         //'lookup_natur_park',
         //'lookup_national_park',
         'lookup_ffh',
+        'lookup_workflow_status',
         //'lookup_biosphaere',
         //'lookup_biogeographische_region',
         //'lookup_basal_area_factor',
@@ -328,8 +329,8 @@
                 filter: 'agNumberColumnFilter',
                 headerTooltip: 'Eckenstatus-Code (Issue #14)',
                 tooltipValueGetter: (params) => {
-                    const wf = workflowCodes.find(w => w.code === params.value);
-                    return wf ? `${wf.code} – ${wf.label} (${wf.description})` : null;
+                    const row = params.data;
+                    return row?.workflow_label ? `${params.value} – ${row.workflow_label}` : null;
                 }
             },*/
             /*{ 
@@ -719,7 +720,8 @@
                 plot_id: record.plot_id,
 
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).id,
-                workflow_code: getWorkflowCode(record, { isControlTroop: !!troop?.is_control_troop })?.code ?? null,
+                workflow_code: record.workflow_code ?? null,
+                workflow_label: lookupMaps['lookup_workflow_status']?.get(record.workflow_code?.toString())?.name_de ?? null,
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
@@ -1041,7 +1043,8 @@
                     state_responsible,
                     states_affected,
                     grid_density,
-                    previous_properties
+                    previous_properties,
+                    workflow_code
                 `)
                 .eq(companyType, organizationId)
                 .order('cluster_id', { ascending: true });
@@ -1620,6 +1623,32 @@
         if (!updatedRecords || updatedRecords.length === 0) {
             console.warn('No records to merge');
             return;
+        }
+
+        // workflow_code wird in view_records_details berechnet. Die Antworten der
+        // UPDATE-Aufrufe kommen aus records und enthalten die Spalte nicht, also
+        // die betroffenen Zeilen aus dem View nachlesen — statt den Status hier
+        // ein zweites Mal abzuleiten.
+        const plotIds = updatedRecords.map(r => r.plot_id).filter(Boolean);
+        if (plotIds.length) {
+            const chunkSize = 200; // hält die PostgREST-Query-URL kurz
+            const reloaded = [];
+            for (let i = 0; i < plotIds.length; i += chunkSize) {
+                const { data, error } = await supabase
+                    .from('view_records_details')
+                    .select('*')
+                    .in('plot_id', plotIds.slice(i, i + chunkSize));
+
+                if (error) {
+                    console.error('Error reloading updated records from view:', error);
+                    reloaded.length = 0;
+                    break;
+                }
+                reloaded.push(...(data || []));
+            }
+            if (reloaded.length) {
+                updatedRecords = reloaded;
+            }
         }
 
         // Update props.records if it exists

@@ -369,7 +369,7 @@
         <div class="d-flex align-center justify-space-between px-3 py-2">
             <v-btn-toggle v-model="dataTab" density="compact" rounded="xl" variant="outlined" mandatory>
                 <v-btn value="CI2027" size="small">CI2027</v-btn>
-                <v-btn value="BWI2022" size="small">BWI2022</v-btn>
+                <v-btn value="BWI2022" size="small">vergangene Inventuren</v-btn>
             </v-btn-toggle>
             <div class="flex-grow-1"></div>
             <VersionSelection
