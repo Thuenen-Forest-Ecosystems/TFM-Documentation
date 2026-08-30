@@ -220,7 +220,8 @@ layout: home
                     cluster_situation,
                     state_responsible,
                     states_affected,
-                    grid_density
+                    grid_density,
+                    workflow_code
                 `)
                 .eq(companyType, organizationId)
                 .order('cluster_id', { ascending: true });

@@ -320,19 +320,16 @@
                     return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${tooltip}"></span></div>`;
                 }
             },
-            /*{
-                field: 'workflow_code',
-                headerName: 'Status',
+            {
+                field: 'workflow_status',
+                headerName: 'Workflow (Beta)',
                 pinned: 'left',
-                width: 80,
+                width: 210,
                 sortable: true,
-                filter: 'agNumberColumnFilter',
-                headerTooltip: 'Eckenstatus-Code (Issue #14)',
-                tooltipValueGetter: (params) => {
-                    const row = params.data;
-                    return row?.workflow_label ? `${params.value} – ${row.workflow_label}` : null;
-                }
-            },*/
+                filter: true,
+                headerTooltip: 'lookup.lookup_workflow_status (view_records_details.workflow_code)',
+                tooltipField: 'workflow_status'
+            },
             /*{ 
                 field: "validity",
                 headerName: "Gültigkeit",
@@ -721,7 +718,7 @@
 
                 state_by_user: stateByOrganizationType(props.organization_id, props.organization_type, record).id,
                 workflow_code: record.workflow_code ?? null,
-                workflow_label: lookupMaps['lookup_workflow_status']?.get(record.workflow_code?.toString())?.name_de ?? null,
+                workflow_status: _renderLookupOptimized(lookupMaps, 'lookup_workflow_status', record.workflow_code),
                 cluster_id: record.cluster_id,
                 cluster_name: record.cluster_name,
                 plot_name: record.plot_name,
@@ -1404,6 +1401,34 @@
         }
     });
 
+    // Spalten, die es beim Speichern des Grid-Zustands noch nicht gab, haengt
+    // AG Grid bei applyOrder ans Ende. Damit eine neu ergaenzte Spalte (z.B.
+    // "Workflow") an der in colDefs definierten Stelle steht, wird sie hier neben
+    // ihrer Vorgaengerspalte in den gespeicherten Zustand einsortiert.
+    function _mergeNewColumnsIntoState(savedColumnState) {
+        const currentState = currentGrid.value?.api?.getColumnState() || [];
+        const knownColIds = new Set(savedColumnState.map(col => col.colId));
+        const merged = [...savedColumnState];
+
+        currentState.forEach((col, index) => {
+            if (knownColIds.has(col.colId)) return;
+
+            let insertAt = merged.length;
+            for (let i = index - 1; i >= 0; i--) {
+                const position = merged.findIndex(mergedCol => mergedCol.colId === currentState[i].colId);
+                if (position !== -1) {
+                    insertAt = position + 1;
+                    break;
+                }
+            }
+
+            merged.splice(insertAt, 0, col);
+            knownColIds.add(col.colId);
+        });
+
+        return merged;
+    }
+
     function onGridReady(params) {
         nextTick(() => {
             // Restore grid state from localStorage
@@ -1413,8 +1438,10 @@
                     const state = JSON.parse(savedState);
                     // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
                     // übernehmen, damit die feste Breite aus den colDefs gilt
-                    const columnState = state.columnState?.map(col =>
-                        col.colId === 'selected' ? { ...col, width: undefined } : col
+                    const columnState = _mergeNewColumnsIntoState(
+                        (state.columnState || []).map(col =>
+                            col.colId === 'selected' ? { ...col, width: undefined } : col
+                        )
                     );
                     currentGrid.value.api.applyColumnState({ state: columnState, applyOrder: true });
                     if (state.filterModel) {
@@ -1682,7 +1709,8 @@
                     updated_at: updatedRecord.updated_at,
                     is_selectable: updatedRecord.is_selectable,
                     state_by_user: updatedRecord.state_by_user,
-                    workflow_code: updatedRecord.workflow_code
+                    workflow_code: updatedRecord.workflow_code,
+                    workflow_status: updatedRecord.workflow_status
                 } };
                 rowNode.setData(newData);
             }
