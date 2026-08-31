@@ -642,22 +642,26 @@
             }
         ]
     }
+    // Lookup-Codes sind Integer und 0 ist ein gueltiger Code (z.B.
+    // lookup_forest_status 0 = "Nichtwald, keine Datenerhebung"). Eine
+    // Truthiness-Pruefung wuerde die 0 wie einen Leerwert behandeln und die
+    // Zelle leer lassen, daher explizit auf null/undefined/'' pruefen.
+    function _isEmptyLookupCode(code) {
+        return code === null || code === undefined || code === '';
+    }
     function _renderLookup(tableName, fieldName, code) {
-        if (!code) return null;
+        if (_isEmptyLookupCode(code)) return null;
 
-        if (code) {
-            const lookupTable = lookupTablesValue.value[tableName];
-            // Find by "code" field
-            const entry = lookupTable?.find(item => item.code === code.toString());
+        const lookupTable = lookupTablesValue.value[tableName];
+        // Find by "code" field
+        const entry = lookupTable?.find(item => item.code === code.toString());
 
-            if (entry) {
-                // Return the German name or the raw value
-                return `${code} | ${entry.name_de}`;
-            }
-            // If no entry found, return the raw value
-            return `no lookup value | ${code} (${tableName})`;
+        if (entry) {
+            // Return the German name or the raw value
+            return `${code} | ${entry.name_de}`;
         }
-        return null;
+        // If no entry found, return the raw value
+        return `no lookup value | ${code} (${tableName})`;
     }
     function _renderCluster(tableName, cluster_id, lookupTableName = null) {
         if (!cluster_id) return 'not defined';
@@ -1610,7 +1614,7 @@
 
     }
     function _renderLookupOptimized(lookupMaps, tableName, code) {
-        if (!code) return null;
+        if (_isEmptyLookupCode(code)) return null;
         
         const lookupMap = lookupMaps[tableName];
         if (!lookupMap) return `no lookup table | ${code} (${tableName})`;
@@ -1629,7 +1633,7 @@
         
         const value = clusterData[fieldName];
 
-        if (!value){
+        if (_isEmptyLookupCode(value)){
             return 'not defined';
         }
         
