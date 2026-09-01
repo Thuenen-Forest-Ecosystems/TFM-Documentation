@@ -1733,26 +1733,38 @@
                 note: additionalNote || null
             };
         } else {
+            // A newly assigned troop sends the corner back into the field, so
+            // the previous handover is void (codes 31/32/50). Withdrawing the
+            // responsibility and handing a corner back both arrive here WITHOUT
+            // a troop — DialogResponsible already maps its 'deselect' entry to
+            // null — and there completed_at_troop has to stay: it is the only
+            // field public.record_workflow_code() derives codes 41-44 from.
+            // Clearing it unconditionally dropped those corners back to 20
+            // (TFM-Documentation issue #14).
+            const assignsTroop = Boolean(selectedTroop);
+
             update = {
                 responsible_troop: selectedTroop || null,
                 note: additionalNote || null
             };
+
+            if (assignsTroop) {
+                update.completed_at_troop = null; // back into the field
+            }
 
             switch (props.organization_type) {
                 case 'root':
                     update.responsible_state = selectedCompany || null;
                     update.responsible_provider = null;
                     update.completed_at_administration = null; // reset completed at administration
-                    update.completed_at_state = null; // reset completed at state
-                    update.completed_at_troop = null; // reset completed at troop
+                    update.completed_at_state = null; // hand back to the state administration: 60 -> 44
                     break;
                 case 'country':
                     update.responsible_provider = selectedCompany || null;
                     update.completed_at_state = null; // reset completed at state
-                    update.completed_at_troop = null; // reset completed at troop
                     break;
                 case 'provider':
-                    update.completed_at_troop = null; // reset completed at troop
+                    // nothing beyond responsible_troop / completed_at_troop above
                     break;
                 default:
                     console.error('Unknown organization type:', props.organization_type);
