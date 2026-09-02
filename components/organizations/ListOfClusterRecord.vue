@@ -15,7 +15,7 @@
     import ClusterDetails from '../records/ClusterDetails.vue';
 
     import FinishDialog from './FinishDialog.vue';
-    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter } from '../Utils';
+    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter, fetchAllRecordsByCursor } from '../Utils';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -1001,14 +1001,7 @@
     }
 
     async function fetchAllDataPaginated(tableName, organizationId, companyType) {
-        let allData = [];
-        let offset = 0;
-        const pageSize = 10000; // Requested page size; the server may cap responses lower (PGRST_DB_MAX_ROWS)
-
-        while (true) {
-            const start = offset;
-            const end = offset + pageSize - 1;
-
+        return fetchAllRecordsByCursor(() => {
             let query = supabase
                 .from(tableName)
                 .select(`
@@ -1047,30 +1040,13 @@
                     previous_properties,
                     workflow_code
                 `)
-                .eq(companyType, organizationId)
-                .order('cluster_id', { ascending: true });
+                .eq(companyType, organizationId);
 
             // Keep the map fallback consistent with the Waldtrakte toggle
             query = applyForestStatusFilter(query);
 
-            const { data, error } = await query.range(start, end); // <<-- deterministic order
-
-            if (error) {
-                console.error('Error fetching paginated data:', error);
-                return null;
-            }
-
-            if (data.length === 0) {
-                break; // No more data
-            }
-
-            allData = allData.concat(data);
-            // Advance by the rows actually returned; a page capped below
-            // pageSize by the server would otherwise skip rows.
-            offset += data.length;
-        }
-
-        return allData;
+            return query;
+        }, { label: tableName });
     }
     function createGeojsonFeatureCollection(records) {
         console.log('Creating GeoJSON Feature Collection with records:', records.length);

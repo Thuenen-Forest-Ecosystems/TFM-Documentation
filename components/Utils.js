@@ -522,6 +522,88 @@ export async function getOrganizationById(supabase, organizationId) {
         });
 }
 
+/**
+ * Alle Zeilen einer grossen view_records_details-Abfrage laden -- mit einem
+ * Keyset-Cursor auf plot_id statt mit .range()/OFFSET.
+ *
+ * Warum kein OFFSET: view_records_details haengt an fuenf LEFT JOINs nach
+ * inventory_archive und an public.view_record_workflow_history, das je Ecke
+ * drei EXISTS auf record_changes auswertet (Migration 20260825000000). Bei
+ * OFFSET muss der Server alle Zeilen bis offset+limit erzeugen und sortieren
+ * und die uebersprungenen danach wegwerfen. Seite 7 von ~60.000 Ecken kostet
+ * damit das Siebenfache von Seite 1 und laeuft in den statement_timeout --
+ * PostgREST meldet das als HTTP 500 ("canceling statement due to statement
+ * timeout"), und der Aufrufer verliert die sechs bereits geladenen Seiten mit.
+ * Mit Cursor ist jede Seite ein begrenzter Index-Scan mit konstanten Kosten.
+ *
+ * Der Cursor laeuft ueber plot_id, weil die Spalte in public.records UNIQUE ist
+ * (20250115140818_public.sql). Ein eindeutiger Schluessel ist Pflicht: mit
+ * cluster_id wuerde jede Seitengrenze die uebrigen Ecken desselben Trakts
+ * ueberspringen. Die Reihenfolge der Rueckgabe aendert sich damit von
+ * cluster_id auf plot_id -- die Liste sortiert ohnehin selbst (AG Grid,
+ * getRowId = plot_id), die Karte sortiert gar nicht.
+ *
+ * @param {() => object} buildQuery liefert bei jedem Aufruf eine frische
+ *   supabase-Query mit select() und allen Filtern des Aufrufers, aber ohne
+ *   order/limit/range. plot_id muss im select() stehen.
+ * @param {object} [options]
+ * @param {number} [options.pageSize=10000] angeforderte Seitengroesse; der
+ *   Server deckelt sie auf PGRST_DB_MAX_ROWS.
+ * @param {AbortSignal} [options.signal] bricht die Schleife zwischen zwei
+ *   Seiten und die laufende Anfrage ab.
+ * @param {string} [options.label] Name fuer die Fehlermeldung.
+ * @returns {Promise<Array|null>} alle Zeilen, oder null bei Fehler/Abbruch.
+ */
+export async function fetchAllRecordsByCursor(buildQuery, { pageSize = 10000, signal = null, label = 'records' } = {}) {
+    let allData = [];
+    let cursor = null;
+    let pageCap = null;
+
+    while (true) {
+        if (signal && signal.aborted) {
+            return null;
+        }
+
+        let query = buildQuery();
+        if (cursor !== null) {
+            query = query.gt('plot_id', cursor);
+        }
+        query = query.order('plot_id', { ascending: true }).limit(pageSize);
+        if (signal) {
+            query = query.abortSignal(signal);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            if (signal && signal.aborted) {
+                return null; // request was cancelled, a newer one took over
+            }
+            console.error(`Error fetching ${label}:`, error);
+            return null;
+        }
+
+        if (!data || data.length === 0) {
+            break;
+        }
+
+        allData = allData.concat(data);
+        cursor = data[data.length - 1].plot_id;
+
+        // Die erste Antwort zeigt, wie gross eine volle Seite hier tatsaechlich
+        // ist -- der Server darf unter pageSize deckeln. Jede kuerzere Seite
+        // danach ist die letzte; das spart die abschliessende Leerabfrage.
+        if (pageCap === null) {
+            pageCap = data.length;
+        }
+        if (data.length < pageCap) {
+            break;
+        }
+    }
+
+    return allData;
+}
+
 export async function apiRecords(supabase, tableName, organizationId, organizationType) {
     if(!supabase || !tableName || !organizationId || !organizationType) {   
         console.warn('Missing parameters for apiRecords:', { supabase, tableName, organizationId, organizationType });
@@ -550,15 +632,8 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
         return [];
     }
 
-    let allData = [];
-    let offset = 0;
-    const pageSize = 10000; // Requested page size; the server may cap responses lower (PGRST_DB_MAX_ROWS)
-
-    while (true) {
-        const start = offset;
-        const end = offset + pageSize - 1;
-
-        const { data, error } = await supabase
+    return fetchAllRecordsByCursor(() => {
+        const query = supabase
             .from(tableName)
             .select(`
                 cluster_id,
@@ -585,29 +660,12 @@ export async function apiRecords(supabase, tableName, organizationId, organizati
                 ffh_forest_type_field,
                 center_location
             `)
-            .eq(companyType, organizationId)
+            .eq(companyType, organizationId);
             //.is(filterRow, null) // Ensure the filterRow is null
             //.is('troop_los', null) // Ensure troop_los is also null
-            .range(start, end) // Use range for pagination
-            .order('cluster_id', { ascending: true }); // <<-- deterministic order
 
-        if (error) {
-            console.error('Error fetching data:', error);
-            return null;
-        }
-
-        if (data.length === 0) {
-            break; // No more data
-        }
-
-        allData = allData.concat(data);
-        // Advance by the rows actually returned; a page capped below
-        // pageSize by the server would otherwise skip rows.
-        offset += data.length;
-    }
-
-    return allData;
-    
+        return query;
+    }, { label: tableName });
 }
 /**
  * Get user permissions for a specific organization.

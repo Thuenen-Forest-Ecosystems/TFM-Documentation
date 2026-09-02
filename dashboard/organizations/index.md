@@ -10,7 +10,7 @@ layout: home
 
     import Firewall from '../../components/Firewall.vue';
     import { withBase } from "vitepress";
-    import { FOREST_FILTER_FOREST, FOREST_FILTER_NON_FOREST, getForestStatusFilter, setForestStatusFilter, applyForestStatusFilter } from '../../components/Utils';
+    import { FOREST_FILTER_FOREST, FOREST_FILTER_NON_FOREST, getForestStatusFilter, setForestStatusFilter, applyForestStatusFilter, fetchAllRecordsByCursor } from '../../components/Utils';
 
     import ListOfOrganizations from '../../components/organizations/ListOfOrganizations.vue';
     import OrganizationsAdmins from '../../components/organizations/OrganizationsAdmins.vue';
@@ -174,18 +174,7 @@ layout: home
 
     // Globaly load records
     async function fetchAllDataPaginated(tableName, organizationId, companyType, troopFilter = null, signal = null) {
-        let allData = [];
-        let offset = 0;
-        const pageSize = 10000; // Requested page size; the server may cap responses lower (PGRST_DB_MAX_ROWS)
-
-        while (true) {
-            if (signal && signal.aborted) {
-                return null;
-            }
-
-            const start = offset;
-            const end = offset + pageSize - 1;
-
+        return fetchAllRecordsByCursor(() => {
             let query = supabase
                 .from(tableName)
                 .select(`
@@ -223,8 +212,7 @@ layout: home
                     grid_density,
                     workflow_code
                 `)
-                .eq(companyType, organizationId)
-                .order('cluster_id', { ascending: true });
+                .eq(companyType, organizationId);
 
             // Only load Waldtrakte or Nicht-Waldtrakte depending on the toggle
             query = applyForestStatusFilter(query, forestFilter.value);
@@ -234,31 +222,8 @@ layout: home
                 query = query.in('responsible_troop', troopFilter);
             }
 
-            if (signal) {
-                query = query.abortSignal(signal);
-            }
-
-            const { data, error } = await query.range(start, end);
-
-            if (error) {
-                if (signal && signal.aborted) {
-                    return null; // request was cancelled, a newer one took over
-                }
-                console.error('Error fetching paginated data:', error);
-                return null;
-            }
-
-            if (data.length === 0) {
-                break; // No more data
-            }
-
-            allData = allData.concat(data);
-            // Advance by the rows actually returned; a page capped below
-            // pageSize by the server would otherwise skip rows.
-            offset += data.length;
-        }
-
-        return allData;
+            return query;
+        }, { signal, label: tableName });
     }
     async function _requestPlots(organizationType, organizationId, troopIds = []) {
 
