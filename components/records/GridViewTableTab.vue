@@ -300,15 +300,87 @@
         return [];
     }
 
+    // Compiled `expression` functions of calculated columns, keyed by expression
+    // and variable list so each one is parsed only once per session.
+    const calculatedExpressions = new Map();
+
+    // Turn a style-map `expression` into a function of its declared variables.
+    // Only identifiers, numbers, arithmetic and parentheses are accepted: the
+    // tokenizer drops everything else, so a rebuilt string that no longer equals
+    // the original means the expression contains something we refuse to run.
+    function compileExpression(expression, variableNames) {
+        const cacheKey = `${expression}||${variableNames.join(',')}`;
+        if (calculatedExpressions.has(cacheKey)) return calculatedExpressions.get(cacheKey);
+
+        let fn = null;
+        const tokens = expression.match(/[A-Za-z_$][A-Za-z0-9_$]*|\d+(?:\.\d+)?|[+\-*/()]|\s+/g) || [];
+        const isSafe = tokens.join('') === expression
+            && tokens.filter(t => /^[A-Za-z_$]/.test(t)).every(t => variableNames.includes(t));
+        if (isSafe) {
+            try {
+                fn = new Function(...variableNames, `"use strict"; return (${expression});`);
+            } catch (error) {
+                fn = null;
+            }
+        }
+        calculatedExpressions.set(cacheKey, fn);
+        return fn;
+    }
+
+    // Calculated columns exist only in the style-map — they have no stored value
+    // and are computed per row from `expression` over `variables`. Only
+    // `currentData` variables work here; this view has no previous-inventory row,
+    // and `calculatedFunction` columns need app-side code we do not have.
+    function createCalculatedColDef(item) {
+        const key = item.name;
+        const variables = Array.isArray(item.variables) ? item.variables : [];
+        if (!item.expression || variables.length === 0) return null;
+        if (variables.some(variable => variable?.source !== 'currentData')) return null;
+
+        const variableNames = variables.map(variable => variable?.name).filter(Boolean);
+        const evaluate = compileExpression(item.expression, variableNames);
+        if (!evaluate) {
+            console.warn(`Unsupported calculated expression for column "${key}":`, item.expression);
+            return null;
+        }
+
+        return {
+            headerName: item.title || key,
+            colId: key,
+            sortable: true,
+            filter: true,
+            cellClass: 'ag-right-aligned-cell',
+            headerTooltip: item.expression,
+            valueGetter: params => {
+                if (!params.data) return null;
+                const values = variableNames.map(name => params.data[name]);
+                // A missing input makes the whole result meaningless — show nothing
+                if (values.some(value => value === null || value === undefined || value === '')) return null;
+                const numbers = values.map(Number);
+                if (numbers.some(number => Number.isNaN(number))) return null;
+
+                const result = evaluate(...numbers);
+                if (typeof result !== 'number' || !Number.isFinite(result)) return null;
+                return Math.round(result * 100) / 100;
+            },
+            valueFormatter: params => {
+                if (params.value === null || params.value === undefined) return '';
+                return item.unit_short ? `${params.value} ${item.unit_short}` : `${params.value}`;
+            }
+        };
+    }
+
     function createColDefFromStyleItem(item, jsonSchema) {
         const key = item?.name;
         if (!key) return null;
         const property = jsonSchema?.properties?.[key];
-        // Columns without a schema property (e.g. app-calculated ones like
-        // basal_area_factor) have no stored value to show — skip them.
-        if (!property) return null;
+        // Columns without a schema property are either calculated (computed per row
+        // from the style-map) or have no stored value to show at all.
+        const col = property
+            ? createBaseColDef(key, property)
+            : (item.type === 'calculated' ? createCalculatedColDef(item) : null);
+        if (!col) return null;
 
-        const col = createBaseColDef(key, property);
         if (item.display === false) col.hide = true;
         if (item.pinned) col.pinned = item.pinned === true ? 'left' : item.pinned;
         if (item.width) col.width = item.width;
