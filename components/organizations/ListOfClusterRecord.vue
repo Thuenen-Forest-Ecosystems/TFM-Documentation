@@ -457,6 +457,22 @@
                 ]
             },
             {
+                field: "forest_status_ci2027",
+                headerName: "Waldentscheid 2027",
+                filter: true,
+                sortable: true,
+                headerTooltip: "records.properties.forest_status (view_records_details.forest_status_ci2027)",
+                tooltipField: "forest_status_ci2027"
+            },
+            {
+                field: "accessibility_ci2027",
+                headerName: "Begehbarkeit 2027",
+                filter: true,
+                sortable: true,
+                headerTooltip: "records.properties.accessibility (view_records_details.accessibility_ci2027)",
+                tooltipField: "accessibility_ci2027"
+            },
+            {
                 field: "forest_status_bwi2022",
                 headerName: "Wald Status (BWI 2022)",
                 filter: true,
@@ -757,6 +773,9 @@
                 
                 is_valid: record.is_valid,
                 
+                forest_status_ci2027: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_ci2027),
+                accessibility_ci2027: _renderLookupOptimized(lookupMaps, 'lookup_accessibility', record.accessibility_ci2027),
+
                 forest_status_bwi2022: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_bwi2022),
                 forest_status_ci2017: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_ci2017),
                 forest_status_ci2012: _renderLookupOptimized(lookupMaps, 'lookup_forest_status', record.forest_status_ci2012),
@@ -1021,7 +1040,9 @@
                     forest_status_bwi2022,
                     forest_status_ci2017,
                     forest_status_ci2012,
+                    forest_status_ci2027,
                     accessibility,
+                    accessibility_ci2027,
                     forest_office,
                     property_type,
                     ffh_forest_type_field,
