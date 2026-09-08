@@ -16,6 +16,14 @@
 
     import FinishDialog from './FinishDialog.vue';
     import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter, fetchAllRecordsByCursor } from '../Utils';
+    import {
+        buildDownloadOptions,
+        buildRecordsZip,
+        downloadBlob,
+        exportTimestamp,
+        fetchNewestSchema,
+        fetchRecordsByPlotIds
+    } from '../api/recordsExport';
     import StatusFilter from './customFilter/status.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
@@ -120,6 +128,11 @@
     const finishDialog = ref(false);
 
     const loadingSelection = ref(false);
+
+    // ZIP-Export der Auswahl: gleiches Archiv wie der Gesamtdownload unter
+    // "Daten abrufen", nur auf die selektierten Ecken eingeschränkt.
+    const exportingZip = ref(false);
+    const exportSchema = ref(null);
 
     const emit = defineEmits(['confirm']);
 
@@ -1345,6 +1358,50 @@
 
     }
 
+    // Alle Aufnahmedaten (properties) der selektierten Ecken als ZIP mit je einer
+    // CSV pro Schema-Tabelle -- identisch zum Download der gesamten Rolle.
+    async function exportSelectedZip() {
+        const plotIds = selectedRecordIds.value;
+        if (plotIds.length === 0) {
+            console.warn('No rows selected for export');
+            return;
+        }
+
+        exportingZip.value = true;
+
+        try {
+            if (!exportSchema.value) {
+                const schemaRow = await fetchNewestSchema(supabase);
+                exportSchema.value = schemaRow?.schema || null;
+            }
+
+            const options = buildDownloadOptions(exportSchema.value);
+
+            if (options.length === 0) {
+                snackbarText.value = 'Export nicht möglich: kein gültiges Schema gefunden.';
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+                return;
+            }
+
+            const exportRecords = await fetchRecordsByPlotIds(supabase, plotIds);
+            const date = exportTimestamp();
+            const blob = await buildRecordsZip(exportRecords, options, date);
+            downloadBlob(blob, `selected_records_${date}.zip`);
+
+            snackbarText.value = `${exportRecords.length} Ecken als ZIP exportiert.`;
+            snackbarColor.value = 'success';
+            snackbar.value = true;
+        } catch (e) {
+            console.error('Error exporting selected records as ZIP:', e);
+            snackbarText.value = e.message || 'Fehler beim Erstellen des ZIP-Archivs';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+        } finally {
+            exportingZip.value = false;
+        }
+    }
+
      watch(() => props.records, async (newRecords) => {
 
         if (!props.tab_active || !Array.isArray(newRecords)) {
@@ -2140,6 +2197,13 @@
                             @click="exportSelectedGeoJson"
                         >
                             .geojson
+                        </v-btn>
+                        <v-btn
+                            :loading="exportingZip"
+                            title="Alle Aufnahmedaten der Auswahl als ZIP (eine CSV je Tabelle)"
+                            @click="exportSelectedZip"
+                        >
+                            .zip
                         </v-btn>
                     </v-btn-toggle>
                 </div>
