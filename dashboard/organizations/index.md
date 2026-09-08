@@ -172,6 +172,10 @@ layout: home
         window.location.href = withBase('/dashboard/organizations/api?organization=' + organization.id);
     };
 
+    // "Aktuelle Aufnahmen" führt nicht mehr direkt auf "Daten abrufen": erst der
+    // Hinweis auf den neuen .zip-Download der Auswahl im Reiter "Ecken".
+    const apiHintDialog = ref(false);
+
     // Globaly load records
     async function fetchAllDataPaginated(tableName, organizationId, companyType, troopFilter = null, signal = null) {
         return fetchAllRecordsByCursor(() => {
@@ -308,7 +312,7 @@ layout: home
             Administratoren bearbeiten
         </v-btn>
         &nbsp;
-        <v-btn v-if="permission.is_organization_admin" variant="outlined" @click="toApi(currentOrganization)" rounded="xl">
+        <v-btn v-if="permission.is_organization_admin" variant="outlined" @click="apiHintDialog = true" rounded="xl">
             <template v-slot:prepend>
                 <v-icon>mdi-download</v-icon>
             </template>
@@ -325,6 +329,20 @@ layout: home
             </v-tabs>
         </template>
 </v-toolbar>
+
+<v-dialog v-model="apiHintDialog" max-width="560">
+    <v-card>
+        <v-card-title>Aktuelle Aufnahmen herunterladen</v-card-title>
+        <v-card-text>
+            <p>
+                Die Aufnahmedaten laden Sie jetzt direkt im Reiter <strong>Ecken</strong> herunter:
+                Ecken in der Liste auswählen und auf <strong>.zip</strong> klicken. Das Archiv
+                enthält je eine CSV pro Tabelle (Eckendaten, Bäume, Totholz &hellip;) &ndash; nur
+                für die ausgewählten Ecken.
+            </p>
+        </v-card-text>
+    </v-card>
+</v-dialog>
 
 <v-tabs-window v-model="tab" class="mt-4">
     <!--<v-tabs-window-item value="0">
