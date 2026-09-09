@@ -135,12 +135,19 @@
             minWidth: 260,
             flex: 1
         },
+        
+        {
+            field: 'number_object',
+            headerName: 'Objekt (ab v115)',
+            minWidth: 220,
+            flex: 1
+        },
         {
             field: 'path',
-            headerName: 'Pfad',
+            headerName: 'Pfad (technisch)',
             minWidth: 260,
             flex: 1
-        }
+        },
     ]);
 
     const statisticsColDefs = ref([
@@ -304,6 +311,24 @@
         return `${type}${code}${details ? `: ${details}` : ''}`.trim();
     }
 
+    function formatNumberObject(value) {
+        if (value === null || value === undefined) return '';
+
+        if (Array.isArray(value)) {
+            return value.map(formatNumberObject).filter(Boolean).join('; ');
+        }
+
+        if (typeof value === 'object') {
+            const entries = Object.entries(value)
+                .filter(([, entryValue]) => entryValue !== null && entryValue !== undefined)
+                .map(([key, entryValue]) => `${key}: ${formatNumberObject(entryValue)}`)
+                .join(', ');
+            return entries || JSON.stringify(value);
+        }
+
+        return String(value);
+    }
+
     function csvEscape(value) {
         const text = value == null ? '' : String(value);
         if (/[;"\n\r]/.test(text)) {
@@ -320,7 +345,7 @@
 
         const headers = isStatisticsView.value
             ? ['Rang', 'Vorkommen', 'Plots', 'Typ', 'Code', 'Quelle', 'Beispiel']
-            : ['Trakt', 'Ecke', 'Trupp', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad'];
+            : ['Trakt', 'Ecke', 'Trupp', 'Quelle', 'Level', 'Code', 'Fehlermeldung', 'Notiz', 'Pfad', 'Objekt'];
 
         const csvRows = isStatisticsView.value
             ? rows.map((row) => [
@@ -341,7 +366,8 @@
                 row.code,
                 row.message,
                 row.note,
-                row.path
+                row.path,
+                row.number_object
             ]);
 
         const csvContent = [headers, ...csvRows]
@@ -565,7 +591,8 @@ ${plausibilityTxt}
             code: err.keyword || '-',
             message: toSchemaMessage(err),
             note: normalizeNoteText(err.savedNote) || '',
-            path: err.instancePath || '/'
+            path: err.instancePath || '/',
+            number_object: ''
         }));
 
         const plausibilityRows = plausibilityErrors.map((err, index) => ({
@@ -576,7 +603,8 @@ ${plausibilityTxt}
             code: err?.error?.code || '-',
             message: toPlausibilityMessage(err),
             note: normalizeNoteText(err.savedNote) || '',
-            path: err?.instancePath || '/'
+            path: err?.instancePath || '/',
+            number_object: formatNumberObject(err?.short_info?.number_object)
         }));
 
         if (schemaOk && schemaRows.length === 0 && plausibilityRows.length === 0) {
@@ -588,7 +616,8 @@ ${plausibilityTxt}
                 code: '-',
                 message: 'Keine Fehler',
                 note: '',
-                path: '/'
+                path: '/',
+                number_object: ''
             }];
         }
 
