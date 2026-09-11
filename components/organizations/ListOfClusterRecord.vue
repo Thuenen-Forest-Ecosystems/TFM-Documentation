@@ -25,6 +25,7 @@
         fetchRecordsByPlotIds
     } from '../api/recordsExport';
     import StatusFilter from './customFilter/status.vue';
+    import ValueHintHeader from './customHeader/valueHint.vue';
     import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
@@ -208,6 +209,11 @@
     let referenceDataPromise = null;
     let hydrateVersion = 0;
 
+    // Ein Klick auf einen Wert im Spaltenkopf-Hinweis erzeugt eine
+    // ODER-Bedingung im Textfilter der Spalte; so viele Werte lassen sich
+    // gleichzeitig auswaehlen.
+    const MAX_FILTER_CONDITIONS = 20;
+
     // Grid Options
     const gridOptions = {
         localeText: AG_GRID_LOCALE_DE,
@@ -233,7 +239,8 @@
         components: {
             actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
             moreCellRenderer: MoreCellRenderer,
-            statusFilter: StatusFilter
+            statusFilter: StatusFilter,
+            valueHintHeader: ValueHintHeader
         },
         defaultColDef: {
             initialWidth: 215,
@@ -242,7 +249,7 @@
             lockVisible: true,
             // Allow 3+ conditions for AG Grid simple filters (text/number/date).
             filterParams: {
-                maxNumConditions: 5,
+                maxNumConditions: MAX_FILTER_CONDITIONS,
                 numAlwaysVisibleConditions: 1,
                 defaultJoinOperator: 'OR'
             }
@@ -265,6 +272,75 @@
         }
 
     }
+    // --- Spaltenkopf-Hinweise -------------------------------------------------
+    // Info-Button vor dem Spaltennamen, der auf Klick die Werte auflistet, die
+    // in der Spalte stehen koennen - beim Filtern muss so nicht geraten werden,
+    // wie ein Wert geschrieben ist. Das headerTooltip (DB-Pfad) bleibt
+    // unveraendert, der Hinweis zeigt dieselbe Herkunft noch einmal als Quelle.
+    function _valueHintHeader(field, valueTitle, valuesGetter, source) {
+        return {
+            headerTooltip: source || undefined,
+            headerComponentParams: {
+                innerHeaderComponent: 'valueHintHeader',
+                innerHeaderComponentParams: {
+                    valueTitle,
+                    valueSource: source || null,
+                    valueHint: valuesGetter,
+                    valueCounts: () => _countColumnValues(field),
+                    maxConditions: MAX_FILTER_CONDITIONS
+                }
+            }
+        };
+    }
+    // Spalten, die aus einer Lookup-Tabelle gerendert werden: das vollstaendige
+    // Wertespektrum ist bekannt.
+    function lookupValueHint(field, table, source) {
+        return _valueHintHeader(field, 'Mögliche Werte', () => _lookupValues(table), source || `lookup.${table}`);
+    }
+    // Spalten ohne festes Wertespektrum (Trupps, Dienstleister, Bundeslaender):
+    // die moeglichen Eintraege ergeben sich nur aus den geladenen Zeilen.
+    function distinctValueHint(field, source) {
+        return _valueHintHeader(field, 'Vorhandene Werte', () => _distinctColumnValues(field), source);
+    }
+    // Gleiche Schreibweise wie in den Zellen ("Code | Bezeichnung"), damit sich
+    // ein Wert aus dem Hinweis direkt in den Filter uebernehmen laesst.
+    function _lookupValues(table) {
+        const entries = lookupTablesValue.value[table] || [];
+        return entries
+            .filter(entry => !_isEmptyLookupCode(entry?.code))
+            .map(entry => `${entry.code} | ${entry.name_de}`)
+            .sort(_compareValueHints);
+    }
+    function _distinctColumnValues(field) {
+        return [...new Set(rowData.value
+            .map(row => row?.[field])
+            .filter(value => value !== null && value !== undefined && value !== '')
+            .map(value => value.toString()))]
+            .sort(_compareValueHints);
+    }
+    // Lookup-Werte beginnen mit ihrem Code, der numerisch sortiert gehoert
+    // (10 hinter 9); alles andere alphabetisch.
+    function _compareValueHints(a, b) {
+        const codeA = Number.parseFloat(a);
+        const codeB = Number.parseFloat(b);
+        if (Number.isFinite(codeA) && Number.isFinite(codeB) && codeA !== codeB) {
+            return codeA - codeB;
+        }
+        return a.localeCompare(b, 'de');
+    }
+    function _countColumnValues(field) {
+        const counts = new Map();
+        rowData.value.forEach(row => {
+            const value = row?.[field];
+            if (value === null || value === undefined || value === '') {
+                return;
+            }
+            const key = value.toString();
+            counts.set(key, (counts.get(key) || 0) + 1);
+        });
+        return counts;
+    }
+
     const colDefs = ref([]);
     function setColDefs(){
         colDefs.value = [
@@ -340,7 +416,7 @@
                 width: 210,
                 sortable: true,
                 filter: true,
-                headerTooltip: 'lookup.lookup_workflow_status (view_records_details.workflow_code)',
+                ...lookupValueHint('workflow_status', 'lookup_workflow_status', 'lookup.lookup_workflow_status (view_records_details.workflow_code)'),
                 tooltipField: 'workflow_status'
             },
             /*{ 
@@ -403,6 +479,7 @@
                 headerName: "Dienstleister",
                 filter: true,
                 sortable: true,
+                ...distinctValueHint('responsible_provider', "records.responsible_provider"),
                 tooltipField: "responsible_provider",
                 pinned: 'right',
                 //type: "string",
@@ -417,6 +494,7 @@
                         filter: true,
                         sortable: true,
                         pinned: 'right',
+                        ...distinctValueHint('responsible_troop', "records.responsible_troop"),
                         tooltipField: "responsible_troop",
                         editable: false,
                         cellEditor: 'agSelectCellEditor',
@@ -431,6 +509,7 @@
                         filter: true,
                         sortable: true,
                         pinned: 'right',
+                        ...distinctValueHint('responsible_troop', "records.responsible_troop"),
                         tooltipField: "responsible_troop",
                         editable: false,
                         cellEditor: 'agSelectCellEditor',
@@ -445,7 +524,7 @@
                         filter: true,
                         sortable: true,
                         pinned: 'right',
-                        headerTooltip: "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App",
+                        ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
                         tooltipField: "responsible_read_only_troop",
                         editable: false,
                     }] : []),
@@ -474,7 +553,7 @@
                 headerName: "Waldentscheid 2027",
                 filter: true,
                 sortable: true,
-                headerTooltip: "records.properties.forest_status (view_records_details.forest_status_ci2027)",
+                ...lookupValueHint('forest_status_ci2027', 'lookup_forest_status', "records.properties.forest_status (view_records_details.forest_status_ci2027)"),
                 tooltipField: "forest_status_ci2027"
             },
             {
@@ -482,7 +561,7 @@
                 headerName: "Begehbarkeit 2027",
                 filter: true,
                 sortable: true,
-                headerTooltip: "records.properties.accessibility (view_records_details.accessibility_ci2027)",
+                ...lookupValueHint('accessibility_ci2027', 'lookup_accessibility', "records.properties.accessibility (view_records_details.accessibility_ci2027)"),
                 tooltipField: "accessibility_ci2027"
             },
             {
@@ -490,7 +569,7 @@
                 headerName: "Wald Status (BWI 2022)",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.forest_status",
+                ...lookupValueHint('forest_status_bwi2022', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
                 tooltipField: "forest_status_bwi2022"
             },
             {
@@ -498,7 +577,7 @@
                 headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.accessibility",
+                ...lookupValueHint('accessibility', 'lookup_accessibility', "inventory_archive.plot.accessibility"),
                 tooltipField: "accessibility"
             },
             {
@@ -507,7 +586,7 @@
                 filter: true,
                 sortable: true,
                 //type: "string",
-                headerTooltip: "inventory_archive.plot.property_type",
+                ...lookupValueHint('property_type', 'lookup_property_type', "inventory_archive.plot.property_type"),
                 tooltipField: "property_type"
             },
             {
@@ -515,7 +594,7 @@
                 headerName: "Forstamt",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.forest_status",
+                ...lookupValueHint('forest_office', 'lookup_forest_office', "inventory_archive.plot.forest_status"),
                 tooltipField: "forest_office"
             },
             {
@@ -523,7 +602,7 @@
                 headerName: "Trakt Status",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.cluster.cluster_status",
+                ...lookupValueHint('cluster_status', 'lookup_cluster_status', "inventory_archive.cluster.cluster_status"),
                 tooltipField: "cluster_status",
                 //type: "string",
             },
@@ -532,7 +611,7 @@
                 headerName: "Trakt Situation",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.cluster.cluster_situation",
+                ...lookupValueHint('cluster_situation', 'lookup_cluster_situation', "inventory_archive.cluster.cluster_situation"),
                 tooltipField: "cluster_situation",
                 //type: "string",
             },
@@ -556,7 +635,7 @@
                 headerName: "Verantwortlichkeit 2022",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.cluster.state_responsible",
+                ...lookupValueHint('state_responsible', 'lookup_state', "inventory_archive.cluster.state_responsible"),
                 tooltipField: "state_responsible",
                 //type: "string",
             },
@@ -565,7 +644,7 @@
                 headerName: "Wald Status (CI 2017)",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.forest_status",
+                ...lookupValueHint('forest_status_ci2017', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
                 tooltipField: "forest_status_ci2017"
             },
             {
@@ -573,7 +652,7 @@
                 headerName: "Wald Status (BWI 2012)",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.forest_status",
+                ...lookupValueHint('forest_status_ci2012', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
                 tooltipField: "forest_status_ci2012"
             },
             {
@@ -581,7 +660,7 @@
                 headerName: "Wuchsbezirk",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.growth_district",
+                ...lookupValueHint('growth_district', 'lookup_growth_district', "inventory_archive.plot.growth_district"),
                 tooltipField: "growth_district"
             },
             {
@@ -589,7 +668,7 @@
                 headerName: "FFH Waldlebensraumtyp",
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.plot.ffh_forest_type",
+                ...lookupValueHint('ffh_forest_type', 'lookup_ffh_forest_type', "inventory_archive.plot.ffh_forest_type"),
                 tooltipField: "ffh_forest_type"
             },
             {
@@ -599,7 +678,7 @@
                 tooltipField: "grid_density",
                 sortable: true,
                 //type: "string",
-                headerTooltip: "inventory_archive.cluster.grid_density",
+                ...lookupValueHint('grid_density', 'lookup_grid_density', "inventory_archive.cluster.grid_density"),
             },
             {
                 field: "federal_state",
@@ -607,7 +686,7 @@
                 filter: true,
                 sortable: true,
                 //type: "string",
-                headerTooltip: "inventory_archive.plot.federal_state",
+                ...lookupValueHint('federal_state', 'lookup_state', "inventory_archive.plot.federal_state"),
                 tooltipField: "federal_state"
             },
             {
@@ -615,13 +694,14 @@
                 headerName: "Betroffene Bundesländer", // Affected States
                 filter: true,
                 sortable: true,
-                headerTooltip: "inventory_archive.cluster.states_affected"
+                ...distinctValueHint('states_affected', "inventory_archive.cluster.states_affected"),
             },
             {
                 field: "responsible_state",
                 headerName: "Landesinventurleitung",
                 filter: true,
                 sortable: true,
+                ...distinctValueHint('responsible_state', "records.responsible_state"),
                 tooltipField: "responsible_state",
                 //type: "string",
             },
@@ -1570,6 +1650,28 @@
 
         console.log('Displayed rows updated:', displayedRows.value.length);
     }
+    // Ein Filter kann eine einzelne Bedingung, mehrere ODER-/UND-Bedingungen
+    // (Wertauswahl im Spaltenkopf) oder ein eigenes Modell sein - `model.filter`
+    // allein bliebe in den Chips oft leer.
+    function filterChipLabel(model) {
+        if (!model) {
+            return '';
+        }
+        if (Array.isArray(model.conditions) && model.conditions.length) {
+            const join = model.operator === 'AND' ? ' und ' : ' oder ';
+            return model.conditions.map(filterChipLabel).join(join);
+        }
+        if (model.filter !== undefined && model.filter !== null) {
+            return model.filter;
+        }
+        if (model.filterType === 'workflow') {
+            return `${(model.values?.length || 0) + (model.checkAll ? 1 : 0)} Status`;
+        }
+        if (model.dateFrom) {
+            return model.dateTo ? `${model.dateFrom} – ${model.dateTo}` : model.dateFrom;
+        }
+        return '';
+    }
     function clearFilters() {
         if (!currentGrid.value || !currentGrid.value.api) {
             console.error('Grid API not available');
@@ -2024,7 +2126,7 @@
                     @click="clearFilter(key)"
                 >
                     <v-icon icon="mdi-close-circle" start></v-icon>
-                    {{ key }}: {{ value.filter }}
+                    {{ key }}: {{ filterChipLabel(value) }}
                 </v-chip>
                 <v-btn @click="clearFilters" variant="outlined" prepend-icon="mdi-delete" rounded="xl">
                     Alle zurücksetzen
