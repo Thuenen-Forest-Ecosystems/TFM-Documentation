@@ -1614,6 +1614,7 @@
         filteredRows.value = currentGrid.value.api.getFilterModel();
         
         updateDisplayedRows();
+        currentGrid.value.api.deselectAll(); // Deselect all rows when filter changes
         saveGridState(); // Save state when filter changes
     }
     
