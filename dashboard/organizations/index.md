@@ -17,6 +17,7 @@ layout: home
     import ListOfTroops from '../../components/organizations/ListOfTroops.vue';
     import ListOfCluster from '../../components/organizations/ListOfCluster.vue';
     import ListOfClusterRecord from '../../components/organizations/ListOfClusterRecord.vue';
+    import ColumnVisibilityMenu from '../../components/organizations/ColumnVisibilityMenu.vue';
     // import ListOfLose from '../../components/organizations/ListOfLose.vue';
     import VimeoPlayer from '../../components/VimeoPlayer.vue';
     import OrganizationsStatistics from '../../components/OrganizationsStatistics.vue';
@@ -27,6 +28,10 @@ layout: home
     // Get organization from URL query parameter - only in browser
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
     const organizationId = urlParams.get('organization');
+
+    // Referenz auf die Eckenliste: Das Spalten-Menue in der Toolbar arbeitet auf
+    // der Grid-API dieser Komponente.
+    const clusterRecordList = ref(null);
 
     const isAdmin = ref(false);
     const allPermissions = ref([]);
@@ -365,11 +370,15 @@ layout: home
                 </v-btn-toggle>
             </v-col>
             <v-spacer></v-spacer>
-            <v-col class="d-flex justify-end" cols="12" md="4">
+            <v-col class="d-flex justify-end align-center ga-2" cols="12" md="auto">
+                <ColumnVisibilityMenu
+                    :api="clusterRecordList?.gridApi"
+                    @state-changed="clusterRecordList?.saveGridState()"
+                />
                 <VimeoPlayer vimeoId="1132162497" h="8de2faac57" :btnTitle="'Tutorial'" title="Trakte verwalten" :iconOnly="false" />
             </v-col>
             </v-row>
-        <ListOfClusterRecord :tab_active="tab == 3" :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" :records_loading="loadingClusters" />
+        <ListOfClusterRecord ref="clusterRecordList" :tab_active="tab == 3" :organization_id="currentOrganization.id" :organization_type="currentOrganization.type" :cluster="cluster" :records="records" :records_loading="loadingClusters" />
     </v-tabs-window-item>
     <v-tabs-window-item value="4" v-if="currentOrganization.type !== 'provider'">
         <ListOfOrganizations

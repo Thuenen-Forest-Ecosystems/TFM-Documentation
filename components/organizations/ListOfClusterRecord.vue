@@ -246,7 +246,9 @@
             initialWidth: 215,
             wrapHeaderText: false,
             autoHeaderHeight: false,
-            lockVisible: true,
+            // lockVisible steht nur noch an den technischen Spalten (Aktionen,
+            // Auswahl, Status-Icon). Alle uebrigen Spalten lassen sich ueber das
+            // Spalten-Menue ein- und ausblenden (Issue #254).
             // Allow 3+ conditions for AG Grid simple filters (text/number/date).
             filterParams: {
                 maxNumConditions: MAX_FILTER_CONDITIONS,
@@ -350,6 +352,7 @@
                 width: 60,
                 sortable: false,
                 filter: false,
+                lockVisible: true, // technische Spalte, nicht ueber das Spalten-Menue ausblendbar
                 tooltipField: "note",
                 cellRendererParams: {
                     onActionClick: (rowData) => {
@@ -376,6 +379,7 @@
                 valueFormatter: () => '', // Sortierwert (1/0) nicht in der Zelle anzeigen
                 headerTooltip: 'Klicken, um nach Auswahl zu sortieren',
                 filter: false,
+                lockVisible: true, // technische Spalte, nicht ueber das Spalten-Menue ausblendbar
                 suppressHeaderMenuButton: true,
                 lockPosition: 'left',
                 suppressMovable: true
@@ -387,6 +391,7 @@
                 width: 70,
                 sortable: true,
                 sort: 'asc',
+                lockVisible: true, // technische Spalte, nicht ueber das Spalten-Menue ausblendbar
                 filter: 'statusFilter',
                 filterParams: {
                     values: workflows.map(wf => wf.id),
@@ -1567,12 +1572,19 @@
         return merged;
     }
 
+    // applyColumnState/setFilterModel loesen selbst columnVisible- und
+    // filterChanged-Events aus. Ohne diese Sperre wuerde saveGridState() dabei
+    // einen halb wiederhergestellten Zustand zurueckschreiben - z.B. ein leeres
+    // Filtermodell, weil die Filter erst nach den Spalten gesetzt werden.
+    let isRestoringGridState = false;
+
     function onGridReady(params) {
         nextTick(() => {
             // Restore grid state from localStorage
             const savedState = localStorage.getItem('agGridState_' + props.organization_type);
             if (savedState) {
                 try {
+                    isRestoringGridState = true;
                     const state = JSON.parse(savedState);
                     // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
                     // übernehmen, damit die feste Breite aus den colDefs gilt
@@ -1587,16 +1599,26 @@
                     }
                 } catch (e) {
                     console.error('Error restoring grid state:', e);
+                } finally {
+                    isRestoringGridState = false;
                 }
             }
-            
+
             setTimeout(() => {
                 updateDisplayedRows(); // Initial update of displayed rows
             }, 100);
         });
     }
-    
+
+    // Das Spalten-Menue (ColumnVisibilityMenu) sitzt in der Toolbar der Seite
+    // und arbeitet direkt auf der Grid-API. Hier wird nur der geaenderte
+    // Zustand mitgeschrieben - `hide` ist Teil von getColumnState().
+    function onColumnVisible() {
+        saveGridState();
+    }
+
     function saveGridState() {
+        if (isRestoringGridState) return;
         if (!currentGrid.value?.api) return;
         
         const state = {
@@ -1606,6 +1628,12 @@
         
         localStorage.setItem('agGridState_' + props.organization_type, JSON.stringify(state));
     }
+    // Das Spalten-Menue liegt in der Seiten-Toolbar und braucht die Grid-API.
+    // Als computed folgt sie automatisch einem Neuaufbau des Grids.
+    const gridApi = computed(() => currentGrid.value?.api || null);
+
+    defineExpose({ gridApi, saveGridState });
+
     function onFilterChanged(filter) {
         if (!currentGrid.value || !currentGrid.value.api) {
             console.error('Grid API not available');
@@ -2156,6 +2184,7 @@
         @filter-changed="onFilterChanged"
         @sort-changed="onSortChanged"
         @column-moved="onColumnMoved"
+        @column-visible="onColumnVisible"
         @grid-ready="onGridReady"
         :gridOptions="gridOptions"
         :theme="currentTheme"
