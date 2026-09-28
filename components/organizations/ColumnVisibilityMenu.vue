@@ -19,18 +19,44 @@
     const emit = defineEmits(['state-changed']);
 
     const menuOpen = ref(false);
-    const items = ref([]);
-    const hiddenCount = computed(() => items.value.filter(item => !item.visible).length);
+    // Abschnitte: eine Spaltengruppe je Eintrag, ungruppierte Spalten stehen
+    // gesammelt im Abschnitt ohne Titel.
+    const sections = ref([]);
+    const hiddenCount = computed(
+        () => sections.value.reduce(
+            (count, section) => count + section.columns.filter(column => !column.visible).length,
+            0
+        )
+    );
+
+    // Voller Gruppenpfad einer Spalte ("Obergruppe / Untergruppe"). Ueber den
+    // Pfad statt ueber die Gruppen-Instanz zu buendeln sorgt dafuer, dass eine
+    // Gruppe auch dann genau einmal im Menue steht, wenn ihre Spalten in der
+    // Grid-Reihenfolge nicht direkt nebeneinander liegen - etwa nach einem aus
+    // localStorage wiederhergestellten Spaltenzustand.
+    function groupPathOf(column) {
+        const path = [];
+        let parent = column.getOriginalParent?.();
+
+        while (parent) {
+            const name = (parent.getColGroupDef?.()?.headerName || '').trim();
+            if (name) path.unshift(name);
+            parent = parent.getOriginalParent?.();
+        }
+
+        return path.join(' / ');
+    }
 
     function refreshItems() {
         const api = props.api;
         if (!api || api.isDestroyed?.()) {
-            items.value = [];
+            sections.value = [];
             return;
         }
 
-        const result = [];
-        const byKey = new Map();
+        const sectionList = [];
+        const sectionByPath = new Map();
+        const columnByKey = new Map();
 
         api.getAllGridColumns().forEach(column => {
             const colDef = column.getColDef();
@@ -38,14 +64,14 @@
             // lockVisible markiert und werden nicht zum Ausblenden angeboten.
             if (colDef.lockVisible) return;
 
-            const groupLabel = column.getOriginalParent?.()?.getColGroupDef?.()?.headerName || '';
+            const groupPath = groupPathOf(column);
             const label = (colDef.headerName || '').trim() || colDef.field || column.getColId();
+            const key = `${groupPath}|${label}`;
+            const existing = columnByKey.get(key);
+
             // Die Trupp-Spalte ist zweimal definiert (columnGroupShow open/closed)
             // und hat damit zwei colIds; beide gehoeren zu einem Menueeintrag und
             // werden gemeinsam geschaltet, sonst bliebe die Gruppe halb sichtbar.
-            const key = `${groupLabel}|${label}`;
-            const existing = byKey.get(key);
-
             if (existing) {
                 existing.colIds.push(column.getColId());
                 existing.visible = existing.visible || column.isVisible();
@@ -55,15 +81,34 @@
             const item = {
                 key,
                 label,
-                groupLabel,
                 colIds: [column.getColId()],
                 visible: column.isVisible()
             };
-            byKey.set(key, item);
-            result.push(item);
+            columnByKey.set(key, item);
+
+            let section = sectionByPath.get(groupPath);
+            if (!section) {
+                section = {
+                    key: groupPath || '__ungrouped__',
+                    label: groupPath,
+                    columns: [],
+                    allVisible: false,
+                    someVisible: false
+                };
+                sectionByPath.set(groupPath, section);
+                sectionList.push(section);
+            }
+            section.columns.push(item);
         });
 
-        items.value = result;
+        // Erst nach dem Zusammenfassen auswerten, sonst fehlt die zweite
+        // Trupp-Spalte im Gruppenzustand.
+        sectionList.forEach(section => {
+            section.allVisible = section.columns.every(column => column.visible);
+            section.someVisible = section.columns.some(column => column.visible);
+        });
+
+        sections.value = sectionList;
     }
 
     function setVisibility(item, visible) {
@@ -71,12 +116,22 @@
         emit('state-changed');
     }
 
+    function setSectionVisibility(section, visible) {
+        const colIds = section.columns.flatMap(column => column.colIds);
+        if (!colIds.length) return;
+
+        props.api?.setColumnsVisible(colIds, !!visible);
+        emit('state-changed');
+    }
+
     function showAll() {
-        const colIds = items.value.flatMap(item => item.colIds);
-        if (colIds.length) {
-            props.api?.setColumnsVisible(colIds, true);
-            emit('state-changed');
-        }
+        const colIds = sections.value.flatMap(
+            section => section.columns.flatMap(column => column.colIds)
+        );
+        if (!colIds.length) return;
+
+        props.api?.setColumnsVisible(colIds, true);
+        emit('state-changed');
     }
 
     function resetToDefault() {
@@ -107,7 +162,7 @@
     watch(() => props.api, (api) => {
         unbind();
         if (!api) {
-            items.value = [];
+            sections.value = [];
             return;
         }
         boundApi = api;
@@ -131,6 +186,7 @@
                 :disabled="!api"
                 variant="outlined"
                 rounded="xl"
+                prepend-icon="mdi-view-column-outline"
             >
                 {{ label }}
                 <v-chip
@@ -144,26 +200,37 @@
                 </v-chip>
             </v-btn>
         </template>
-        <v-card min-width="320" rounded="lg">
+        <v-card min-width="340" rounded="lg">
             <v-toolbar color="transparent" density="compact">
                 <v-toolbar-title class="text-subtitle-2">Angezeigte Spalten</v-toolbar-title>
             </v-toolbar>
             <v-divider />
             <v-list density="compact" class="py-0" style="max-height: 55vh; overflow-y: auto;">
-                <template v-for="(item, index) in items" :key="item.key">
-                    <v-list-subheader
-                        v-if="item.groupLabel && item.groupLabel !== items[index - 1]?.groupLabel"
-                    >
-                        {{ item.groupLabel }}
-                    </v-list-subheader>
-                    <v-list-item class="px-2">
+                <template v-for="section in sections" :key="section.key">
+                    <!-- Spaltengruppe: eigene Checkbox schaltet alle Unterspalten -->
+                    <v-list-item v-if="section.label" class="px-2">
                         <v-checkbox
-                            :model-value="item.visible"
-                            :label="item.label"
+                            :model-value="section.allVisible"
+                            :indeterminate="section.someVisible && !section.allVisible"
+                            :label="section.label"
                             density="compact"
                             color="primary"
                             hide-details
-                            @update:modelValue="setVisibility(item, $event)"
+                            @update:modelValue="setSectionVisibility(section, $event)"
+                        />
+                    </v-list-item>
+                    <v-list-item
+                        v-for="column in section.columns"
+                        :key="column.key"
+                        :class="section.label ? 'px-2 pl-8' : 'px-2'"
+                    >
+                        <v-checkbox
+                            :model-value="column.visible"
+                            :label="column.label"
+                            density="compact"
+                            color="primary"
+                            hide-details
+                            @update:modelValue="setVisibility(column, $event)"
                         />
                     </v-list-item>
                 </template>
