@@ -22,7 +22,9 @@
         downloadBlob,
         exportTimestamp,
         fetchNewestSchema,
-        fetchRecordsByPlotIds
+        fetchRecordsByPlotIds,
+        fetchMetadataByPlotIds,
+        fetchWorkflowStatusNames
     } from '../api/recordsExport';
     import StatusFilter from './customFilter/status.vue';
     import ValueHintHeader from './customHeader/valueHint.vue';
@@ -522,6 +524,20 @@
                             values: [...troops.value.map(troop => troop.name), null],
                         }
                     },
+                    {
+                        // Bleibt sichtbar, wenn ein Kontrolltrupp den Aufnahmetrupp
+                        // in responsible_troop abgeloest hat — aus der Historie
+                        // abgeleitet, siehe view_records_details.last_survey_troop.
+                        columnGroupShow: 'open',
+                        field: "last_survey_troop",
+                        headerName: "Letzter Aufnahmetrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        ...distinctValueHint('last_survey_troop', "view_records_details.last_survey_troop — zuletzt abgebender Aufnahmetrupp aus record_changes"),
+                        tooltipField: "last_survey_troop",
+                        editable: false,
+                    },
                     ...(showReadOnlyTroopColumn.value ? [{
                         columnGroupShow: 'open',
                         field: "responsible_read_only_troop",
@@ -828,6 +844,7 @@
 
             const troop = troopsMap.get(record.responsible_troop);
             const readOnlyTroop = troopsMap.get(record.responsible_read_only_troop);
+            const lastSurveyTroop = troopsMap.get(record.last_survey_troop);
 
             return {
                 is_selectable: computeSelectable(record),
@@ -855,6 +872,7 @@
                 responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
                 responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
                 responsible_read_only_troop: readOnlyTroop ? readOnlyTroop.name : record.responsible_read_only_troop,
+                last_survey_troop: lastSurveyTroop ? lastSurveyTroop.name : (record.last_survey_troop ?? null),
 
                 //administration_los: record.administration_los,
                 //state_los: record.state_los,
@@ -1132,6 +1150,7 @@
                     responsible_administration,
                     responsible_troop,
                     responsible_read_only_troop,
+                    last_survey_troop,
                     is_valid,
                     federal_state,
                     growth_district,
@@ -1469,9 +1488,17 @@
                 return;
             }
 
-            const exportRecords = await fetchRecordsByPlotIds(supabase, plotIds);
+            const [exportRecords, exportMetadata, statusNames] = await Promise.all([
+                fetchRecordsByPlotIds(supabase, plotIds),
+                fetchMetadataByPlotIds(supabase, plotIds),
+                fetchWorkflowStatusNames(supabase)
+            ]);
             const date = exportTimestamp();
-            const blob = await buildRecordsZip(exportRecords, options, date);
+            const blob = await buildRecordsZip(exportRecords, options, date, {
+                metadata: exportMetadata.rows,
+                metadataColumns: exportMetadata.columns,
+                workflowStatusNames: statusNames
+            });
             downloadBlob(blob, `selected_records_${date}.zip`);
 
             snackbarText.value = `${exportRecords.length} Ecken als ZIP exportiert.`;
@@ -1891,6 +1918,7 @@
                     responsible_provider: updatedRecord.responsible_provider,
                     responsible_troop: updatedRecord.responsible_troop,
                     responsible_read_only_troop: updatedRecord.responsible_read_only_troop,
+                    last_survey_troop: updatedRecord.last_survey_troop,
                     note: updatedRecord.note,
                     completed_at_state: updatedRecord.completed_at_state,
                     completed_at_administration: updatedRecord.completed_at_administration,

@@ -197,6 +197,7 @@ layout: home
                     responsible_administration,
                     responsible_troop,
                     responsible_read_only_troop,
+                    last_survey_troop,
                     is_valid,
                     federal_state,
                     growth_district,

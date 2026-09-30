@@ -6,7 +6,10 @@ import {
   downloadBlob,
   exportTimestamp,
   fetchNewestSchema,
-  EXPORT_RECORD_COLUMNS
+  fetchWorkflowStatusNames,
+  resolveMetadataColumns,
+  EXPORT_RECORD_COLUMNS,
+  METADATA_SOURCE
 } from './recordsExport'
 
 const instance = getCurrentInstance()
@@ -18,6 +21,9 @@ const totalRecords = ref(null)
 const schema = ref(null)
 const schemaVersion = ref(null)
 const cachedRecords = ref(null)  // populated on first download, reused afterwards
+const cachedMetadata = ref(null)  // records bookkeeping columns for metadata.csv
+const cachedMetadataColumns = ref(null)  // resolved against the deployed view
+const cachedStatusNames = ref(null)  // workflow_code → Bezeichnung
 const downloadSucceeded = ref(false)  // reveals all buttons after first download
 const organizationId = ref(null)  // set from ?organization= URL param
 
@@ -41,7 +47,9 @@ const applyOrgFilter = (query) => {
   return query.or(`responsible_state.eq.${id},responsible_administration.eq.${id},responsible_provider.eq.${id}`)
 }
 
-const fetchAllRecords = async (selectColumns) => {
+// Ordered by id: range pagination without a stable sort can skip or repeat
+// rows between pages.
+const fetchAllRows = async (table, selectColumns, orderColumn = 'id') => {
   const pageSize = 1000
   let allData = []
   let from = 0
@@ -49,8 +57,8 @@ const fetchAllRecords = async (selectColumns) => {
 
   while (hasMore) {
     const { data, error: err } = await applyOrgFilter(
-      supabase.from('records').select(selectColumns)
-    ).range(from, from + pageSize - 1)
+      supabase.from(table).select(selectColumns)
+    ).order(orderColumn).range(from, from + pageSize - 1)
 
     if (err) throw err
     if (!data || data.length === 0) {
@@ -70,10 +78,21 @@ const downloadZip = async () => {
   error.value = null
   try {
     if (!cachedRecords.value) {
-      cachedRecords.value = await fetchAllRecords(EXPORT_RECORD_COLUMNS)
+      cachedRecords.value = await fetchAllRows('records', EXPORT_RECORD_COLUMNS)
+    }
+    if (!cachedMetadata.value) {
+      cachedMetadataColumns.value = await resolveMetadataColumns(supabase)
+      cachedMetadata.value = await fetchAllRows(METADATA_SOURCE, cachedMetadataColumns.value.join(', '))
+    }
+    if (!cachedStatusNames.value) {
+      cachedStatusNames.value = await fetchWorkflowStatusNames(supabase)
     }
     const date = exportTimestamp()
-    const blob = await buildRecordsZip(cachedRecords.value, downloadOptions.value, date)
+    const blob = await buildRecordsZip(cachedRecords.value, downloadOptions.value, date, {
+      metadata: cachedMetadata.value,
+      metadataColumns: cachedMetadataColumns.value,
+      workflowStatusNames: cachedStatusNames.value
+    })
     downloadBlob(blob, `tfm_export_${date}.zip`)
     downloadSucceeded.value = true
   } catch (e) {
