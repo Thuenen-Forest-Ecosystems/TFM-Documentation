@@ -137,6 +137,11 @@
     function collectTopLevelFields(node) {
         const fields = new Set();
         if (!node) return fields;
+        // An array_summary only mirrors the row count of an array that is edited
+        // in another tab (the WZP4 trees shown in Bestockung). Claiming its
+        // property here would badge this tab with the other tab's errors and
+        // leave the owning tab without them (TFM-client-app#477).
+        if (node.component === 'array_summary') return fields;
         if (node.component === 'datagrid' && node.property) {
             fields.add(node.property.split('.')[0]);
             return fields;
