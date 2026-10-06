@@ -360,37 +360,41 @@ function handleMapClick(e) {
 
 function handlePolygonComplete(e) {
     if (!e.features || e.features.length === 0) return;
-    
+
     const polygon = e.features[0];
     const selectedFeatures = [];
-    
-    // Pre-compute polygon once for all comparisons
-    const poly = turf.polygon(polygon.geometry.coordinates);
-    const bbox = turf.bbox(poly);
-    
-    // Filter features by bounding box first (much faster)
-    const candidateFeatures = props.geojson.features.filter(feature => {
-        const [lng, lat] = feature.geometry.coordinates;
-        return lng >= bbox[0] && lng <= bbox[2] && lat >= bbox[1] && lat <= bbox[3];
-    });
-    
-    // Only check point-in-polygon for candidates within bounding box
-    candidateFeatures.forEach(feature => {
-        const point = turf.point(feature.geometry.coordinates);
-        
-        if (turf.booleanPointInPolygon(point, poly)) {
-            selectedFeatures.push(feature.properties);
+
+    // Always leave draw mode again, even if the selection below fails — otherwise the
+    // finished polygon stays on the map and the tool looks stuck.
+    try {
+        // Pre-compute polygon once for all comparisons
+        const poly = turf.polygon(polygon.geometry.coordinates);
+        const bbox = turf.bbox(poly);
+
+        props.geojson.features.forEach(feature => {
+            // Records without plot coordinates are carried as features with geometry: null
+            if (feature?.geometry?.type !== 'Point') return;
+
+            const [lng, lat] = feature.geometry.coordinates;
+            if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+
+            // Bounding box first (much faster), point-in-polygon only for candidates
+            if (lng < bbox[0] || lng > bbox[2] || lat < bbox[1] || lat > bbox[3]) return;
+
+            if (turf.booleanPointInPolygon(turf.point(feature.geometry.coordinates), poly)) {
+                selectedFeatures.push(feature.properties);
+            }
+        });
+
+        if (selectedFeatures.length > 0) {
+            emit('polygonSelection', selectedFeatures);
         }
-    });
-    
-    if (selectedFeatures.length > 0) {
-        emit('polygonSelection', selectedFeatures);
+    } finally {
         // Remove the polygon after selection
-        
+        draw.deleteAll();
+        drawMode.value = false;
+        draw.changeMode('simple_select');
     }
-    draw.deleteAll();
-    drawMode.value = false;
-    draw.changeMode('simple_select');
 }
 
 function clearPolygonSelection() {

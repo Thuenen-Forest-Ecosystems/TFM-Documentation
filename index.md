@@ -3,13 +3,13 @@
 layout: home
 head:
   - - meta
-    - name: 'og:title'
+    - name: "og:title"
       content: German National Forest Inventory
   - - meta
-    - name: 'og:description'
+    - name: "og:description"
       content: Documentation for accessing Inventory of Forest Ecosystems
   - - meta
-    - name: 'og:image'
+    - name: "og:image"
       content: /bwi_og_image.png
 hero:
   name: "German National Forest Inventory"
@@ -30,8 +30,6 @@ hero:
 
 features:
 ---
-
-
 
 ::: info
 The present data basis consists of terrestrial field surveys of past inventories. Parts of it may change subsequently due to corrections for quality assurance purposes.

@@ -2,6 +2,7 @@
     import { onMounted, ref, computed } from 'vue';
     import GridViewTableTab from './GridViewTableTab.vue';
     import GridViewGridTab from './GridViewGridTab.vue';
+    import ArraySummaryCard from './ArraySummaryCard.vue';
 
     const tab = ref(null);
     const nestedTabs = ref({});
@@ -379,6 +380,12 @@
                                         :validation-errors="errorsForProperty(subItem.property).validation"
                                         :plausibility-errors="errorsForProperty(subItem.property).plausibility"
                                     />
+                                    <!-- Read-only row count of an array edited elsewhere (e.g. WZP4 trees) -->
+                                    <ArraySummaryCard
+                                        v-else-if="subItem.component === 'array_summary' && subItem.property"
+                                        :item="subItem"
+                                        :data="props.data"
+                                    />
                                 </template>
                             </v-tabs-window-item>
                         </v-tabs-window>
@@ -394,6 +401,13 @@
                         :validation-errors="errorsForProperty(item.property).validation"
                         :plausibility-errors="errorsForProperty(item.property).plausibility"
                         class="ma-2"
+                    />
+
+                    <!-- Read-only row count of an array edited elsewhere (e.g. WZP4 trees) -->
+                    <ArraySummaryCard
+                        v-else-if="item.component === 'array_summary' && item.property"
+                        :item="item"
+                        :data="props.data"
                     />
 
                 </template>
