@@ -46,8 +46,10 @@
             || null;
     }
 
+    // Number of the plausibility check that raised the error, e.g. 880810.
     function getPlausibilityCode(error) {
-        return error?.error?.code || error?.rawError?.code || null;
+        const code = error?.error?.code ?? error?.rawError?.code ?? null;
+        return code === null || code === '' ? null : String(code);
     }
 
     function getPlausibilityNote(error) {
@@ -104,8 +106,11 @@
                         <v-list-item-title class="text-wrap">{{ getPlausibilityTitle(error) }}</v-list-item-title>
                         <v-list-item-subtitle class="error-details">
                             <div v-if="getPlausibilityText(error)">{{ getPlausibilityText(error) }}</div>
-                            <!--<div v-if="getPlausibilityCode(error)">Code: {{ getPlausibilityCode(error) }}</div>
-                            <div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>-->
+                            <div v-if="getPlausibilityCode(error)" class="error-code mt-1">
+                                <span class="error-code-label">Prüfung</span>
+                                <span>{{ getPlausibilityCode(error) }}</span>
+                            </div>
+                            <!--<div v-if="error.instancePath">Instance Path: {{ error.instancePath }}</div>-->
                             <div v-if="getPlausibilityNote(error)" class="error-note">
                                 <span class="error-note-label">Notiz:</span>
                                 <span>{{ getPlausibilityNote(error) }}</span>
@@ -145,5 +150,22 @@
     .error-note-label {
         font-weight: 700;
         margin-right: 4px;
+    }
+
+    .error-code {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background-color: rgba(var(--v-theme-on-surface), 0.08);
+        color: rgba(var(--v-theme-on-surface), 0.75);
+        font-family: monospace;
+        font-size: 0.8rem;
+        line-height: 1.6;
+    }
+
+    .error-code-label {
+        margin-right: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
 </style>
