@@ -248,6 +248,9 @@
             initialWidth: 215,
             wrapHeaderText: false,
             autoHeaderHeight: false,
+            // Anheften kommt nur aus den colDefs. Per Ziehen geaenderte
+            // Anheftung wurde nie gespeichert und machte das Layout zufaellig.
+            lockPinned: true,
             // lockVisible steht nur noch an den technischen Spalten (Aktionen,
             // Auswahl, Status-Icon). Alle uebrigen Spalten lassen sich ueber das
             // Spalten-Menue ein- und ausblenden (Issue #254).
@@ -417,14 +420,74 @@
                 }
             },
             {
-                field: 'workflow_status',
-                headerName: 'Workflow (Beta)',
-                pinned: 'left',
-                width: 210,
-                sortable: true,
-                filter: true,
-                ...lookupValueHint('workflow_status', 'lookup_workflow_status', 'lookup.lookup_workflow_status (view_records_details.workflow_code)'),
-                tooltipField: 'workflow_status'
+                // Issue #261 — zugeklappt nur der Status, aufgeklappt
+                // zusaetzlich die abgebenden Trupps samt Abgabedatum.
+                headerName: 'Workflow',
+                groupId: 'workflow',
+                marryChildren: true,
+                children: [
+                    {
+                        field: 'workflow_status',
+                        headerName: 'Workflow (Beta)',
+                        pinned: 'left',
+                        width: 210,
+                        sortable: true,
+                        filter: true,
+                        ...lookupValueHint('workflow_status', 'lookup_workflow_status', 'lookup.lookup_workflow_status (view_records_details.workflow_code)'),
+                        tooltipField: 'workflow_status'
+                    },
+                    {
+                        // Bleibt sichtbar, wenn ein Kontrolltrupp den Aufnahmetrupp
+                        // in responsible_troop abgeloest hat — aus der Historie
+                        // abgeleitet, siehe view_records_details.last_survey_troop.
+                        columnGroupShow: 'open',
+                        field: "last_survey_troop",
+                        headerName: "Letzter Aufnahmetrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'left',
+                        ...distinctValueHint('last_survey_troop', "view_records_details.last_survey_troop — zuletzt abgebender Aufnahmetrupp aus record_changes"),
+                        tooltipField: "last_survey_troop",
+                        editable: false,
+                    },
+                    {
+                        // Issue #261 — Abgabedatum des Aufnahmetrupps, auch wenn
+                        // inzwischen ein Kontrolltrupp zugewiesen ist.
+                        columnGroupShow: 'open',
+                        field: 'completed_at_survey_troop',
+                        headerName: "Abgeschlossen Aufnahmetrupp",
+                        sortable: true,
+                        pinned: 'left',
+                        headerTooltip: "view_records_details.completed_at_survey_troop — Abgabe des letzten Aufnahmetrupps (records bzw. record_changes)",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => _dayOf(params.data.completed_at_survey_troop),
+                        valueFormatter: (params) => params.data.completed_at_survey_troop ? params.data.completed_at_survey_troop.toLocaleString() : '',
+                    },
+                    {
+                        columnGroupShow: 'open',
+                        field: "last_control_troop",
+                        headerName: "Letzter Kontrolltrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'left',
+                        ...distinctValueHint('last_control_troop', "view_records_details.last_control_troop — zuletzt abgebender Kontrolltrupp aus record_changes"),
+                        tooltipField: "last_control_troop",
+                        editable: false,
+                    },
+                    {
+                        columnGroupShow: 'open',
+                        field: 'completed_at_control_troop',
+                        headerName: "Abgeschlossen Kontrolltrupp",
+                        sortable: true,
+                        pinned: 'left',
+                        headerTooltip: "view_records_details.completed_at_control_troop — Abgabe des letzten Kontrolltrupps (records bzw. record_changes)",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => _dayOf(params.data.completed_at_control_troop),
+                        valueFormatter: (params) => params.data.completed_at_control_troop ? params.data.completed_at_control_troop.toLocaleString() : '',
+                    },
+                ]
             },
             /*{ 
                 field: "validity",
@@ -489,10 +552,27 @@
                 ...distinctValueHint('responsible_provider', "records.responsible_provider"),
                 tooltipField: "responsible_provider",
                 pinned: 'right',
+                // Dienstleister und Admin stehen immer ganz rechts, unabhaengig
+                // von der gespeicherten Reihenfolge.
+                lockPosition: 'right',
                 //type: "string",
             },
+            ...(showReadOnlyTroopColumn.value ? [{
+                field: "responsible_read_only_troop",
+                headerName: "Admin (nur Leserechte)",
+                filter: true,
+                sortable: true,
+                pinned: 'right',
+                lockPosition: 'right',
+                ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
+                tooltipField: "responsible_read_only_troop",
+                editable: false,
+            }] : []),
             {
                 headerName: 'Trupps',
+                // Spalten der Gruppe lassen sich nur gemeinsam verschieben —
+                // sonst zerfaellt die Gruppe in mehrere "Trupps"-Koepfe.
+                marryChildren: true,
                 children: [
                     {
                         columnGroupShow: 'closed',
@@ -525,31 +605,11 @@
                         }
                     },
                     {
-                        // Bleibt sichtbar, wenn ein Kontrolltrupp den Aufnahmetrupp
-                        // in responsible_troop abgeloest hat — aus der Historie
-                        // abgeleitet, siehe view_records_details.last_survey_troop.
-                        columnGroupShow: 'open',
-                        field: "last_survey_troop",
-                        headerName: "Letzter Aufnahmetrupp",
-                        filter: true,
-                        sortable: true,
-                        pinned: 'right',
-                        ...distinctValueHint('last_survey_troop', "view_records_details.last_survey_troop — zuletzt abgebender Aufnahmetrupp aus record_changes"),
-                        tooltipField: "last_survey_troop",
-                        editable: false,
-                    },
-                    ...(showReadOnlyTroopColumn.value ? [{
-                        columnGroupShow: 'open',
-                        field: "responsible_read_only_troop",
-                        headerName: "Admin (nur Leserechte)",
-                        filter: true,
-                        sortable: true,
-                        pinned: 'right',
-                        ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
-                        tooltipField: "responsible_read_only_troop",
-                        editable: false,
-                    }] : []),
-                    {
+                        // Ausgeblendet seit Issue #261: zeigt nur die Abgabe des
+                        // AKTUELL zugewiesenen Trupps. Eigene colId, damit ein in
+                        // localStorage gespeichertes hide:false nicht greift.
+                        colId: 'completed_at_troop_current',
+                        hide: true,
                         columnGroupShow: 'open',
                         field: 'completed_at_troop',
                         headerName: "Abgeschlossen",
@@ -568,6 +628,23 @@
                         valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
                     },
                 ]
+            },
+            {
+                // Issue #261 — Datum der Feldaufnahme. Beginn der GNSS-Messung
+                // am Plotzentrum, Geraete-Ortszeit ohne Zeitzone.
+                // Vorerst ausgeblendet; eigene colId, damit ein in localStorage
+                // gespeichertes hide:false nicht greift.
+                colId: 'gnss_measured_at_hidden',
+                hide: true,
+                field: 'gnss_measured_at',
+                headerName: "GNSS-Datum",
+                sortable: true,
+                pinned: 'right',
+                headerTooltip: "records.properties.position.start_measurement (view_records_details.gnss_measured_at)",
+                cellDataType: "date",
+                filter: "agDateColumnFilter",
+                valueGetter: (params) => _dayOf(params.data.gnss_measured_at),
+                valueFormatter: (params) => params.data.gnss_measured_at ? params.data.gnss_measured_at.toLocaleString() : '',
             },
             {
                 field: "forest_status_ci2027",
@@ -805,6 +882,12 @@
         }
         return `coming soon`;
     }
+    // Tagesgenauer Wert fuer agDateColumnFilter
+    function _dayOf(date) {
+        if (!date) return null;
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
     function computeSelectable(record) {
         if( props.organization_type === 'provider' && record.completed_at_state === null && record.completed_at_administration === null){
             return true;
@@ -845,6 +928,7 @@
             const troop = troopsMap.get(record.responsible_troop);
             const readOnlyTroop = troopsMap.get(record.responsible_read_only_troop);
             const lastSurveyTroop = troopsMap.get(record.last_survey_troop);
+            const lastControlTroop = troopsMap.get(record.last_control_troop);
 
             return {
                 is_selectable: computeSelectable(record),
@@ -864,8 +948,11 @@
                 completed_at_state: record.completed_at_state ? new Date(record.completed_at_state) : null,
                 completed_at_administration: record.completed_at_administration ? new Date(record.completed_at_administration) : null,
                 completed_at_troop: record.completed_at_troop ? new Date(record.completed_at_troop) : null,
+                completed_at_survey_troop: record.completed_at_survey_troop ? new Date(record.completed_at_survey_troop) : null,
+                completed_at_control_troop: record.completed_at_control_troop ? new Date(record.completed_at_control_troop) : null,
+                gnss_measured_at: record.gnss_measured_at ? new Date(record.gnss_measured_at) : null,
 
-                
+
                 note: record.note,
 
                 responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
@@ -873,6 +960,7 @@
                 responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
                 responsible_read_only_troop: readOnlyTroop ? readOnlyTroop.name : record.responsible_read_only_troop,
                 last_survey_troop: lastSurveyTroop ? lastSurveyTroop.name : (record.last_survey_troop ?? null),
+                last_control_troop: lastControlTroop ? lastControlTroop.name : (record.last_control_troop ?? null),
 
                 //administration_los: record.administration_los,
                 //state_los: record.state_los,
@@ -1167,6 +1255,10 @@
                     completed_at_state,
                     completed_at_administration,
                     completed_at_troop,
+                    completed_at_survey_troop,
+                    last_control_troop,
+                    completed_at_control_troop,
+                    gnss_measured_at,
                     is_valid,
                     is_plausible,
                     note,
@@ -1596,7 +1688,38 @@
             knownColIds.add(col.colId);
         });
 
-        return merged;
+        return _keepColumnGroupsTogether(merged);
+    }
+
+    // AG Grid zeichnet einen Gruppenkopf pro zusammenhaengendem Block. Liegen
+    // Spalten einer Gruppe im gespeicherten Zustand nicht nebeneinander (z.B.
+    // nachdem eine neue Spalte in die Gruppe kam), erscheint "Trupps" mehrfach.
+    // Deshalb alle Spalten einer Gruppe an die Stelle ihres ersten Mitglieds
+    // ziehen.
+    function _keepColumnGroupsTogether(columnState) {
+        const api = currentGrid.value?.api;
+        if (!api) return columnState;
+
+        const groupOf = (colId) => {
+            const parent = api.getColumn(colId)?.getOriginalParent();
+            return parent && !parent.isPadding() ? parent.getGroupId() : null;
+        };
+
+        const result = [];
+        const placedGroups = new Set();
+        columnState.forEach(col => {
+            const groupId = groupOf(col.colId);
+            if (!groupId) {
+                result.push(col);
+                return;
+            }
+            if (placedGroups.has(groupId)) return;
+            placedGroups.add(groupId);
+            columnState
+                .filter(member => groupOf(member.colId) === groupId)
+                .forEach(member => result.push(member));
+        });
+        return result;
     }
 
     // applyColumnState/setFilterModel loesen selbst columnVisible- und
@@ -1614,9 +1737,13 @@
                     isRestoringGridState = true;
                     const state = JSON.parse(savedState);
                     // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
-                    // übernehmen, damit die feste Breite aus den colDefs gilt
+                    // übernehmen, damit die feste Breite aus den colDefs gilt.
+                    // pinned ebenfalls nicht: es gilt immer das aus den colDefs
+                    // (lockPinned). Aeltere Zustaende enthalten durch Ziehen
+                    // entstandene Mischungen, die "Trupps" zwischen angeheftetem
+                    // und freiem Bereich zerreissen.
                     const columnState = _mergeNewColumnsIntoState(
-                        (state.columnState || []).map(col =>
+                        (state.columnState || []).map(({ pinned, ...col }) =>
                             col.colId === 'selected' ? { ...col, width: undefined } : col
                         )
                     );
@@ -1923,6 +2050,9 @@
                     completed_at_state: updatedRecord.completed_at_state,
                     completed_at_administration: updatedRecord.completed_at_administration,
                     completed_at_troop: updatedRecord.completed_at_troop,
+                    completed_at_survey_troop: updatedRecord.completed_at_survey_troop,
+                    last_control_troop: updatedRecord.last_control_troop,
+                    completed_at_control_troop: updatedRecord.completed_at_control_troop,
                     updated_at: updatedRecord.updated_at,
                     is_selectable: updatedRecord.is_selectable,
                     state_by_user: updatedRecord.state_by_user,
