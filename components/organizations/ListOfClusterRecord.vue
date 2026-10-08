@@ -428,7 +428,7 @@
                 children: [
                     {
                         field: 'workflow_status',
-                        headerName: 'Workflow (Beta)',
+                        headerName: 'Workflow',
                         pinned: 'left',
                         width: 210,
                         sortable: true,
@@ -486,6 +486,25 @@
                         filter: "agDateColumnFilter",
                         valueGetter: (params) => _dayOf(params.data.completed_at_control_troop),
                         valueFormatter: (params) => params.data.completed_at_control_troop ? params.data.completed_at_control_troop.toLocaleString() : '',
+                    },
+                    {
+                        // Issue #261 — Datum der Feldaufnahme. Beginn der GNSS-Messung
+                        // am Plotzentrum, Geraete-Ortszeit ohne Zeitzone.
+                        // Letzte Spalte der Gruppe, nur bei aufgeklappter Gruppe.
+                        // Erneut eigene colId: die Vorgaengerin 'gnss_measured_at_hidden'
+                        // steht in gespeicherten Zustaenden mit hide:true und wuerde
+                        // die Spalte sonst auch im aufgeklappten Zustand verbergen.
+                        colId: 'gnss_measured_at_group',
+                        columnGroupShow: 'open',
+                        field: 'gnss_measured_at',
+                        headerName: "GNSS-Datum",
+                        sortable: true,
+                        pinned: 'left',
+                        headerTooltip: "records.properties.position.start_measurement (view_records_details.gnss_measured_at)",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => _dayOf(params.data.gnss_measured_at),
+                        valueFormatter: (params) => params.data.gnss_measured_at ? params.data.gnss_measured_at.toLocaleString() : '',
                     },
                 ]
             },
@@ -545,33 +564,12 @@
                 width: 95,
             },
             {
-                field: "responsible_provider",
-                headerName: "Dienstleister",
-                filter: true,
-                sortable: true,
-                ...distinctValueHint('responsible_provider', "records.responsible_provider"),
-                tooltipField: "responsible_provider",
-                pinned: 'right',
-                // Dienstleister und Admin stehen immer ganz rechts, unabhaengig
-                // von der gespeicherten Reihenfolge.
-                lockPosition: 'right',
-                //type: "string",
-            },
-            ...(showReadOnlyTroopColumn.value ? [{
-                field: "responsible_read_only_troop",
-                headerName: "Admin (nur Leserechte)",
-                filter: true,
-                sortable: true,
-                pinned: 'right',
-                lockPosition: 'right',
-                ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
-                tooltipField: "responsible_read_only_troop",
-                editable: false,
-            }] : []),
-            {
-                headerName: 'Trupps',
+                headerName: 'Berechtigungen',
                 // Spalten der Gruppe lassen sich nur gemeinsam verschieben —
-                // sonst zerfaellt die Gruppe in mehrere "Trupps"-Koepfe.
+                // sonst zerfaellt die Gruppe in mehrere "Berechtigungen"-Koepfe.
+                // Alle Kinder sind lockPosition: 'right' — die Gruppe steht als
+                // Block immer ganz rechts, unabhaengig von der gespeicherten
+                // Reihenfolge. Eine gemischte Sperre wuerde sie zerreissen.
                 marryChildren: true,
                 children: [
                     {
@@ -581,6 +579,7 @@
                         filter: true,
                         sortable: true,
                         pinned: 'right',
+                        lockPosition: 'right',
                         ...distinctValueHint('responsible_troop', "records.responsible_troop"),
                         tooltipField: "responsible_troop",
                         editable: false,
@@ -596,6 +595,7 @@
                         filter: true,
                         sortable: true,
                         pinned: 'right',
+                        lockPosition: 'right',
                         ...distinctValueHint('responsible_troop', "records.responsible_troop"),
                         tooltipField: "responsible_troop",
                         editable: false,
@@ -616,6 +616,7 @@
                         filter: true,
                         sortable: true,
                         pinned: 'right',
+                        lockPosition: 'right',
                         headerTooltip: "records.completed_at_troop",
                         tooltipField: "completed_at_troop",
                         cellDataType: "date",
@@ -627,24 +628,31 @@
                         },
                         valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
                     },
+                    {
+                        columnGroupShow: 'open',
+                        field: "responsible_provider",
+                        headerName: "Dienstleister",
+                        filter: true,
+                        sortable: true,
+                        ...distinctValueHint('responsible_provider', "records.responsible_provider"),
+                        tooltipField: "responsible_provider",
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        //type: "string",
+                    },
+                    ...(showReadOnlyTroopColumn.value ? [{
+                        columnGroupShow: 'open',
+                        field: "responsible_read_only_troop",
+                        headerName: "Admin (nur Leserechte)",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
+                        tooltipField: "responsible_read_only_troop",
+                        editable: false,
+                    }] : []),
                 ]
-            },
-            {
-                // Issue #261 — Datum der Feldaufnahme. Beginn der GNSS-Messung
-                // am Plotzentrum, Geraete-Ortszeit ohne Zeitzone.
-                // Vorerst ausgeblendet; eigene colId, damit ein in localStorage
-                // gespeichertes hide:false nicht greift.
-                colId: 'gnss_measured_at_hidden',
-                hide: true,
-                field: 'gnss_measured_at',
-                headerName: "GNSS-Datum",
-                sortable: true,
-                pinned: 'right',
-                headerTooltip: "records.properties.position.start_measurement (view_records_details.gnss_measured_at)",
-                cellDataType: "date",
-                filter: "agDateColumnFilter",
-                valueGetter: (params) => _dayOf(params.data.gnss_measured_at),
-                valueFormatter: (params) => params.data.gnss_measured_at ? params.data.gnss_measured_at.toLocaleString() : '',
             },
             {
                 field: "forest_status_ci2027",
@@ -1693,7 +1701,7 @@
 
     // AG Grid zeichnet einen Gruppenkopf pro zusammenhaengendem Block. Liegen
     // Spalten einer Gruppe im gespeicherten Zustand nicht nebeneinander (z.B.
-    // nachdem eine neue Spalte in die Gruppe kam), erscheint "Trupps" mehrfach.
+    // nachdem eine neue Spalte in die Gruppe kam), erscheint "Berechtigungen" mehrfach.
     // Deshalb alle Spalten einer Gruppe an die Stelle ihres ersten Mitglieds
     // ziehen.
     function _keepColumnGroupsTogether(columnState) {
@@ -1740,7 +1748,7 @@
                     // übernehmen, damit die feste Breite aus den colDefs gilt.
                     // pinned ebenfalls nicht: es gilt immer das aus den colDefs
                     // (lockPinned). Aeltere Zustaende enthalten durch Ziehen
-                    // entstandene Mischungen, die "Trupps" zwischen angeheftetem
+                    // entstandene Mischungen, die "Berechtigungen" zwischen angeheftetem
                     // und freiem Bereich zerreissen.
                     const columnState = _mergeNewColumnsIntoState(
                         (state.columnState || []).map(({ pinned, ...col }) =>
