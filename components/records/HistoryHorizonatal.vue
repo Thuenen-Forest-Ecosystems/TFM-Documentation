@@ -26,6 +26,104 @@
 
     const emit = defineEmits(['select:record', 'update:record']);
 
+    // 'relevant' = only snapshots around a change of responsibility or an Abgabe
+    const filterMode = defineModel('filterMode', { type: String, default: 'relevant' });
+
+    const RESPONSIBILITY_FIELDS = [
+        { field: 'responsible_troop', label: 'Trupp' },
+        { field: 'responsible_provider', label: 'Dienstleister' },
+        { field: 'responsible_state', label: 'Landesinventurleitung' },
+        { field: 'responsible_administration', label: 'Bundesinventurleitung' },
+    ];
+
+    // Wording follows the column headers used elsewhere in the app:
+    // completed_at_troop = "Abgeschlossen"/"Abgabedatum", completed_at_state and
+    // completed_at_administration = "Akzeptiert (Landes-/Bundesinventurleitung)".
+    const COMPLETION_FIELDS = [
+        {
+            field: 'completed_at_troop',
+            setText: 'Trupp hat abgegeben',
+            setHint: 'Abgabedatum gesetzt — der Trupp hat die Ecke abgeschlossen und abgegeben.',
+            clearedText: 'Abgabe Trupp aufgehoben',
+            clearedHint: 'Abgabedatum entfernt, ohne Zuständigkeitswechsel — die Ecke ist wieder beim Trupp in Bearbeitung.',
+        },
+        {
+            field: 'completed_at_state',
+            setText: 'Landesinventurleitung hat akzeptiert',
+            setHint: 'Die Landesinventurleitung hat die Ecke angenommen (Spalte „Akzeptiert (Landesinventurleitung)“).',
+            clearedText: 'Akzeptanz Landesinventurleitung aufgehoben',
+            clearedHint: 'Die Annahme durch die Landesinventurleitung wurde zurückgenommen, ohne Zuständigkeitswechsel.',
+        },
+        {
+            field: 'completed_at_administration',
+            setText: 'Bundesinventurleitung hat akzeptiert',
+            setHint: 'Die Bundesinventurleitung hat die Ecke angenommen (Spalte „Akzeptiert (Bundesinventurleitung)“).',
+            clearedText: 'Akzeptanz Bundesinventurleitung aufgehoben',
+            clearedHint: 'Die Annahme durch die Bundesinventurleitung wurde zurückgenommen, ohne Zuständigkeitswechsel.',
+        },
+    ];
+
+    // `item` holds the state that ended at its own timestamp, `newer` the state that
+    // followed it - so the result describes what happened at `item`'s timestamp.
+    function changeReasons(item, newer) {
+        if (!item || !newer) return [];
+
+        const reasons = [];
+
+        for (const { field, label } of RESPONSIBILITY_FIELDS) {
+            if (isDifferent(item[field], newer[field])) {
+                reasons.push({
+                    text: `${label} gewechselt`,
+                    hint: `Die Zuständigkeit (${label}) wurde zu diesem Zeitpunkt an eine andere Stelle übergeben.`,
+                });
+            }
+        }
+
+        const responsibilityChanged = reasons.length > 0;
+
+        for (const entry of COMPLETION_FIELDS) {
+            // Only gesetzt/nicht gesetzt counts; a repeated Abgabe merely rewrites the
+            // timestamp and is not a change of state.
+            const wasCompleted = !!item[entry.field];
+            const isCompleted = !!newer[entry.field];
+            if (wasCompleted === isCompleted) continue;
+
+            if (!isCompleted) {
+                // Clearing the date is the automatic side effect of a handover and says
+                // nothing on its own - only report it when it happens alone.
+                if (responsibilityChanged) continue;
+                reasons.push({ text: entry.clearedText, hint: entry.clearedHint });
+                continue;
+            }
+
+            reasons.push({ text: entry.setText, hint: entry.setHint });
+        }
+
+        return reasons;
+    }
+
+    // record_changes stores the OLD state, so an entry shows the state that ended at its
+    // own timestamp. An entry is therefore relevant exactly when it differs from the next
+    // NEWER entry: that is the moment the responsibility changed or an Abgabe happened.
+    const reasonsByItem = computed(() => {
+        const map = new Map();
+        plotData.value.forEach((item, index) => {
+            map.set(item, changeReasons(item, plotData.value[index - 1]));
+        });
+        return map;
+    });
+
+    const relevantPlotData = computed(() => plotData.value.filter((item) => {
+        if (item === latestPlot.value || item === activeItem.value) return true;
+        return reasonsByItem.value.get(item)?.length > 0;
+    }));
+
+    const visiblePlotData = computed(() => {
+        return filterMode.value === 'all' ? plotData.value : relevantPlotData.value;
+    });
+
+    const hiddenCount = computed(() => plotData.value.length - visiblePlotData.value.length);
+
     const restoreItem = ref(null);
     const showConfirmDialog = ref(false);
     const restoring = ref(false);
@@ -44,7 +142,8 @@
 
 
     function sortPlotData() {
-        plotData.value.sort((a, b) => a.sortByDate - b.sortByDate);
+        // newest first; ties keep insertion order, so the current record stays on top
+        plotData.value.sort((a, b) => new Date(b.sortByDate) - new Date(a.sortByDate));
     }
 
     const userProfileCache = new Map();
@@ -233,13 +332,31 @@
     <v-list v-bind="$attrs" class="pa-0">
         <v-progress-linear v-if="loading" indeterminate color="primary" />
 
+        <template v-for="(item, index) in visiblePlotData" :key="index">
+
+        <!-- The change itself happened between this entry and the newer one above it -->
+        <div v-if="index > 0 && reasonsByItem.get(item)?.length" class="history-change-marker">
+            <v-divider />
+            <v-chip
+                v-for="reason in reasonsByItem.get(item)"
+                :key="reason.text"
+                :title="reason.hint"
+                size="x-small"
+                color="info"
+                variant="tonal"
+                label
+                prepend-icon="mdi-swap-vertical"
+            >
+                {{ reason.text }}
+            </v-chip>
+            <v-divider />
+        </div>
+        <v-divider v-else-if="index > 0" />
+
         <v-list-item
-            v-for="(item, index) in plotData"
-            :key="index"
             :active="activeItem === item"
             @click="emitActiveItem(item)"
             class="history-list-item"
-            :border="true"
         >
             <template v-slot:prepend>
                 <v-icon
@@ -295,6 +412,17 @@
                     </v-chip>
                 </div>
             </template>
+        </v-list-item>
+
+        </template>
+
+        <v-list-item v-if="hiddenCount > 0" disabled class="text-caption">
+            <template v-slot:prepend>
+                <v-icon icon="mdi-filter-outline" size="small" class="me-2" />
+            </template>
+            <v-list-item-title class="text-caption">
+                {{ hiddenCount }} Stände ohne Zuständigkeits- oder Abgabewechsel ausgeblendet
+            </v-list-item-title>
         </v-list-item>
 
         <v-list-item v-if="latestPlot" disabled class="text-caption">
@@ -375,6 +503,25 @@
     .history-list-item {
         cursor: pointer;
         transition: background-color 0.2s ease;
+    }
+
+    .history-change-marker {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 6px 16px;
+    }
+
+    /* The chips keep their full width; only the rules take up the leftover space */
+    .history-change-marker :deep(.v-chip) {
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
+
+    .history-change-marker :deep(.v-divider) {
+        flex: 1 1 16px;
+        min-width: 16px;
     }
 </style>
 
