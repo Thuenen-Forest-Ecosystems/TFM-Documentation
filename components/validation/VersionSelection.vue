@@ -123,6 +123,7 @@
         rounded="xl"
         variant="outlined"
         density="compact"
+        hide-details
         :items="versions"
         v-model="selectedVersion"
         item-title="name"
