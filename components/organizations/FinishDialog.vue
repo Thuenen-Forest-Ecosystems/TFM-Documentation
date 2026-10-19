@@ -46,6 +46,102 @@
         }
         return props.selectedRows.filter(row => !row.is_valid);
     });
+
+    // Warnung vor nicht abgegebenen Waldecken (#259)
+    // ------------------------------------------------------------------
+    // Das UPDATE in setAsFinished laeuft ueber cluster_id, akzeptiert also
+    // ganze Trakte -- auch deren Ecken, die im Grid nicht markiert sind. Darum
+    // wird hier nicht props.selectedRows ausgewertet, sondern der tatsaechlich
+    // betroffene Satz aus view_records_details nachgelesen; sonst bleiben genau
+    // die Ecken unsichtbar, die der Trupp noch nicht abgegeben hat und nach dem
+    // Akzeptieren nicht mehr bearbeiten kann.
+    //
+    // Geprueft werden nur Waldecken: lookup_forest_status 3, 4, 5 (Wald/Bloesse,
+    // Wald/Nichtholzboden, Wald/bestockter Holzboden). Nichtwaldecken bekommen
+    // kein Abgabedatum des Trupps, wuerden also dauerhaft falsch warnen.
+    //
+    // Massgeblich ist allein der Waldentscheid der laufenden Inventur
+    // (forest_status_ci2027 aus records.properties, Spalte "Waldentscheid 2027"),
+    // nicht der Archivwert aus BWI 2022: ob eine Ecke jetzt aufzunehmen ist,
+    // entscheidet die laufende Aufnahme. Ecken ohne Entscheid 2027 werden
+    // folglich nicht gemeldet.
+    const FOREST_STATUS_CODES_SURVEYED = [3, 4, 5];
+    const UNFINISHED_PLOTS_SHOWN = 10;
+
+    const unfinishedForestPlots = ref([]);
+    const unfinishedCheckLoading = ref(false);
+    const unfinishedCheckFailed = ref(false);
+    const continueDespiteUnfinished = ref(false);
+
+    // Akzeptiert wird nur durch Landesinventurleitung ('country') und
+    // Bundesinventurleitung ('root'); Dienstleister akzeptieren nicht, deren
+    // "Absenden" setzt das Abgabedatum selbst -- dort wuerde die Pruefung genau
+    // die Ecken melden, die der Klick gerade abgibt.
+    const ACCEPTING_ORGANIZATION_TYPES = ['country', 'root'];
+    const checksTroopHandover = computed(
+        () => ACCEPTING_ORGANIZATION_TYPES.includes(props.organizationType)
+    );
+    const hasUnfinishedForestPlots = computed(() => unfinishedForestPlots.value.length > 0);
+    const unfinishedForestPlotLabels = computed(() =>
+        unfinishedForestPlots.value
+            .map(row => `Trakt ${row.cluster_name ?? '?'}, Ecke ${row.plot_name ?? '?'}`)
+            .sort((a, b) => a.localeCompare(b, 'de'))
+    );
+
+    async function loadUnfinishedForestPlots() {
+        unfinishedForestPlots.value = [];
+        unfinishedCheckFailed.value = false;
+
+        if (!checksTroopHandover.value) {
+            return;
+        }
+
+        const clusterIds = [...new Set((props.selectedRows || [])
+            .map(row => row.cluster_id)
+            .filter(id => id !== null && id !== undefined && id !== ''))];
+
+        if (clusterIds.length === 0) {
+            return;
+        }
+
+        unfinishedCheckLoading.value = true;
+        const BATCH_SIZE = 100; // haelt die PostgREST-Query-URL kurz
+        const unfinished = [];
+
+        try {
+            for (let i = 0; i < clusterIds.length; i += BATCH_SIZE) {
+                let query = supabase
+                    .from('view_records_details')
+                    .select('plot_id, cluster_name, plot_name, forest_status_ci2027, completed_at_troop')
+                    .in('cluster_id', clusterIds.slice(i, i + BATCH_SIZE))
+                    .in('forest_status_ci2027', FOREST_STATUS_CODES_SURVEYED)
+                    .is('completed_at_troop', null);
+
+                // Dieselbe Einschraenkung wie das UPDATE unten: die
+                // Bundesinventurleitung akzeptiert nur Ecken, die die
+                // Landesinventurleitung schon akzeptiert hat. Ohne diese Zeile
+                // warnte der Dialog ueber Ecken, die der Klick gar nicht anfasst.
+                if (props.organizationType === 'root') {
+                    query = query.not('completed_at_state', 'is', null);
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    throw error;
+                }
+                unfinished.push(...(data || []));
+            }
+            unfinishedForestPlots.value = unfinished;
+        } catch (error) {
+            // Die Pruefung ist eine Warnung, kein Tor: faellt sie aus, bleibt das
+            // Absenden moeglich, der Nutzer erfaehrt aber, dass nicht geprueft wurde.
+            console.error('Error checking for unfinished forest plots:', error);
+            unfinishedCheckFailed.value = true;
+        } finally {
+            unfinishedCheckLoading.value = false;
+        }
+    }
     async function getUsersPermissions() {
         const { data, error } = await supabase.auth.getSession()
         if (data.session) {
@@ -95,6 +191,15 @@
         if (!isAdmin.value && props.organizationType === 'provider') {
             snackbarText.value = 'Du hast keine Berechtigung, diese Aktion durchzuführen.';
             snackbarColor.value = 'error';
+            snackbar.value = true;
+            return;
+        }
+
+        // Zweites Tor neben dem deaktivierten Button: ohne bestaetigte Warnung
+        // werden nicht abgegebene Waldecken nicht mit akzeptiert (#259).
+        if (hasUnfinishedForestPlots.value && !continueDespiteUnfinished.value) {
+            snackbarText.value = 'Die Auswahl enthält nicht fertig gestellte Waldecken. Bitte bestätigen, um fortzufahren.';
+            snackbarColor.value = 'warning';
             snackbar.value = true;
             return;
         }
@@ -239,11 +344,26 @@
     }
 
     watch(
+        [() => props.modelValue, () => props.selectedRows],
+        ([isOpen]) => {
+            if (isOpen) {
+                loadUnfinishedForestPlots();
+            }
+        },
+        // immediate, falls der Dialog schon offen ist, wenn die Komponente
+        // erstmals gerendert wird -- sonst liefe die Pruefung nie an.
+        { immediate: true }
+    );
+
+    watch(
         () => props.modelValue,
         (newVal) => {
             if (!newVal) {
                 isEnabled.value = false;
                 additionalNote.value = '';
+                continueDespiteUnfinished.value = false;
+                unfinishedForestPlots.value = [];
+                unfinishedCheckFailed.value = false;
             }
         }
     );
@@ -284,6 +404,50 @@
                         Alle Trakte sind valide.
                     </v-alert>-->
 
+                    <v-alert
+                        v-if="unfinishedCheckLoading"
+                        type="info"
+                        variant="tonal"
+                        density="comfortable"
+                        class="mt-4"
+                    >
+                        Prüfe, ob alle Waldecken der ausgewählten Trakte abgegeben wurden …
+                    </v-alert>
+                    <v-alert
+                        v-else-if="hasUnfinishedForestPlots"
+                        type="warning"
+                        variant="tonal"
+                        density="comfortable"
+                        class="mt-4"
+                        title="Warnung"
+                    >
+                        Auswahl enthält nicht fertig gestellte Waldecken (ohne Abgabedatum).
+                        Wollen Sie fortfahren?
+                        <div class="text-caption mt-2">
+                            {{ unfinishedForestPlots.length }}
+                            {{ unfinishedForestPlots.length === 1 ? 'betroffene Ecke' : 'betroffene Ecken' }}
+                            in den ausgewählten Trakten:
+                        </div>
+                        <ul class="text-caption ms-4">
+                            <li v-for="label in unfinishedForestPlotLabels.slice(0, UNFINISHED_PLOTS_SHOWN)" :key="label">
+                                {{ label }}
+                            </li>
+                            <li v-if="unfinishedForestPlotLabels.length > UNFINISHED_PLOTS_SHOWN">
+                                … und {{ unfinishedForestPlotLabels.length - UNFINISHED_PLOTS_SHOWN }} weitere
+                            </li>
+                        </ul>
+                    </v-alert>
+                    <v-alert
+                        v-else-if="unfinishedCheckFailed"
+                        type="info"
+                        variant="tonal"
+                        density="comfortable"
+                        class="mt-4"
+                    >
+                        Es konnte nicht geprüft werden, ob alle Waldecken abgegeben wurden.
+                        Die Auswahl kann nicht fertig gestellte Ecken enthalten.
+                    </v-alert>
+
                     <p class="my-4" v-if="props.organizationType !== 'root'">
                         Die ausgewählten <b>Trakte</b> werden an die {{ targetOrganization }} übergeben. Es sind keine weiteren Änderungen mehr möglich.
                     </p>
@@ -295,6 +459,16 @@
                         rows="4"
                         variant="outlined"
                     ></v-textarea>
+
+                    <p class="text-caption" v-if="hasUnfinishedForestPlots">
+                        <v-checkbox v-model="continueDespiteUnfinished">
+                            <template v-slot:label>
+                                <span class="text-caption">
+                                    Mir ist bewusst, dass die Auswahl nicht fertig gestellte Waldecken enthält und diese nach dem Akzeptieren nicht mehr durch den Trupp bearbeitet werden können.
+                                </span>
+                            </template>
+                        </v-checkbox>
+                    </p>
 
                     <p class="text-caption">
                         <v-checkbox v-model="isEnabled">
@@ -314,7 +488,7 @@
                         color="primary"
                         type="submit"
                         @click="setAsFinished"
-                        :disabled="!isEnabled"
+                        :disabled="!isEnabled || unfinishedCheckLoading || (hasUnfinishedForestPlots && !continueDespiteUnfinished)"
                     >
                         Absenden
                     </v-btn>

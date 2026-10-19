@@ -14,19 +14,21 @@ import DialogResponsible from './DialogResponsible.vue';
 import GeoJsonMap from '../map/GeoJsonMap.vue';
 import ClusterDetails from '../records/ClusterDetails.vue';
 
-import FinishDialog from './FinishDialog.vue';
-import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter, fetchAllRecordsByCursor } from '../Utils';
-import {
-    buildDownloadOptions,
-    buildRecordsZip,
-    downloadBlob,
-    exportTimestamp,
-    fetchNewestSchema,
-    fetchRecordsByPlotIds
-} from '../api/recordsExport';
-import StatusFilter from './customFilter/status.vue';
-import ValueHintHeader from './customHeader/valueHint.vue';
-import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
+    import FinishDialog from './FinishDialog.vue';
+    import { getIsDatabaseAdmin, getUsersPermissions, stateByOrganizationType, workflows, applyForestStatusFilter, fetchAllRecordsByCursor } from '../Utils';
+    import {
+        buildDownloadOptions,
+        buildRecordsZip,
+        downloadBlob,
+        exportTimestamp,
+        fetchNewestSchema,
+        fetchRecordsByPlotIds,
+        fetchMetadataByPlotIds,
+        fetchWorkflowStatusNames
+    } from '../api/recordsExport';
+    import StatusFilter from './customFilter/status.vue';
+    import ValueHintHeader from './customHeader/valueHint.vue';
+    import BulkValidationDialog from '../validation/BulkValidationDialog.vue';
 
 import VimeoPlayer from '../../components/VimeoPlayer.vue';
 import ClusterActions from '../cluster/ClusterActions.vue';
@@ -236,30 +238,35 @@ const gridOptions = {
     rowSelection: 'multiple', // Use legacy string value for compatibility
 
 
-    components: {
-        actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
-        moreCellRenderer: MoreCellRenderer,
-        statusFilter: StatusFilter,
-        valueHintHeader: ValueHintHeader
-    },
-    defaultColDef: {
-        initialWidth: 215,
-        wrapHeaderText: false,
-        autoHeaderHeight: false,
-        lockVisible: true,
-        // Allow 3+ conditions for AG Grid simple filters (text/number/date).
-        filterParams: {
-            maxNumConditions: MAX_FILTER_CONDITIONS,
-            numAlwaysVisibleConditions: 1,
-            defaultJoinOperator: 'OR'
-        }
-    },
-}
-async function saveTroopResponsible(column, value, id) {
-    const { data, error } = await supabase
-        .from('records')
-        .update({ [column]: value })
-        .eq('plot_id', id);
+        components: {
+            actionCellRenderer: ActionCellRenderer, // Register the custom cell renderer
+            moreCellRenderer: MoreCellRenderer,
+            statusFilter: StatusFilter,
+            valueHintHeader: ValueHintHeader
+        },
+        defaultColDef: {
+            initialWidth: 215,
+            wrapHeaderText: false,
+            autoHeaderHeight: false,
+            // Anheften kommt nur aus den colDefs. Per Ziehen geaenderte
+            // Anheftung wurde nie gespeichert und machte das Layout zufaellig.
+            lockPinned: true,
+            // lockVisible steht nur noch an den technischen Spalten (Aktionen,
+            // Auswahl, Status-Icon). Alle uebrigen Spalten lassen sich ueber das
+            // Spalten-Menue ein- und ausblenden (Issue #254).
+            // Allow 3+ conditions for AG Grid simple filters (text/number/date).
+            filterParams: {
+                maxNumConditions: MAX_FILTER_CONDITIONS,
+                numAlwaysVisibleConditions: 1,
+                defaultJoinOperator: 'OR'
+            }
+        },
+    }
+    async function saveTroopResponsible(column, value, id){
+        const {data, error} = await supabase
+            .from('records')
+            .update({ [column]: value })
+            .eq('plot_id', id);
 
     if (error) {
         snackbar.value = true;
@@ -341,370 +348,469 @@ function _countColumnValues(field) {
     return counts;
 }
 
-const colDefs = ref([]);
-function setColDefs() {
-    colDefs.value = [
-        {
-            cellRenderer: 'actionCellRenderer', // Custom cell renderer
-            pinned: 'left',
-            width: 60,
-            sortable: false,
-            filter: false,
-            tooltipField: "note",
-            cellRendererParams: {
-                onActionClick: (rowData) => {
-                    selectedCluster.value = rowData;
-                    recordsDialog.value = true;
-                },
-                has_note: (rowData) => !!rowData.note
-            }
-        },
-        {
-            colId: 'selected',
-            headerCheckboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
-            checkboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
-            headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
-            //checkboxSelectionFilteredOnly: true, // This ensures only filtered rows are selectable
-            pinned: 'left', // Pins the column to the left
-            width: 81, // Breit genug, damit neben der Checkbox das Sortier-Icon (unSortIcon) sichtbar ist
-            sortable: true,
-            // 1. Klick: Ausgewählte zuerst, 2. Klick: Ausgewählte zuletzt,
-            // 3. Klick: keine Sortierung
-            sortingOrder: ['desc', 'asc', null],
-            unSortIcon: true,
-            valueGetter: (params) => params.node?.isSelected() ? 1 : 0,
-            valueFormatter: () => '', // Sortierwert (1/0) nicht in der Zelle anzeigen
-            headerTooltip: 'Klicken, um nach Auswahl zu sortieren',
-            filter: false,
-            suppressHeaderMenuButton: true,
-            lockPosition: 'left',
-            suppressMovable: true
-        },
-        {
-            field: 'state_by_user', // Custom cell renderer
-            headerName: ' ',
-            pinned: 'left',
-            width: 70,
-            sortable: true,
-            sort: 'asc',
-            filter: 'statusFilter',
-            filterParams: {
-                values: workflows.map(wf => wf.id),
-                workflows: workflows
-            },
-            //sortingOrder: ['asc', 'desc'],
-            tooltipValueGetter: (params) => params.data?.completed_at_state != null
-                ? 'Akzeptiert (Landesinventurleitung)'
-                : (workflows.find(wf => wf.id === params.value)?.tooltip || params.value),
-            valueGetter: (params) => params.data?.state_by_user,
-            cellRenderer: (params) => {
-                const workflow = workflows.find(wf => wf.id === params.value);
-                // Accepted by the Landesinventurleitung -> double-check, regardless of workflow color.
-                const isAccepted = params.data?.completed_at_state != null;
-                const color = isAccepted ? 'green' : (workflow?.searchText || 'transparent');
-                const icon = isAccepted
-                    ? 'mdi-check-all'
-                    : (color === 'red' ? 'mdi-close-octagon' : color === 'yellow' ? 'mdi-alert' : color === 'green' ? 'mdi-check' : '');
-                const tooltip = isAccepted ? 'Akzeptiert (Landesinventurleitung)' : (workflow?.tooltip || '');
-                return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${tooltip}"></span></div>`;
-            }
-        },
-        {
-            field: 'workflow_status',
-            headerName: 'Workflow (Beta)',
-            pinned: 'left',
-            width: 210,
-            sortable: true,
-            filter: true,
-            ...lookupValueHint('workflow_status', 'lookup_workflow_status', 'lookup.lookup_workflow_status (view_records_details.workflow_code)'),
-            tooltipField: 'workflow_status'
-        },
-        /*{ 
-            field: "validity",
-            headerName: "Gültigkeit",
-            //filter: true,
-            width: 100,
-            //sortable: true,
-            cellDataType: "boolean",
-            pinned: 'left',
-        },
-        { 
-            field: "is_training",
-            headerName: "Schulungstrakt",
-            filter: true,
-            width: 108,
-            //sortable: true,
-            cellDataType: "boolean",
-            pinned: 'left',
-        },*/
-        /*{
-            cellRenderer: 'moreCellRenderer', // Custom cell renderer
-            pinned: 'left',
-            width: 50,
-            sortable: false,
-            filter: false
-        },*/
-
-
-        {
-            field: "plot_id",
-            headerName: "Plot Id",
-            filter: true,
-            sortable: true,
-            //type: "number",
-            pinned: 'left',
-            hide: true // Hide by default, can be shown if needed
-        },
-        {
-            field: "cluster_id",
-            headerName: "Cluster ID",
-            filter: true,
-            sortable: true,
-            //type: "number",
-            pinned: 'left',
-            hide: true // Hide by default, can be shown if needed
-        },
-        {
-            field: "cluster_name",
-            headerName: "Trakt",
-            filter: true,
-            sortable: true,
-            //type: "number",
-            pinned: 'left',
-            headerTooltip: "inventory_archive.cluster.cluster_name",
-            width: 95,
-        },
-        {
-            field: "responsible_provider",
-            headerName: "Dienstleister",
-            filter: true,
-            sortable: true,
-            ...distinctValueHint('responsible_provider', "records.responsible_provider"),
-            tooltipField: "responsible_provider",
-            pinned: 'right',
-            //type: "string",
-        },
-        {
-            headerName: 'Trupps',
-            children: [
-                {
-                    columnGroupShow: 'closed',
-                    field: "responsible_troop",
-                    headerName: "Trupp",
-                    filter: true,
-                    sortable: true,
-                    pinned: 'right',
-                    ...distinctValueHint('responsible_troop', "records.responsible_troop"),
-                    tooltipField: "responsible_troop",
-                    editable: false,
-                    cellEditor: 'agSelectCellEditor',
-                    cellEditorParams: {
-                        values: [...troops.value.map(troop => troop.name), null],
-                    }
-                },
-                {
-                    columnGroupShow: 'open',
-                    field: "responsible_troop",
-                    headerName: "Trupp",
-                    filter: true,
-                    sortable: true,
-                    pinned: 'right',
-                    ...distinctValueHint('responsible_troop', "records.responsible_troop"),
-                    tooltipField: "responsible_troop",
-                    editable: false,
-                    cellEditor: 'agSelectCellEditor',
-                    cellEditorParams: {
-                        values: [...troops.value.map(troop => troop.name), null],
-                    }
-                },
-                ...(showReadOnlyTroopColumn.value ? [{
-                    columnGroupShow: 'open',
-                    field: "responsible_read_only_troop",
-                    headerName: "Admin (nur Leserechte)",
-                    filter: true,
-                    sortable: true,
-                    pinned: 'right',
-                    ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
-                    tooltipField: "responsible_read_only_troop",
-                    editable: false,
-                }] : []),
-                {
-                    columnGroupShow: 'open',
-                    field: 'completed_at_troop',
-                    headerName: "Abgeschlossen",
-                    filter: true,
-                    sortable: true,
-                    pinned: 'right',
-                    headerTooltip: "records.completed_at_troop",
-                    tooltipField: "completed_at_troop",
-                    cellDataType: "date",
-                    filter: "agDateColumnFilter",
-                    valueGetter: (params) => {
-                        if (!params.data.completed_at_troop) return null;
-                        const date = new Date(params.data.completed_at_troop);
-                        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const colDefs = ref([]);
+    function setColDefs(){
+        colDefs.value = [
+            {
+                cellRenderer: 'actionCellRenderer', // Custom cell renderer
+                pinned: 'left',
+                width: 60,
+                sortable: false,
+                filter: false,
+                lockVisible: true, // technische Spalte, nicht ueber das Spalten-Menue ausblendbar
+                tooltipField: "note",
+                cellRendererParams: {
+                    onActionClick: (rowData) => {
+                        selectedCluster.value = rowData;
+                        recordsDialog.value = true;
                     },
-                    valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
-                },
-            ]
-        },
-        {
-            field: "forest_status_ci2027",
-            headerName: "Waldentscheid 2027",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('forest_status_ci2027', 'lookup_forest_status', "records.properties.forest_status (view_records_details.forest_status_ci2027)"),
-            tooltipField: "forest_status_ci2027"
-        },
-        {
-            field: "accessibility_ci2027",
-            headerName: "Begehbarkeit 2027",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('accessibility_ci2027', 'lookup_accessibility', "records.properties.accessibility (view_records_details.accessibility_ci2027)"),
-            tooltipField: "accessibility_ci2027"
-        },
-        {
-            field: "forest_status_bwi2022",
-            headerName: "Wald Status (BWI 2022)",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('forest_status_bwi2022', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
-            tooltipField: "forest_status_bwi2022"
-        },
-        {
-            field: "accessibility",
-            headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('accessibility', 'lookup_accessibility', "inventory_archive.plot.accessibility"),
-            tooltipField: "accessibility"
-        },
-        {
-            field: "property_type",
-            headerName: "Eigentumsart",
-            filter: true,
-            sortable: true,
-            //type: "string",
-            ...lookupValueHint('property_type', 'lookup_property_type', "inventory_archive.plot.property_type"),
-            tooltipField: "property_type"
-        },
-        {
-            field: "forest_office",
-            headerName: "Forstamt",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('forest_office', 'lookup_forest_office', "inventory_archive.plot.forest_status"),
-            tooltipField: "forest_office"
-        },
-        {
-            field: "cluster_status",
-            headerName: "Trakt Status",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('cluster_status', 'lookup_cluster_status', "inventory_archive.cluster.cluster_status"),
-            tooltipField: "cluster_status",
-            //type: "string",
-        },
-        {
-            field: "cluster_situation",
-            headerName: "Trakt Situation",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('cluster_situation', 'lookup_cluster_situation', "inventory_archive.cluster.cluster_situation"),
-            tooltipField: "cluster_situation",
-            //type: "string",
-        },
-        {
-            field: "updated_at",
-            headerName: "letzte Änderung",
-            filter: true,
-            sortable: true,
-            tooltipField: "updated_at",
-            cellDataType: "date",
-            filter: "agDateColumnFilter",
-            valueGetter: (params) => {
-                if (!params.data.updated_at) return null;
-                const date = new Date(params.data.updated_at);
-                return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    has_note: (rowData) => !!rowData.note
+                }
             },
-            valueFormatter: (params) => params.data.updated_at ? params.data.updated_at.toLocaleString() : '',
-        },
-        {
-            field: "state_responsible",
-            headerName: "Verantwortlichkeit 2022",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('state_responsible', 'lookup_state', "inventory_archive.cluster.state_responsible"),
-            tooltipField: "state_responsible",
-            //type: "string",
-        },
-        {
-            field: "forest_status_ci2017",
-            headerName: "Wald Status (CI 2017)",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('forest_status_ci2017', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
-            tooltipField: "forest_status_ci2017"
-        },
-        {
-            field: "forest_status_ci2012",
-            headerName: "Wald Status (BWI 2012)",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('forest_status_ci2012', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
-            tooltipField: "forest_status_ci2012"
-        },
-        {
-            field: "growth_district",
-            headerName: "Wuchsbezirk",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('growth_district', 'lookup_growth_district', "inventory_archive.plot.growth_district"),
-            tooltipField: "growth_district"
-        },
-        {
-            field: "ffh_forest_type",
-            headerName: "FFH Waldlebensraumtyp",
-            filter: true,
-            sortable: true,
-            ...lookupValueHint('ffh_forest_type', 'lookup_ffh_forest_type', "inventory_archive.plot.ffh_forest_type"),
-            tooltipField: "ffh_forest_type"
-        },
-        {
-            field: "grid_density",
-            headerName: "Rasterdichte",
-            filter: true,
-            tooltipField: "grid_density",
-            sortable: true,
-            //type: "string",
-            ...lookupValueHint('grid_density', 'lookup_grid_density', "inventory_archive.cluster.grid_density"),
-        },
-        {
-            field: "federal_state",
-            headerName: "Bundesland",
-            filter: true,
-            sortable: true,
-            //type: "string",
-            ...lookupValueHint('federal_state', 'lookup_state', "inventory_archive.plot.federal_state"),
-            tooltipField: "federal_state"
-        },
-        {
-            field: "states_affected",
-            headerName: "Betroffene Bundesländer", // Affected States
-            filter: true,
-            sortable: true,
-            ...distinctValueHint('states_affected', "inventory_archive.cluster.states_affected"),
-        },
-        {
-            field: "responsible_state",
-            headerName: "Landesinventurleitung",
-            filter: true,
-            sortable: true,
-            ...distinctValueHint('responsible_state', "records.responsible_state"),
-            tooltipField: "responsible_state",
-            //type: "string",
-        },
+            {
+                colId: 'selected',
+                headerCheckboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
+                checkboxSelection: true, //(params) => params.data?.completed_at_state === null, // Conditional logic
+                headerCheckboxSelectionFilteredOnly: true, // This is the key for filtered-only selection
+                //checkboxSelectionFilteredOnly: true, // This ensures only filtered rows are selectable
+                pinned: 'left', // Pins the column to the left
+                width: 81, // Breit genug, damit neben der Checkbox das Sortier-Icon (unSortIcon) sichtbar ist
+                sortable: true,
+                // 1. Klick: Ausgewählte zuerst, 2. Klick: Ausgewählte zuletzt,
+                // 3. Klick: keine Sortierung
+                sortingOrder: ['desc', 'asc', null],
+                unSortIcon: true,
+                valueGetter: (params) => params.node?.isSelected() ? 1 : 0,
+                valueFormatter: () => '', // Sortierwert (1/0) nicht in der Zelle anzeigen
+                headerTooltip: 'Klicken, um nach Auswahl zu sortieren',
+                filter: false,
+                lockVisible: true, // technische Spalte, nicht ueber das Spalten-Menue ausblendbar
+                suppressHeaderMenuButton: true,
+                lockPosition: 'left',
+                suppressMovable: true
+            },
+            {
+                field: 'state_by_user', // Custom cell renderer
+                headerName: ' ',
+                pinned: 'left',
+                width: 70,
+                sortable: true,
+                sort: 'asc',
+                lockVisible: true, // technische Spalte, nicht ueber das Spalten-Menue ausblendbar
+                filter: 'statusFilter',
+                filterParams: {
+                    values: workflows.map(wf => wf.id),
+                    workflows: workflows
+                },
+                //sortingOrder: ['asc', 'desc'],
+                tooltipValueGetter: (params) => params.data?.completed_at_state != null
+                    ? 'Akzeptiert (Landesinventurleitung)'
+                    : (workflows.find(wf => wf.id === params.value)?.tooltip || params.value),
+                valueGetter: (params) => params.data?.state_by_user,
+                cellRenderer: (params) => {
+                    const workflow = workflows.find(wf => wf.id === params.value);
+                    // Accepted by the Landesinventurleitung -> double-check, regardless of workflow color.
+                    const isAccepted = params.data?.completed_at_state != null;
+                    const color = isAccepted ? 'green' : (workflow?.searchText || 'transparent');
+                    const icon = isAccepted
+                        ? 'mdi-check-all'
+                        : (color === 'red' ? 'mdi-close-octagon' : color === 'yellow' ? 'mdi-alert' : color === 'green' ? 'mdi-check' : '');
+                    const tooltip = isAccepted ? 'Akzeptiert (Landesinventurleitung)' : (workflow?.tooltip || '');
+                    return `<div style="height: 100%; display: flex; align-items: center; justify-content: center;"><span class="mdi ${icon}" style="font-size: 18px; color: ${color};" title="${tooltip}"></span></div>`;
+                }
+            },
+            {
+                // Issue #261 — zugeklappt nur der Status, aufgeklappt
+                // zusaetzlich die abgebenden Trupps samt Abgabedatum.
+                headerName: 'Workflow',
+                groupId: 'workflow',
+                marryChildren: true,
+                children: [
+                    {
+                        field: 'workflow_status',
+                        headerName: 'Workflow',
+                        pinned: 'left',
+                        width: 210,
+                        sortable: true,
+                        filter: true,
+                        ...lookupValueHint('workflow_status', 'lookup_workflow_status', 'lookup.lookup_workflow_status (view_records_details.workflow_code)'),
+                        tooltipField: 'workflow_status'
+                    },
+                    {
+                        // Bleibt sichtbar, wenn ein Kontrolltrupp den Aufnahmetrupp
+                        // in responsible_troop abgeloest hat — aus der Historie
+                        // abgeleitet, siehe view_records_details.last_survey_troop.
+                        columnGroupShow: 'open',
+                        field: "last_survey_troop",
+                        headerName: "Letzter Aufnahmetrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'left',
+                        ...distinctValueHint('last_survey_troop', "view_records_details.last_survey_troop — zuletzt abgebender Aufnahmetrupp aus record_changes"),
+                        tooltipField: "last_survey_troop",
+                        editable: false,
+                    },
+                    {
+                        // Issue #261 — Abgabedatum des Aufnahmetrupps, auch wenn
+                        // inzwischen ein Kontrolltrupp zugewiesen ist.
+                        columnGroupShow: 'open',
+                        field: 'completed_at_survey_troop',
+                        headerName: "Abgeschlossen Aufnahmetrupp",
+                        sortable: true,
+                        pinned: 'left',
+                        headerTooltip: "view_records_details.completed_at_survey_troop — Abgabe des letzten Aufnahmetrupps (records bzw. record_changes)",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => _dayOf(params.data.completed_at_survey_troop),
+                        valueFormatter: (params) => params.data.completed_at_survey_troop ? params.data.completed_at_survey_troop.toLocaleString() : '',
+                    },
+                    {
+                        columnGroupShow: 'open',
+                        field: "last_control_troop",
+                        headerName: "Letzter Kontrolltrupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'left',
+                        ...distinctValueHint('last_control_troop', "view_records_details.last_control_troop — zuletzt abgebender Kontrolltrupp aus record_changes"),
+                        tooltipField: "last_control_troop",
+                        editable: false,
+                    },
+                    {
+                        columnGroupShow: 'open',
+                        field: 'completed_at_control_troop',
+                        headerName: "Abgeschlossen Kontrolltrupp",
+                        sortable: true,
+                        pinned: 'left',
+                        headerTooltip: "view_records_details.completed_at_control_troop — Abgabe des letzten Kontrolltrupps (records bzw. record_changes)",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => _dayOf(params.data.completed_at_control_troop),
+                        valueFormatter: (params) => params.data.completed_at_control_troop ? params.data.completed_at_control_troop.toLocaleString() : '',
+                    },
+                    {
+                        // Issue #261 — Datum der Feldaufnahme. Beginn der GNSS-Messung
+                        // am Plotzentrum, Geraete-Ortszeit ohne Zeitzone.
+                        // Letzte Spalte der Gruppe, nur bei aufgeklappter Gruppe.
+                        // Erneut eigene colId: die Vorgaengerin 'gnss_measured_at_hidden'
+                        // steht in gespeicherten Zustaenden mit hide:true und wuerde
+                        // die Spalte sonst auch im aufgeklappten Zustand verbergen.
+                        colId: 'gnss_measured_at_group',
+                        columnGroupShow: 'open',
+                        field: 'gnss_measured_at',
+                        headerName: "GNSS-Datum",
+                        sortable: true,
+                        pinned: 'left',
+                        headerTooltip: "records.properties.position.start_measurement (view_records_details.gnss_measured_at)",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => _dayOf(params.data.gnss_measured_at),
+                        valueFormatter: (params) => params.data.gnss_measured_at ? params.data.gnss_measured_at.toLocaleString() : '',
+                    },
+                ]
+            },
+            /*{ 
+                field: "validity",
+                headerName: "Gültigkeit",
+                //filter: true,
+                width: 100,
+                //sortable: true,
+                cellDataType: "boolean",
+                pinned: 'left',
+            },
+            { 
+                field: "is_training",
+                headerName: "Schulungstrakt",
+                filter: true,
+                width: 108,
+                //sortable: true,
+                cellDataType: "boolean",
+                pinned: 'left',
+            },*/
+            /*{
+                cellRenderer: 'moreCellRenderer', // Custom cell renderer
+                pinned: 'left',
+                width: 50,
+                sortable: false,
+                filter: false
+            },*/
+
+            
+            {
+                field: "plot_id",
+                headerName: "Plot Id",
+                filter: true,
+                sortable: true,
+                //type: "number",
+                pinned: 'left',
+                hide: true // Hide by default, can be shown if needed
+            },
+            { 
+                field: "cluster_id",
+                headerName: "Cluster ID",
+                filter: true,
+                sortable: true,
+                //type: "number",
+                pinned: 'left',
+                hide: true // Hide by default, can be shown if needed
+            },
+            { 
+                field: "cluster_name",
+                headerName: "Trakt",
+                filter: true,
+                sortable: true,
+                //type: "number",
+                pinned: 'left',
+                headerTooltip: "inventory_archive.cluster.cluster_name",
+                width: 95,
+            },
+            {
+                headerName: 'Berechtigungen',
+                // Spalten der Gruppe lassen sich nur gemeinsam verschieben —
+                // sonst zerfaellt die Gruppe in mehrere "Berechtigungen"-Koepfe.
+                // Alle Kinder sind lockPosition: 'right' — die Gruppe steht als
+                // Block immer ganz rechts, unabhaengig von der gespeicherten
+                // Reihenfolge. Eine gemischte Sperre wuerde sie zerreissen.
+                marryChildren: true,
+                children: [
+                    {
+                        columnGroupShow: 'closed',
+                        field: "responsible_troop",
+                        headerName: "Trupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        ...distinctValueHint('responsible_troop', "records.responsible_troop"),
+                        tooltipField: "responsible_troop",
+                        editable: false,
+                        cellEditor: 'agSelectCellEditor',
+                        cellEditorParams: {
+                            values: [...troops.value.map(troop => troop.name), null],
+                        }
+                    },
+                    {
+                        columnGroupShow: 'open', 
+                        field: "responsible_troop",
+                        headerName: "Trupp",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        ...distinctValueHint('responsible_troop', "records.responsible_troop"),
+                        tooltipField: "responsible_troop",
+                        editable: false,
+                        cellEditor: 'agSelectCellEditor',
+                        cellEditorParams: {
+                            values: [...troops.value.map(troop => troop.name), null],
+                        }
+                    },
+                    {
+                        // Ausgeblendet seit Issue #261: zeigt nur die Abgabe des
+                        // AKTUELL zugewiesenen Trupps. Eigene colId, damit ein in
+                        // localStorage gespeichertes hide:false nicht greift.
+                        colId: 'completed_at_troop_current',
+                        hide: true,
+                        columnGroupShow: 'open',
+                        field: 'completed_at_troop',
+                        headerName: "Abgeschlossen",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        headerTooltip: "records.completed_at_troop",
+                        tooltipField: "completed_at_troop",
+                        cellDataType: "date",
+                        filter: "agDateColumnFilter",
+                        valueGetter: (params) => {
+                            if (!params.data.completed_at_troop) return null;
+                            const date = new Date(params.data.completed_at_troop);
+                            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                        },
+                        valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
+                    },
+                    {
+                        columnGroupShow: 'open',
+                        field: "responsible_provider",
+                        headerName: "Dienstleister",
+                        filter: true,
+                        sortable: true,
+                        ...distinctValueHint('responsible_provider', "records.responsible_provider"),
+                        tooltipField: "responsible_provider",
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        //type: "string",
+                    },
+                    ...(showReadOnlyTroopColumn.value ? [{
+                        columnGroupShow: 'open',
+                        field: "responsible_read_only_troop",
+                        headerName: "Admin (nur Leserechte)",
+                        filter: true,
+                        sortable: true,
+                        pinned: 'right',
+                        lockPosition: 'right',
+                        ...distinctValueHint('responsible_read_only_troop', "records.responsible_read_only_troop — Gruppe mit reinem Lesezugriff in der App"),
+                        tooltipField: "responsible_read_only_troop",
+                        editable: false,
+                    }] : []),
+                ]
+            },
+            {
+                field: "forest_status_ci2027",
+                headerName: "Waldentscheid 2027",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('forest_status_ci2027', 'lookup_forest_status', "records.properties.forest_status (view_records_details.forest_status_ci2027)"),
+                tooltipField: "forest_status_ci2027"
+            },
+            {
+                field: "accessibility_ci2027",
+                headerName: "Begehbarkeit 2027",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('accessibility_ci2027', 'lookup_accessibility', "records.properties.accessibility (view_records_details.accessibility_ci2027)"),
+                tooltipField: "accessibility_ci2027"
+            },
+            {
+                field: "forest_status_bwi2022",
+                headerName: "Wald Status (BWI 2022)",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('forest_status_bwi2022', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
+                tooltipField: "forest_status_bwi2022"
+            },
+            {
+                field: "accessibility",
+                headerName: "Begehbarkeit 2022", // https://github.com/Thuenen-Forest-Ecosystems/TFM-Documentation/issues/47#event-19265086339
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('accessibility', 'lookup_accessibility', "inventory_archive.plot.accessibility"),
+                tooltipField: "accessibility"
+            },
+            {
+                field: "property_type",
+                headerName: "Eigentumsart",
+                filter: true,
+                sortable: true,
+                //type: "string",
+                ...lookupValueHint('property_type', 'lookup_property_type', "inventory_archive.plot.property_type"),
+                tooltipField: "property_type"
+            },
+            {
+                field: "forest_office",
+                headerName: "Forstamt",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('forest_office', 'lookup_forest_office', "inventory_archive.plot.forest_status"),
+                tooltipField: "forest_office"
+            },
+            {
+                field: "cluster_status",
+                headerName: "Trakt Status",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('cluster_status', 'lookup_cluster_status', "inventory_archive.cluster.cluster_status"),
+                tooltipField: "cluster_status",
+                //type: "string",
+            },
+            {
+                field: "cluster_situation",
+                headerName: "Trakt Situation",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('cluster_situation', 'lookup_cluster_situation', "inventory_archive.cluster.cluster_situation"),
+                tooltipField: "cluster_situation",
+                //type: "string",
+            },
+            {
+                field: "updated_at",
+                headerName: "letzte Änderung",
+                filter: true,
+                sortable: true,
+                tooltipField: "updated_at",
+                cellDataType: "date",
+                filter: "agDateColumnFilter",
+                valueGetter: (params) => {
+                    if (!params.data.updated_at) return null;
+                    const date = new Date(params.data.updated_at);
+                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                },
+                valueFormatter: (params) => params.data.updated_at ? params.data.updated_at.toLocaleString() : '',
+            },
+            {
+                field: "state_responsible",
+                headerName: "Verantwortlichkeit 2022",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('state_responsible', 'lookup_state', "inventory_archive.cluster.state_responsible"),
+                tooltipField: "state_responsible",
+                //type: "string",
+            },
+            {
+                field: "forest_status_ci2017",
+                headerName: "Wald Status (CI 2017)",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('forest_status_ci2017', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
+                tooltipField: "forest_status_ci2017"
+            },
+            {
+                field: "forest_status_ci2012",
+                headerName: "Wald Status (BWI 2012)",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('forest_status_ci2012', 'lookup_forest_status', "inventory_archive.plot.forest_status"),
+                tooltipField: "forest_status_ci2012"
+            },
+            {
+                field: "growth_district",
+                headerName: "Wuchsbezirk",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('growth_district', 'lookup_growth_district', "inventory_archive.plot.growth_district"),
+                tooltipField: "growth_district"
+            },
+            {
+                field: "ffh_forest_type",
+                headerName: "FFH Waldlebensraumtyp",
+                filter: true,
+                sortable: true,
+                ...lookupValueHint('ffh_forest_type', 'lookup_ffh_forest_type', "inventory_archive.plot.ffh_forest_type"),
+                tooltipField: "ffh_forest_type"
+            },
+            {
+                field: "grid_density",
+                headerName: "Rasterdichte",
+                filter: true,
+                tooltipField: "grid_density",
+                sortable: true,
+                //type: "string",
+                ...lookupValueHint('grid_density', 'lookup_grid_density', "inventory_archive.cluster.grid_density"),
+            },
+            {
+                field: "federal_state",
+                headerName: "Bundesland",
+                filter: true,
+                sortable: true,
+                //type: "string",
+                ...lookupValueHint('federal_state', 'lookup_state', "inventory_archive.plot.federal_state"),
+                tooltipField: "federal_state"
+            },
+            {
+                field: "states_affected",
+                headerName: "Betroffene Bundesländer", // Affected States
+                filter: true,
+                sortable: true,
+                ...distinctValueHint('states_affected', "inventory_archive.cluster.states_affected"),
+            },
+            {
+                field: "responsible_state",
+                headerName: "Landesinventurleitung",
+                filter: true,
+                sortable: true,
+                ...distinctValueHint('responsible_state', "records.responsible_state"),
+                tooltipField: "responsible_state",
+                //type: "string",
+            },
 
 
         {
@@ -765,38 +871,44 @@ function _renderLookup(tableName, fieldName, code) {
     // Find by "code" field
     const entry = lookupTable?.find(item => item.code === code.toString());
 
-    if (entry) {
-        // Return the German name or the raw value
-        return `${code} | ${entry.name_de}`;
-    }
-    // If no entry found, return the raw value
-    return `no lookup value | ${code} (${tableName})`;
-}
-function _renderCluster(tableName, cluster_id, lookupTableName = null) {
-    if (!cluster_id) return 'not defined';
-    const clusterData = cluster.value.find(c => c.id === cluster_id);
-    if (clusterData) {
-        if (lookupTableName) {
-            return `${_renderLookup(lookupTableName, tableName, clusterData[tableName])}`;
-        } else {
-            return `${clusterData[tableName]}`;
+        if (entry) {
+            // Return the German name or the raw value
+            return `${code} | ${entry.name_de}`;
         }
+        // If no entry found, return the raw value
+        return `no lookup value | ${code} (${tableName})`;
     }
-    return `coming soon`;
-}
-function computeSelectable(record) {
-    if (props.organization_type === 'provider' && record.completed_at_state === null && record.completed_at_administration === null) {
-        return true;
+    function _renderCluster(tableName, cluster_id, lookupTableName = null) {
+        if (!cluster_id) return 'not defined';
+        const clusterData = cluster.value.find(c => c.id === cluster_id);
+        if (clusterData) {
+            if(lookupTableName) {
+                return `${ _renderLookup(lookupTableName, tableName, clusterData[tableName]) }`;
+            }else{
+                return `${ clusterData[tableName] }`;
+            }
+        }
+        return `coming soon`;
     }
-    if (props.organization_type === 'country' && record.completed_at_administration === null) {
-        return true;
+    // Tagesgenauer Wert fuer agDateColumnFilter
+    function _dayOf(date) {
+        if (!date) return null;
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
     }
-    if (props.organization_type === 'root') {
-        return true;
+
+    function computeSelectable(record) {
+        if( props.organization_type === 'provider' && record.completed_at_state === null && record.completed_at_administration === null){
+            return true;
+        }
+        if( props.organization_type === 'country' && record.completed_at_administration === null){
+            return true;
+        }
+        if( props.organization_type === 'root'){
+            return true;
+        }
+        return false;
     }
-    return false;
-}
-function _preRenderRecords(records) {
+    function _preRenderRecords(records) {
 
     if (!records || records.length === 0) {
         console.warn('No records to render');
@@ -821,8 +933,10 @@ function _preRenderRecords(records) {
     const processedRecords = records.map(record => {
         const clusterData = clusterMap.get(record.cluster_id);
 
-        const troop = troopsMap.get(record.responsible_troop);
-        const readOnlyTroop = troopsMap.get(record.responsible_read_only_troop);
+            const troop = troopsMap.get(record.responsible_troop);
+            const readOnlyTroop = troopsMap.get(record.responsible_read_only_troop);
+            const lastSurveyTroop = troopsMap.get(record.last_survey_troop);
+            const lastControlTroop = troopsMap.get(record.last_control_troop);
 
         return {
             is_selectable: computeSelectable(record),
@@ -838,18 +952,23 @@ function _preRenderRecords(records) {
 
             validity: record.is_valid ? (record.is_plausible ? true : false) : false,
 
-            updated_at: record.updated_at ? new Date(record.updated_at) : null,
-            completed_at_state: record.completed_at_state ? new Date(record.completed_at_state) : null,
-            completed_at_administration: record.completed_at_administration ? new Date(record.completed_at_administration) : null,
-            completed_at_troop: record.completed_at_troop ? new Date(record.completed_at_troop) : null,
+                updated_at: record.updated_at ? new Date(record.updated_at) : null,
+                completed_at_state: record.completed_at_state ? new Date(record.completed_at_state) : null,
+                completed_at_administration: record.completed_at_administration ? new Date(record.completed_at_administration) : null,
+                completed_at_troop: record.completed_at_troop ? new Date(record.completed_at_troop) : null,
+                completed_at_survey_troop: record.completed_at_survey_troop ? new Date(record.completed_at_survey_troop) : null,
+                completed_at_control_troop: record.completed_at_control_troop ? new Date(record.completed_at_control_troop) : null,
+                gnss_measured_at: record.gnss_measured_at ? new Date(record.gnss_measured_at) : null,
 
 
-            note: record.note,
+                note: record.note,
 
-            responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
-            responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
-            responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
-            responsible_read_only_troop: readOnlyTroop ? readOnlyTroop.name : record.responsible_read_only_troop,
+                responsible_state: organizationsIDMap.get(record.responsible_state) || record.responsible_state,
+                responsible_provider: organizationsIDMap.get(record.responsible_provider) || record.responsible_provider,
+                responsible_troop: troop ? troop.name + (troop.is_control_troop ? ' (KT)' : ' (AT)') : record.responsible_troop,
+                responsible_read_only_troop: readOnlyTroop ? readOnlyTroop.name : record.responsible_read_only_troop,
+                last_survey_troop: lastSurveyTroop ? lastSurveyTroop.name : (record.last_survey_troop ?? null),
+                last_control_troop: lastControlTroop ? lastControlTroop.name : (record.last_control_troop ?? null),
 
             //administration_los: record.administration_los,
             //state_los: record.state_los,
@@ -1127,6 +1246,7 @@ async function fetchAllDataPaginated(tableName, organizationId, companyType) {
                     responsible_administration,
                     responsible_troop,
                     responsible_read_only_troop,
+                    last_survey_troop,
                     is_valid,
                     federal_state,
                     growth_district,
@@ -1143,6 +1263,10 @@ async function fetchAllDataPaginated(tableName, organizationId, companyType) {
                     completed_at_state,
                     completed_at_administration,
                     completed_at_troop,
+                    completed_at_survey_troop,
+                    last_control_troop,
+                    completed_at_control_troop,
+                    gnss_measured_at,
                     is_valid,
                     is_plausible,
                     note,
@@ -1464,10 +1588,18 @@ async function exportSelectedZip() {
             return;
         }
 
-        const exportRecords = await fetchRecordsByPlotIds(supabase, plotIds);
-        const date = exportTimestamp();
-        const blob = await buildRecordsZip(exportRecords, options, date);
-        downloadBlob(blob, `selected_records_${date}.zip`);
+            const [exportRecords, exportMetadata, statusNames] = await Promise.all([
+                fetchRecordsByPlotIds(supabase, plotIds),
+                fetchMetadataByPlotIds(supabase, plotIds),
+                fetchWorkflowStatusNames(supabase)
+            ]);
+            const date = exportTimestamp();
+            const blob = await buildRecordsZip(exportRecords, options, date, {
+                metadata: exportMetadata.rows,
+                metadataColumns: exportMetadata.columns,
+                workflowStatusNames: statusNames
+            });
+            downloadBlob(blob, `selected_records_${date}.zip`);
 
         snackbarText.value = `${exportRecords.length} Ecken als ZIP exportiert.`;
         snackbarColor.value = 'success';
@@ -1564,73 +1696,127 @@ function _mergeNewColumnsIntoState(savedColumnState) {
         knownColIds.add(col.colId);
     });
 
-    return merged;
-}
-
-function onGridReady(params) {
-    nextTick(() => {
-        // Restore grid state from localStorage
-        const savedState = localStorage.getItem('agGridState_' + props.organization_type);
-        if (savedState) {
-            try {
-                const state = JSON.parse(savedState);
-                // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
-                // übernehmen, damit die feste Breite aus den colDefs gilt
-                const columnState = _mergeNewColumnsIntoState(
-                    (state.columnState || []).map(col =>
-                        col.colId === 'selected' ? { ...col, width: undefined } : col
-                    )
-                );
-                currentGrid.value.api.applyColumnState({ state: columnState, applyOrder: true });
-                if (state.filterModel) {
-                    currentGrid.value.api.setFilterModel(state.filterModel);
-                }
-            } catch (e) {
-                console.error('Error restoring grid state:', e);
-            }
-        }
-
-        setTimeout(() => {
-            updateDisplayedRows(); // Initial update of displayed rows
-        }, 100);
-    });
-}
-
-function saveGridState() {
-    if (!currentGrid.value?.api) return;
-
-    const state = {
-        columnState: currentGrid.value.api.getColumnState(),
-        filterModel: currentGrid.value.api.getFilterModel()
-    };
-
-    localStorage.setItem('agGridState_' + props.organization_type, JSON.stringify(state));
-}
-function onFilterChanged(filter) {
-    if (!currentGrid.value || !currentGrid.value.api) {
-        console.error('Grid API not available');
-        return;
+        return _keepColumnGroupsTogether(merged);
     }
 
-    filteredRows.value = currentGrid.value.api.getFilterModel();
+    // AG Grid zeichnet einen Gruppenkopf pro zusammenhaengendem Block. Liegen
+    // Spalten einer Gruppe im gespeicherten Zustand nicht nebeneinander (z.B.
+    // nachdem eine neue Spalte in die Gruppe kam), erscheint "Berechtigungen" mehrfach.
+    // Deshalb alle Spalten einer Gruppe an die Stelle ihres ersten Mitglieds
+    // ziehen.
+    function _keepColumnGroupsTogether(columnState) {
+        const api = currentGrid.value?.api;
+        if (!api) return columnState;
 
-    updateDisplayedRows();
+        const groupOf = (colId) => {
+            const parent = api.getColumn(colId)?.getOriginalParent();
+            return parent && !parent.isPadding() ? parent.getGroupId() : null;
+        };
 
-    currentGrid.value.api.deselectAll(); // Deselect all rows when filter changes
+        const result = [];
+        const placedGroups = new Set();
+        columnState.forEach(col => {
+            const groupId = groupOf(col.colId);
+            if (!groupId) {
+                result.push(col);
+                return;
+            }
+            if (placedGroups.has(groupId)) return;
+            placedGroups.add(groupId);
+            columnState
+                .filter(member => groupOf(member.colId) === groupId)
+                .forEach(member => result.push(member));
+        });
+        return result;
+    }
 
-    saveGridState(); // Save state when filter changes
+    // applyColumnState/setFilterModel loesen selbst columnVisible- und
+    // filterChanged-Events aus. Ohne diese Sperre wuerde saveGridState() dabei
+    // einen halb wiederhergestellten Zustand zurueckschreiben - z.B. ein leeres
+    // Filtermodell, weil die Filter erst nach den Spalten gesetzt werden.
+    let isRestoringGridState = false;
+
+    function onGridReady(params) {
+        nextTick(() => {
+            // Restore grid state from localStorage
+            const savedState = localStorage.getItem('agGridState_' + props.organization_type);
+            if (savedState) {
+                try {
+                    isRestoringGridState = true;
+                    const state = JSON.parse(savedState);
+                    // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
+                    // übernehmen, damit die feste Breite aus den colDefs gilt.
+                    // pinned ebenfalls nicht: es gilt immer das aus den colDefs
+                    // (lockPinned). Aeltere Zustaende enthalten durch Ziehen
+                    // entstandene Mischungen, die "Berechtigungen" zwischen angeheftetem
+                    // und freiem Bereich zerreissen.
+                    const columnState = _mergeNewColumnsIntoState(
+                        (state.columnState || []).map(({ pinned, ...col }) =>
+                            col.colId === 'selected' ? { ...col, width: undefined } : col
+                        )
+                    );
+                    currentGrid.value.api.applyColumnState({ state: columnState, applyOrder: true });
+                    if (state.filterModel) {
+                        currentGrid.value.api.setFilterModel(state.filterModel);
+                    }
+                } catch (e) {
+                    console.error('Error restoring grid state:', e);
+                } finally {
+                    isRestoringGridState = false;
+                }
+            }
+
+            setTimeout(() => {
+                updateDisplayedRows(); // Initial update of displayed rows
+            }, 100);
+        });
+    }
+
+    // Das Spalten-Menue (ColumnVisibilityMenu) sitzt in der Toolbar der Seite
+    // und arbeitet direkt auf der Grid-API. Hier wird nur der geaenderte
+    // Zustand mitgeschrieben - `hide` ist Teil von getColumnState().
+    function onColumnVisible() {
+        saveGridState();
+    }
+
+    function saveGridState() {
+        if (isRestoringGridState) return;
+        if (!currentGrid.value?.api) return;
+        
+        const state = {
+            columnState: currentGrid.value.api.getColumnState(),
+            filterModel: currentGrid.value.api.getFilterModel()
+        };
+        
+        localStorage.setItem('agGridState_' + props.organization_type, JSON.stringify(state));
+    }
+    // Das Spalten-Menue liegt in der Seiten-Toolbar und braucht die Grid-API.
+    // Als computed folgt sie automatisch einem Neuaufbau des Grids.
+    const gridApi = computed(() => currentGrid.value?.api || null);
+
+    defineExpose({ gridApi, saveGridState });
+
+    function onFilterChanged(filter) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        filteredRows.value = currentGrid.value.api.getFilterModel();
+        
+        updateDisplayedRows();
+        //currentGrid.value.api.deselectAll(); // Deselect all rows when filter changes
+        saveGridState(); // Save state when filter changes
+    }
     
-}
-
-function onSortChanged() {
-    saveGridState(); // Save state when sort changes
-}
-
-function onColumnMoved() {
-    saveGridState(); // Save state when columns are reordered
-}
-function updateDisplayedRows() {
-    console.log('Updating displayed rows');
+    function onSortChanged() {
+        saveGridState(); // Save state when sort changes
+    }
+    
+    function onColumnMoved() {
+        saveGridState(); // Save state when columns are reordered
+    }
+    function updateDisplayedRows() {
+        console.log('Updating displayed rows');
 
     if (!currentGrid.value || !currentGrid.value.api) {
         console.error('Grid API not available');
@@ -1879,10 +2065,14 @@ async function updateRowDataFromRecords(updatedRecords) {
                     responsible_provider: updatedRecord.responsible_provider,
                     responsible_troop: updatedRecord.responsible_troop,
                     responsible_read_only_troop: updatedRecord.responsible_read_only_troop,
+                    last_survey_troop: updatedRecord.last_survey_troop,
                     note: updatedRecord.note,
                     completed_at_state: updatedRecord.completed_at_state,
                     completed_at_administration: updatedRecord.completed_at_administration,
                     completed_at_troop: updatedRecord.completed_at_troop,
+                    completed_at_survey_troop: updatedRecord.completed_at_survey_troop,
+                    last_control_troop: updatedRecord.last_control_troop,
+                    completed_at_control_troop: updatedRecord.completed_at_control_troop,
                     updated_at: updatedRecord.updated_at,
                     is_selectable: updatedRecord.is_selectable,
                     state_by_user: updatedRecord.state_by_user,
@@ -2158,10 +2348,22 @@ function selectFromInputList() {
             </template>
         </v-toolbar>
     </v-card>-->
-    <ag-grid-vue ref="currentGrid" v-if="!isLoading" @selection-changed="onSelectionChanged"
-        @filter-changed="onFilterChanged" @sort-changed="onSortChanged" @column-moved="onColumnMoved"
-        @grid-ready="onGridReady" :gridOptions="gridOptions" :theme="currentTheme" :pagination="true" :rowData="rowData"
-        :columnDefs="colDefs" style="height: 700px">
+    <ag-grid-vue
+        ref="currentGrid"
+        v-if="!isLoading"
+        @selection-changed="onSelectionChanged"
+        @filter-changed="onFilterChanged"
+        @sort-changed="onSortChanged"
+        @column-moved="onColumnMoved"
+        @column-visible="onColumnVisible"
+        @grid-ready="onGridReady"
+        :gridOptions="gridOptions"
+        :theme="currentTheme"
+        :pagination="true"
+        :rowData="rowData"
+        :columnDefs="colDefs"
+        style="height: 700px"
+    >
     </ag-grid-vue>
     <div v-if="isLoading" class="text-center">
         <v-skeleton-loader type="table" />

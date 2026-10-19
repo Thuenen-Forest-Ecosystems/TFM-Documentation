@@ -35,11 +35,29 @@
 
     const position = computed(() => props.record?.properties?.position);
 
+    // Accepts GeoJSON points, {latitude, longitude} objects (TFM-app) and
+    // (E)WKT strings like "SRID=4326;POINT(lon lat)" (migrated BWI2022 data).
+    // Always returns [lng, lat] or null.
+    const WKT_POINT_PATTERN = /^(?:SRID=\d+;)?\s*POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)\s*$/i;
+
     function normalizeCoordinates(value) {
         if (!value) return null;
+        if (typeof value === 'string') {
+            const match = value.trim().match(WKT_POINT_PATTERN);
+            if (!match) return null;
+            const lng = Number(match[1]);
+            const lat = Number(match[2]);
+            return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null;
+        }
         if (value.coordinates && value.coordinates.length === 2) return value.coordinates;
         if (value.longitude != null && value.latitude != null) return [value.longitude, value.latitude];
         return null;
+    }
+
+    function formatLngLat(coordinates) {
+        if (!coordinates) return null;
+        const [lng, lat] = coordinates;
+        return `${lat}, ${lng}`;
     }
 
     function toFiniteNumber(value) {
@@ -287,7 +305,7 @@
         return 'Nicht geeignet';
     }
 
-    const style = {
+    const styleOSM = {
         version: 8,
         sources: {
             osm: {
@@ -303,14 +321,39 @@
         ]
     };
 
-    function initMap() {
+    const styleSatellite = {
+        version: 8,
+        sources: {
+            satellite: {
+                type: 'raster',
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: '&copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+                maxzoom: 19
+            }
+        },
+        layers: [
+            { id: 'satellite', type: 'raster', source: 'satellite' }
+        ]
+    };
+
+    // true = OSM map, false = satellite imagery (same convention as WorkflowMap/GeoJsonMap)
+    const basemapToggle = ref(true);
+
+    function currentStyle() {
+        return basemapToggle.value ? styleOSM : styleSatellite;
+    }
+
+    function initMap(view = null) {
         if (!mapContainer.value || !mapCenter.value) return;
 
         map = new maplibregl.Map({
             container: mapContainer.value,
-            style,
-            center: mapCenter.value,
-            zoom: 17
+            style: currentStyle(),
+            center: view?.center ?? mapCenter.value,
+            zoom: view?.zoom ?? 17,
+            bearing: view?.bearing ?? 0,
+            pitch: view?.pitch ?? 0
         });
 
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
@@ -512,6 +555,23 @@
         }
     });
 
+    // Rebuild the map on basemap change. setStyle() would drop the GeoJSON layers
+    // while keeping the DOM markers, so a clean re-init with the preserved view
+    // is simpler and avoids duplicate markers.
+    watch(basemapToggle, async () => {
+        if (!map) return;
+        const view = {
+            center: map.getCenter(),
+            zoom: map.getZoom(),
+            bearing: map.getBearing(),
+            pitch: map.getPitch()
+        };
+        map.remove();
+        map = null;
+        await nextTick();
+        initMap(view);
+    });
+
     watch(selectedHistoricalPoints, () => {
         if (!map || !map.isStyleLoaded()) return;
         updateHistoricalPositionsLayer();
@@ -529,6 +589,15 @@
     <v-card variant="tonal" class="ma-3">
         <v-toolbar color="transparent">
             <v-toolbar-title>Gemessene Position</v-toolbar-title>
+            <v-switch
+                v-if="hasPosition"
+                v-model="basemapToggle"
+                label="Satellit / Karte"
+                class="me-4"
+                hide-details
+                inset
+                color="primary"
+            />
         </v-toolbar>
         <v-card-text v-if="!hasPosition">
             <v-alert type="info" density="compact" variant="tonal">
@@ -584,6 +653,23 @@
                                 </v-chip>
                             </v-chip-group>
                         </div>
+
+                        <v-table v-if="positionMedian || positionMean" density="compact" class="mt-3">
+                            <tbody>
+                                <tr v-if="positionMedian">
+                                    <td class="text-caption font-weight-medium">
+                                        <v-icon color="blue-darken-3" size="x-small" class="me-1">mdi-map-marker</v-icon>Median
+                                    </td>
+                                    <td class="text-caption coordinate-value">{{ formatLngLat(positionMedian) }}</td>
+                                </tr>
+                                <tr v-if="positionMean">
+                                    <td class="text-caption font-weight-medium">
+                                        <v-icon color="orange-darken-3" size="x-small" class="me-1">mdi-map-marker</v-icon>Mittel
+                                    </td>
+                                    <td class="text-caption coordinate-value">{{ formatLngLat(positionMean) }}</td>
+                                </tr>
+                            </tbody>
+                        </v-table>
 
                         <v-table density="compact" class="mt-2">
                             <tbody>
@@ -644,6 +730,11 @@
         width: 100%;
         height: 350px;
         min-height: 250px;
+    }
+
+    .coordinate-value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: nowrap;
     }
 
     .historical-interval-dot {

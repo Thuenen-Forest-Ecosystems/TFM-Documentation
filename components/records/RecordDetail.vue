@@ -137,6 +137,11 @@
     function collectTopLevelFields(node) {
         const fields = new Set();
         if (!node) return fields;
+        // An array_summary only mirrors the row count of an array that is edited
+        // in another tab (the WZP4 trees shown in Bestockung). Claiming its
+        // property here would badge this tab with the other tab's errors and
+        // leave the owning tab without them (TFM-client-app#477).
+        if (node.component === 'array_summary') return fields;
         if (node.component === 'datagrid' && node.property) {
             fields.add(node.property.split('.')[0]);
             return fields;
@@ -345,6 +350,22 @@
 
     watch(selectedVersion, () => loadValidationResources());
 
+    // Title of the schema the app last validated this record with. Fetched by id
+    // because VersionSelection only lists visible schemas.
+    const validatedSchemaTitle = ref(null);
+    watch(() => props.record?.schema_id_validated_by, async (schemaId) => {
+        validatedSchemaTitle.value = null;
+        if (!schemaId) return;
+        const { data, error } = await supabase
+            .from('schemas')
+            .select('title, version')
+            .eq('id', schemaId)
+            .maybeSingle();
+        if (props.record?.schema_id_validated_by !== schemaId) return;
+        if (error) console.error('Error fetching validated schema:', error);
+        validatedSchemaTitle.value = data?.title || (data?.version != null ? `v${data.version}` : schemaId);
+    }, { immediate: true });
+
     async function loadValidationResources() {
         const versionId = selectedVersion.value?.id;
         if (!versionId) {
@@ -410,9 +431,18 @@
                 <v-btn value="BWI2022" size="small">vergangene Inventuren</v-btn>
             </v-btn-toggle>
             <div class="flex-grow-1"></div>
+            <v-chip
+                v-if="props.record?.schema_id_validated_by"
+                class="mr-3"
+                size="small"
+                variant="tonal"
+                :title="props.record.schema_id_validated_by"
+            >
+                Validiert mit: {{ validatedSchemaTitle || '…' }}
+            </v-chip>
             <VersionSelection
                 size="small"
-                class="flex-grow-0"
+                class="flex-grow-0 mr-3"
                 v-model="selectedVersion"
                 :is_loading="loadingVersion"
                 :default_schema_id="props.record?.schema_id_validated_by"

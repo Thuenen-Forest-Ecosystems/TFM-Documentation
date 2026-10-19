@@ -88,6 +88,12 @@
         return err?.savedNote || err?.note || err?.rawError?.note || err?.error?.note || null;
     }
 
+    // Number of the plausibility check that raised the error, e.g. 880810.
+    function getPlausibilityCode(err) {
+        const code = err?.error?.code ?? err?.rawError?.code ?? null;
+        return code === null || code === '' ? null : String(code);
+    }
+
     /*function createColumnDefsFromJsonSchema(jsonSchema){
         
         if (!jsonSchema || !jsonSchema.properties) return;
@@ -460,10 +466,11 @@
                 if (params.data?._errorTooltip || (params.data?._errorDetails?.length || 0) > 0) {
                     errorDialogMessages.value = (params.data?._errorDetails || []).length > 0
                         ? params.data._errorDetails
-                        : params.data._errorTooltip.split('\n').map(msg => ({
-                            text: msg.replace(/^Notiz:\s*/, ''),
-                            isNote: /^Notiz:\s*/.test(msg)
-                        }));
+                        : params.data._errorTooltip.split('\n').map(msg => (
+                            /^Notiz:\s*/.test(msg)
+                                ? { code: null, text: null, note: msg.replace(/^Notiz:\s*/, '') }
+                                : { code: null, text: msg, note: null }
+                        ));
                     errorDialogType.value = params.data._errorIndicator;
                     errorDialogOpen.value = true;
                 }
@@ -481,14 +488,15 @@
         const errMap = rowErrorMap.value;
         const prefix = props.propertyName ? `/${props.propertyName}/` : '/';
 
-        // Build per-row dialog entries (deduplicated)
+        // Build per-row dialog entries (one entry per error, deduplicated)
         const detailMap = {};
-        function addDetail(rowIdx, text, kind = 'message') {
-            if (!text) return;
+        function addDetail(rowIdx, { code, text, note }) {
+            if (!text && !note) return;
             const rowKey = String(rowIdx);
             const list = (detailMap[rowKey] ??= []);
-            const alreadyThere = list.some(item => item.kind === kind && item.text === text);
-            if (!alreadyThere) list.push({ kind, text });
+            const alreadyThere = list.some(item =>
+                item.code === code && item.text === text && item.note === note);
+            if (!alreadyThere) list.push({ code, text, note });
         }
 
         for (const err of props.validationErrors) {
@@ -496,10 +504,14 @@
             const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
             const rowIdx = rest.split('/')[0];
             if (!rowIdx) continue;
-            const msg = getValidationMessage(err);
+            const text = getValidationMessage(err);
             const note = getValidationNote(err);
-            addDetail(rowIdx, msg, 'message');
-            if (note && note !== msg) addDetail(rowIdx, note, 'note');
+            // Schema errors carry no check number, only plausibility errors do.
+            addDetail(rowIdx, {
+                code: null,
+                text,
+                note: note && note !== text ? note : null
+            });
         }
 
         for (const err of props.plausibilityErrors) {
@@ -507,10 +519,13 @@
             const rest = props.propertyName ? p.replace(prefix, '') : p.replace(/^\//, '');
             const rowIdx = rest.split('/')[0];
             if (!rowIdx) continue;
-            const msg = getPlausibilityMessage(err);
+            const text = getPlausibilityMessage(err);
             const note = getPlausibilityNote(err);
-            addDetail(rowIdx, msg, 'message');
-            if (note && note !== msg) addDetail(rowIdx, note, 'note');
+            addDetail(rowIdx, {
+                code: getPlausibilityCode(err),
+                text,
+                note: note && note !== text ? note : null
+            });
         }
 
         return rows.map((row, index) => {
@@ -520,9 +535,12 @@
                 ...row,
                 _errorIndicator: errMap[idxStr]?.hasError ? 'error' : errMap[idxStr]?.hasWarning ? 'warning' : null,
                 _errorTooltip: details.length
-                    ? details.map(item => item.kind === 'note' ? `Notiz: ${item.text}` : item.text).join('\n')
+                    ? details.flatMap(item => [
+                        [item.code ? `[${item.code}]` : null, item.text].filter(Boolean).join(' '),
+                        item.note ? `Notiz: ${item.note}` : null
+                    ].filter(Boolean)).join('\n')
                     : null,
-                _errorDetails: details.map(item => ({ text: item.text, isNote: item.kind === 'note' }))
+                _errorDetails: details
             };
         });
     }
@@ -628,12 +646,16 @@
                     {{ errorDialogType === 'error' ? 'Fehler' : 'Warnung' }}
                 </v-card-title>
                 <v-card-text>
-                    <div v-for="(msg, i) in errorDialogMessages" :key="i" class="mb-2">
-                        <div v-if="msg.isNote" class="error-note">
-                            <span class="error-note-label">Notiz:</span>
-                            <span>{{ msg.text }}</span>
+                    <div v-for="(msg, i) in errorDialogMessages" :key="i" class="mb-4">
+                        <div v-if="msg.code" class="error-code mb-1">
+                            <span class="error-code-label">Prüfung</span>
+                            <span>{{ msg.code }}</span>
                         </div>
-                        <div v-else>{{ msg.text }}</div>
+                        <div v-if="msg.text">{{ msg.text }}</div>
+                        <div v-if="msg.note" class="error-note mt-2">
+                            <span class="error-note-label">Notiz:</span>
+                            <span>{{ msg.note }}</span>
+                        </div>
                     </div>
                 </v-card-text>
                 <v-card-actions>
@@ -658,5 +680,22 @@
     .error-note-label {
         font-weight: 700;
         margin-right: 4px;
+    }
+
+    .error-code {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background-color: rgba(var(--v-theme-on-surface), 0.08);
+        color: rgba(var(--v-theme-on-surface), 0.75);
+        font-family: monospace;
+        font-size: 0.8rem;
+        line-height: 1.6;
+    }
+
+    .error-code-label {
+        margin-right: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
 </style>

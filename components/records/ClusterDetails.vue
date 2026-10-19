@@ -56,6 +56,7 @@
 
     const sheet = shallowRef(false)
     const compareDialog = ref(false);
+    const historyFilterMode = ref('relevant'); // 'relevant' | 'all'
 
     const instance = getCurrentInstance();
     const supabase = instance.appContext.config.globalProperties.$supabase;
@@ -283,11 +284,22 @@
                         <v-toolbar flat density="compact">
                             <v-toolbar-title>History</v-toolbar-title>
                             <template v-slot:append>
+                                <v-btn-toggle
+                                    v-model="historyFilterMode"
+                                    density="compact"
+                                    variant="outlined"
+                                    divided
+                                    mandatory
+                                    class="me-2"
+                                >
+                                    <v-btn value="relevant" size="small">Relevant</v-btn>
+                                    <v-btn value="all" size="small">Alle</v-btn>
+                                </v-btn-toggle>
                                 <v-btn icon="mdi-close" variant="text" @click="sheet = false" />
                             </template>
                         </v-toolbar>
                         <v-card-text class="pa-0">
-                            <HistoryHorizonatal :plot_id="activeRecord.plot_id" @select:record="onHistorySelect" @update:record="onUpdateRecord" :selected="activeRecord" />
+                            <HistoryHorizonatal :plot_id="activeRecord.plot_id" v-model:filter-mode="historyFilterMode" @select:record="onHistorySelect" @update:record="onUpdateRecord" :selected="activeRecord" />
                         </v-card-text>
                     </v-card>
                 </v-dialog>

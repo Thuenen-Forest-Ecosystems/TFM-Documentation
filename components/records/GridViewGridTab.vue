@@ -159,7 +159,10 @@
                                     {{ getFieldErrors(key).plausibility.some(e => e.error?.type === 'error') ? 'mdi-alert-octagon' : 'mdi-alert-circle' }}
                                 </v-icon>
                             </template>
-                            <div v-for="(e, i) in getFieldErrors(key).plausibility" :key="i">{{ e.error?.note || e.error?.text }}</div>
+                            <div v-for="(e, i) in getFieldErrors(key).plausibility" :key="i">
+                                <span v-if="e.error?.code" class="font-weight-bold mr-1">[{{ e.error.code }}]</span>
+                                <span>{{ e.error?.note || e.error?.text }}</span>
+                            </div>
                         </v-tooltip>
                         <v-tooltip>
                             <template #activator="{ props: ip }">
