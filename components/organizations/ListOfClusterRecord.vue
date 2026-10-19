@@ -1,10 +1,19 @@
 <script setup>
+<<<<<<< Updated upstream
 import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, computed } from 'vue';
 import { AllCommunityModule, ModuleRegistry, TooltipModule } from 'ag-grid-community';
 ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
 import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
 import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 import { AG_GRID_LOCALE_DE } from '@ag-grid-community/locale';
+=======
+    import { onMounted, ref, getCurrentInstance, inject, nextTick, watch, computed } from 'vue';
+    import { AllCommunityModule, ModuleRegistry, TooltipModule  } from 'ag-grid-community';
+    ModuleRegistry.registerModules([AllCommunityModule, TooltipModule]);
+    import { AgGridVue } from "ag-grid-vue3"; // Vue Data Grid Component
+    import { colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
+    import { AG_GRID_LOCALE_DE } from '@ag-grid-community/locale';
+>>>>>>> Stashed changes
 
 
 import ActionCellRenderer from './ActionCellRenderer.vue';
@@ -1205,7 +1214,295 @@ async function _requestPlots(organizationType, organizationId) {
 
     if (records && records.length > 0) {
 
+<<<<<<< Updated upstream
         snackbarText.value = `${records.length} Datensätze erfolgreich geladen.`;
+=======
+        try {
+            if (!exportSchema.value) {
+                const schemaRow = await fetchNewestSchema(supabase);
+                exportSchema.value = schemaRow?.schema || null;
+            }
+
+            const options = buildDownloadOptions(exportSchema.value);
+
+            if (options.length === 0) {
+                snackbarText.value = 'Export nicht möglich: kein gültiges Schema gefunden.';
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+                return;
+            }
+
+            const exportRecords = await fetchRecordsByPlotIds(supabase, plotIds);
+            const date = exportTimestamp();
+            const blob = await buildRecordsZip(exportRecords, options, date);
+            downloadBlob(blob, `selected_records_${date}.zip`);
+
+            snackbarText.value = `${exportRecords.length} Ecken als ZIP exportiert.`;
+            snackbarColor.value = 'success';
+            snackbar.value = true;
+        } catch (e) {
+            console.error('Error exporting selected records as ZIP:', e);
+            snackbarText.value = e.message || 'Fehler beim Erstellen des ZIP-Archivs';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+        } finally {
+            exportingZip.value = false;
+        }
+    }
+
+     watch(() => props.records, async (newRecords) => {
+
+        if (!props.tab_active || !Array.isArray(newRecords)) {
+            return;
+        }
+
+        // Invalidate any in-flight _hydrateGridData run so its late results
+        // cannot overwrite the newer records we are about to render. Since the
+        // invalidated run then skips its own loading cleanup, the loading flag
+        // is managed here as well.
+        const runId = ++hydrateVersion;
+        loading.value = true;
+
+        try {
+            await Promise.all([
+                _ensureLookupTablesLoaded(),
+                _ensureReferenceDataLoaded()
+            ]);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            rowData.value = _preRenderRecords(newRecords);
+
+            const mapRecords = (newRecords.length === 0 || _hasMapGeometry(newRecords))
+                ? newRecords
+                : await _requestPlots(props.organization_type, props.organization_id);
+
+            if (runId !== hydrateVersion) {
+                return;
+            }
+
+            createGeojsonFeatureCollection(mapRecords || newRecords);
+        } finally {
+            if (runId === hydrateVersion) {
+                loading.value = false;
+            }
+        }
+    });
+
+    onMounted(async () => {
+
+        setColDefs();
+
+        /*getIsDatabaseAdmin(supabase).then((isDatabaseAdmin) => {
+            showReadOnlyTroopColumn.value = isDatabaseAdmin;
+            setColDefs(); // rebuild columns once the admin check resolved
+        });*/
+
+        usersPermissions.value = await getUsersPermissions(supabase, props.organization_id);
+
+        if (props.tab_active) {
+            await _hydrateGridData();
+        }
+    });
+
+    // Spalten, die es beim Speichern des Grid-Zustands noch nicht gab, haengt
+    // AG Grid bei applyOrder ans Ende. Damit eine neu ergaenzte Spalte (z.B.
+    // "Workflow") an der in colDefs definierten Stelle steht, wird sie hier neben
+    // ihrer Vorgaengerspalte in den gespeicherten Zustand einsortiert.
+    function _mergeNewColumnsIntoState(savedColumnState) {
+        const currentState = currentGrid.value?.api?.getColumnState() || [];
+        const knownColIds = new Set(savedColumnState.map(col => col.colId));
+        const merged = [...savedColumnState];
+
+        currentState.forEach((col, index) => {
+            if (knownColIds.has(col.colId)) return;
+
+            let insertAt = merged.length;
+            for (let i = index - 1; i >= 0; i--) {
+                const position = merged.findIndex(mergedCol => mergedCol.colId === currentState[i].colId);
+                if (position !== -1) {
+                    insertAt = position + 1;
+                    break;
+                }
+            }
+
+            merged.splice(insertAt, 0, col);
+            knownColIds.add(col.colId);
+        });
+
+        return merged;
+    }
+
+    function onGridReady(params) {
+        nextTick(() => {
+            // Restore grid state from localStorage
+            const savedState = localStorage.getItem('agGridState_' + props.organization_type);
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    // Breite der Auswahlspalte nicht aus dem gespeicherten Zustand
+                    // übernehmen, damit die feste Breite aus den colDefs gilt
+                    const columnState = _mergeNewColumnsIntoState(
+                        (state.columnState || []).map(col =>
+                            col.colId === 'selected' ? { ...col, width: undefined } : col
+                        )
+                    );
+                    currentGrid.value.api.applyColumnState({ state: columnState, applyOrder: true });
+                    if (state.filterModel) {
+                        currentGrid.value.api.setFilterModel(state.filterModel);
+                    }
+                } catch (e) {
+                    console.error('Error restoring grid state:', e);
+                }
+            }
+            
+            setTimeout(() => {
+                updateDisplayedRows(); // Initial update of displayed rows
+            }, 100);
+        });
+    }
+    
+    function saveGridState() {
+        if (!currentGrid.value?.api) return;
+        
+        const state = {
+            columnState: currentGrid.value.api.getColumnState(),
+            filterModel: currentGrid.value.api.getFilterModel()
+        };
+        
+        localStorage.setItem('agGridState_' + props.organization_type, JSON.stringify(state));
+    }
+    function onFilterChanged(filter) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        filteredRows.value = currentGrid.value.api.getFilterModel();
+        
+        updateDisplayedRows();
+        currentGrid.value.api.deselectAll(); // Deselect all rows when filter changes
+        saveGridState(); // Save state when filter changes
+    }
+    
+    function onSortChanged() {
+        saveGridState(); // Save state when sort changes
+    }
+    
+    function onColumnMoved() {
+        saveGridState(); // Save state when columns are reordered
+    }
+    function updateDisplayedRows() {
+        console.log('Updating displayed rows');
+
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+
+        // Clear displayedRows
+        displayedRows.value = [];
+
+        // Step 1: Collect all displayed rows
+        currentGrid.value.api.forEachNodeAfterFilter((node) => {
+            displayedRows.value.push(node.data);
+        });
+
+        // Step 2: Create a Set of plot_ids for faster lookup
+        const displayedPlotIds = new Set(displayedRows.value.map(row => row.plot_id));
+
+        // Step 3: Update geojsonFeatureCollection features
+        geojsonFeatureCollection.value.features.forEach(feature => {
+            feature.properties.isFiltered = displayedPlotIds.has(feature.properties.plot_id);
+        });
+
+        console.log('Displayed rows updated:', displayedRows.value.length);
+    }
+    // Ein Filter kann eine einzelne Bedingung, mehrere ODER-/UND-Bedingungen
+    // (Wertauswahl im Spaltenkopf) oder ein eigenes Modell sein - `model.filter`
+    // allein bliebe in den Chips oft leer.
+    function filterChipLabel(model) {
+        if (!model) {
+            return '';
+        }
+        if (Array.isArray(model.conditions) && model.conditions.length) {
+            const join = model.operator === 'AND' ? ' und ' : ' oder ';
+            return model.conditions.map(filterChipLabel).join(join);
+        }
+        if (model.filter !== undefined && model.filter !== null) {
+            return model.filter;
+        }
+        if (model.filterType === 'workflow') {
+            return `${(model.values?.length || 0) + (model.checkAll ? 1 : 0)} Status`;
+        }
+        if (model.dateFrom) {
+            return model.dateTo ? `${model.dateFrom} – ${model.dateTo}` : model.dateFrom;
+        }
+        return '';
+    }
+    function clearFilters() {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        currentGrid.value.api.setFilterModel(null);
+        filteredRows.value = {};
+    }
+    function clearFilter(filterKey) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        if (filterKey && filteredRows.value[filterKey]) {
+            currentGrid.value.api.setFilterModel({
+                ...currentGrid.value.api.getFilterModel(),
+                [filterKey]: null
+            });
+            delete filteredRows.value[filterKey];
+        } else {
+            console.warn('No filter key provided or filter not found');
+        }
+
+    }
+    function selectByClusterIds(clusterIds) {
+        if (!currentGrid.value || !currentGrid.value.api) {
+            console.error('Grid API not available');
+            return;
+        }
+        if (!Array.isArray(clusterIds) || clusterIds.length === 0) {
+            console.warn('No cluster IDs provided for selection');
+            snackbarText.value = 'Keine Cluster IDs zum Auswählen angegeben.';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+            return;
+        }
+
+        let selectedRows = 0;
+       
+        const conditionsMap = [];
+        for (const id of clusterIds) {
+            conditionsMap.push({ filterType: 'number', type: 'equals', filter: id });
+        }
+        currentGrid.value.api.setColumnFilterModel('cluster_name', {
+            filterType: 'number',
+            operator: 'OR',
+            conditions: conditionsMap
+        });
+        currentGrid.value.api.onFilterChanged();
+
+
+        // currentGrid.value.api.forEachNode((node) => {
+        //     if (clusterIds.includes(node.data.cluster_name)) {
+        //         node.setSelected(true);
+        //         selectedRows++;
+        //     }
+        // });
+
+        // count selected rows
+        //const selectedCount = currentGrid.value.api.getSelectedRows().length;
+        snackbarText.value = `${selectedRows} Ecken ausgewählt.`;
+>>>>>>> Stashed changes
         snackbarColor.value = 'success';
         snackbar.value = true;
 
