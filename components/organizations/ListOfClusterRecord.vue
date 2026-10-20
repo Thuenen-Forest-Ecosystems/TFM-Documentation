@@ -2436,7 +2436,7 @@ function selectFromInputList() {
                     <v-spacer></v-spacer>
                     <v-btn color="primary" variant="elevated" prepend-icon="mdi-check" @click="selectFromInputList"
                         rounded="xl">
-                        Auswählen ({{ selectedClusterIdsInput.length }})
+                        Filtern ({{ selectedClusterIdsInput.length }})
                     </v-btn>
                 </v-card-actions>
             </div>
