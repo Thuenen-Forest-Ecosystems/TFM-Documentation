@@ -138,9 +138,10 @@ function buildColDefs() {
  * 3. Abgabedatum (chronological)
  */
 async function fetchData() {
-  // If no organization is selected, clear table data and return early
+  // If no organization or troop is selected, clear table data and return early
   if (!selectedOrganisation.value) {
     tabledata.value = [];
+    dataloaded.value = 0;
     return [];
   }
 
@@ -154,13 +155,27 @@ async function fetchData() {
         user_id: selectedOrganisation.value
       });
 
-    if (error) throw error;
+    if (error) {
+      console.warn('RPC stat_abgegebene_traktecken_pro_at returned an error:', error);
+      tabledata.value = [];
+      dataloaded.value = 0;
+      return [];
+    }
 
-    const allRecords = data || [];
+    // Prevent errors if RPC response is null, undefined, not an array, or empty
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      tabledata.value = [];
+      dataloaded.value = 0;
+      return [];
+    }
+
+    const allRecords = [...data];
     dataloaded.value = allRecords.length;
 
     // Client-side multi-column sort: Landesinventurleitung -> Trupp -> Abgabedatum
     allRecords.sort((a, b) => {
+      if (!a || !b) return 0;
+
       const compareLil = String(a.landesinventurleitung || '').localeCompare(String(b.landesinventurleitung || ''));
       if (compareLil !== 0) return compareLil;
 
@@ -174,23 +189,26 @@ async function fetchData() {
     return allRecords;
   } catch (err) {
     console.error('Error fetching or processing RPC data:', err);
-    throw err;
+    tabledata.value = [];
+    dataloaded.value = 0;
+    return [];
   } finally {
     dataload.value = false;
   }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 7️⃣ Organization Lookup
+// 7️⃣ Organization & Troop Lookup
 // ──────────────────────────────────────────────────────────────────────────────
 /**
- * Loads organizations the currently authenticated user has permissions for.
- * Excludes soft-deleted organizations and auto-selects the organization if
- * only a single one is available.
+ * Loads organizations and troops the currently authenticated user has permissions for.
+ * Queries `users_permissions` / `organizations` as well as `public.troop` to populate
+ * the selection dropdown with both organizations and their associated troops.
  *
  * @param {string} userId - The authenticated user's UUID from the Supabase session
  */
 async function _getOrganizations(userId) {
+  // 1. Fetch user permissions and related organizations
   const { data, error } = await supabase
     .from('users_permissions')
     .select("*, organizations(*)")
@@ -201,15 +219,78 @@ async function _getOrganizations(userId) {
     return;
   }
 
-  // Extract non-deleted organizations
-  organisationsList.value = data
-    .filter(p => !p.organizations.deleted)
+  const validPermissions = data || [];
+
+  // All organization IDs the user has access to
+  const allUserOrgIds = validPermissions
+    .filter(p => p.organizations && !p.organizations.deleted)
+    .map(p => p.organizations.id);
+
+  // Extract organizations according to admin filter
+  const orgItems = validPermissions
+    .filter(p => p.organizations && !p.organizations.deleted && p.is_organization_admin)
     .map(item => ({
       id: item.organizations.id,
-      name: item.organizations.name
+      name: item.organizations.name,
+      type: 'org',
+      typeLabel: 'Organisation',
+      icon: 'mdi-domain',
+      color: 'primary'
     }));
 
-  // Auto-select if user only has access to one organization
+  // 2. Query public.troop for troops belonging to the user's organizations
+  let troopItems = [];
+  if (allUserOrgIds.length > 0) {
+    const { data: troopData, error: troopError } = await supabase
+      .from('troop')
+      .select('id, name, deleted, organization_id, is_control_troop')
+      .in('organization_id', allUserOrgIds)
+      .order('name');
+
+    if (troopError) {
+      console.error("Troop Fetch Error:", troopError);
+    } else if (troopData) {
+      troopItems = troopData
+        .filter(t => !t.deleted)
+        .map(t => ({
+          id: t.id,
+          name: t.name,
+          type: 'troop',
+          typeLabel: t.is_control_troop ? 'Kontrolltrupp' : 'Trupp',
+          icon: t.is_control_troop ? 'mdi-account-check' : 'mdi-account-group',
+          color: t.is_control_troop ? 'warning' : 'teal'
+        }));
+    }
+  } else {
+    // Fallback if no specific organizations are assigned
+    const { data: troopData, error: troopError } = await supabase
+      .from('troop')
+      .select('id, name, deleted, is_control_troop')
+      .order('name');
+
+    if (troopError) {
+      console.error("Troop Fetch Error:", troopError);
+    } else if (troopData) {
+      troopItems = troopData
+        .filter(t => !t.deleted)
+        .map(t => ({
+          id: t.id,
+          name: t.name,
+          type: 'troop',
+          typeLabel: t.is_control_troop ? 'Kontrolltrupp' : 'Trupp',
+          icon: t.is_control_troop ? 'mdi-account-check' : 'mdi-account-group',
+          color: t.is_control_troop ? 'warning' : 'teal'
+        }));
+    }
+  }
+
+  // Combine organizations and troops in the selection list
+  organisationsList.value = [
+    ...orgItems,
+    ...troopItems
+  ];
+
+  // Auto-select if only a single entry is available
   if (organisationsList.value.length === 1) {
     selectedOrganisation.value = organisationsList.value[0].id;
   }
@@ -259,19 +340,24 @@ function onGridReady1(params) {
 
 /**
  * Exports the current grid data to a CSV file.
- * File name contains the current date: CI-Statistik_abgegebene_traktecken_pro_at_YYYY-MM-DD.csv
+ * File name contains the selected organization/troop name and current date:
+ * CI-Statistik_abgegebene_traktecken_pro_at_<Organisation/Trupp>_YYYY-MM-DD.csv
  */
 function onBtnExport1() {
+  const selectedItem = organisationsList.value.find(item => item.id === selectedOrganisation.value);
+  const namePart = selectedItem?.name ? `${selectedItem.name.trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}_` : '';
+  const datePart = new Date().toISOString().slice(0, 10);
+
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_abgegebene_traktecken_pro_at_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_abgegebene_traktecken_pro_at_${namePart}${datePart}.csv`
   });
 }
 </script>
 
 <template>
-  <!-- Organization Selector Card -->
+  <!-- Organization and Troop Selector Card -->
   <v-card class="mb-4">
-    <v-card-title>Organisationen auswählen:</v-card-title>
+    <v-card-title>Organisation oder Trupp auswählen:</v-card-title>
     <v-card-text>
       <v-select
         v-model="selectedOrganisation"
@@ -279,9 +365,58 @@ function onBtnExport1() {
         item-title="name"
         item-value="id"
         clearable
-        label="Organisation auswählen"
+        label="Organisation oder Trupp auswählen"
         hide-details
-      />
+      >
+        <!-- Optische Unterscheidung: Anzeige der getroffenen Auswahl -->
+        <template #selection="{ item }">
+          <div class="d-flex align-center">
+            <v-icon
+              v-if="item.raw?.icon"
+              start
+              size="small"
+              :icon="item.raw.icon"
+              :color="item.raw.color"
+              class="mr-2"
+            />
+            <span class="mr-2">{{ item.raw?.name }}</span>
+            <v-chip
+              v-if="item.raw?.typeLabel"
+              size="x-small"
+              :color="item.raw.color"
+              variant="tonal"
+            >
+              {{ item.raw.typeLabel }}
+            </v-chip>
+          </div>
+        </template>
+
+        <!-- Optische Unterscheidung: Anzeige in der Auswahlliste -->
+        <template #item="{ props, item }">
+          <v-list-item
+            v-bind="props"
+            :title="item.raw?.name"
+          >
+            <template #prepend>
+              <v-icon
+                v-if="item.raw?.icon"
+                :icon="item.raw.icon"
+                :color="item.raw.color"
+              />
+            </template>
+            <template #append>
+              <v-chip
+                v-if="item.raw?.typeLabel"
+                size="x-small"
+                :color="item.raw.color"
+                variant="tonal"
+              >
+                {{ item.raw.typeLabel }}
+              </v-chip>
+            </template>
+          </v-list-item>
+        </template>
+      </v-select>
     </v-card-text>
   </v-card>
 
