@@ -186,6 +186,125 @@
         emit('update:modelValue', false);
     }
 
+    // Fuehrt das UPDATE auf records stapelweise ueber cluster_id aus, damit die
+    // PostgREST-Query-URL kurz bleibt. applyConditions schraenkt die Ecken je
+    // Aktion ein. Schlaegt ein Stapel fehl, bricht die Funktion ab; die
+    // bereits verarbeiteten Stapel bleiben bestehen.
+    async function updateClustersInBatches(clusterIds, updatedValues, applyConditions) {
+        const BATCH_SIZE = 100; // Reduced batch size for safety
+        const totalRows = clusterIds.length;
+        let totalUpdated = 0;
+        let allUpdatedData = [];
+
+        console.log(`Processing ${totalRows} records in batches of ${BATCH_SIZE}`);
+
+        // Show progress to user
+        snackbarText.value = `Verarbeite ${totalRows} Datensätze in Stapeln...`;
+        snackbarColor.value = 'info';
+        snackbar.value = true;
+
+        for (let i = 0; i < clusterIds.length; i += BATCH_SIZE) {
+            const batch = clusterIds.slice(i, i + BATCH_SIZE);
+            const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+            const totalBatches = Math.ceil(clusterIds.length / BATCH_SIZE);
+
+            console.log(`Processing batch ${batchNumber}/${totalBatches} with ${batch.length} records`);
+
+            // Update progress
+            snackbarText.value = `Verarbeite Stapel ${batchNumber}/${totalBatches} (${batch.length} Datensätze)...`;
+
+            let query = supabase
+                .schema('public')
+                .from('records')
+                .update(updatedValues)
+                .in('cluster_id', batch);
+
+            query = applyConditions(query).select();
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error(`Batch ${batchNumber} failed:`, {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code,
+                    batchSize: batch.length
+                });
+                snackbarText.value = `Fehler bei Stapel ${batchNumber}: ${error.message}`;
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+                return;
+            }
+
+            totalUpdated += data.length;
+            allUpdatedData = allUpdatedData.concat(data);
+            console.log(`Batch ${batchNumber} completed: ${data.length} records updated`);
+
+            // Small delay to avoid rate limiting
+            if (i + BATCH_SIZE < clusterIds.length) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        }
+
+        snackbarText.value = `${totalUpdated} von ${totalRows} Datensätzen erfolgreich aktualisiert.`;
+        snackbarColor.value = 'success';
+        snackbar.value = true;
+
+        console.log(`Batch processing complete: ${totalUpdated} total records updated`);
+
+        emit('confirm', allUpdatedData);
+        closeDialog();
+    }
+
+    // Abnahme zuruecknehmen (nur Bundesinventurleitung)
+    // ------------------------------------------------------------------
+    // Setzt ausschliesslich completed_at_administration zurueck. Die Ecke
+    // steht danach wieder in der Qualitaetskontrolle der BIL (Code 60) und
+    // kann erneut akzeptiert oder ueber "Verantwortlichkeit aendern" an die
+    // LIL zurueckgegeben werden. Der Trigger sync_inventory_archive
+    // (TFM-Server 20261018000000) loescht dabei den ci2027-Datensatz in
+    // inventory_archive.
+    const confirmRevoke = ref(false);
+    const canRevokeAcceptance = computed(
+        () => isAdmin.value && props.organizationType === 'root'
+    );
+    const acceptedClusterIds = computed(() => [...new Set((props.selectedRows || [])
+        .filter(row => row.completed_at_administration)
+        .map(row => row.cluster_id)
+        .filter(id => id !== null && id !== undefined && id !== ''))]);
+
+    async function revokeAcceptance() {
+        if (!canRevokeAcceptance.value) {
+            snackbarText.value = 'Du hast keine Berechtigung, diese Aktion durchzuführen.';
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+            return;
+        }
+
+        try {
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !sessionData.session) {
+                console.error('Session error:', sessionError);
+                snackbarText.value = 'Sitzung abgelaufen. Bitte neu anmelden.';
+                snackbarColor.value = 'error';
+                snackbar.value = true;
+                return;
+            }
+
+            await updateClustersInBatches(
+                acceptedClusterIds.value,
+                { completed_at_administration: null, note: additionalNote.value || null },
+                (query) => query.not('completed_at_administration', 'is', null)
+            );
+        } catch (error) {
+            console.error('Unexpected error in revokeAcceptance:', error);
+            snackbarText.value = 'Fehler beim Zurücknehmen der Abnahme: ' + error.message;
+            snackbarColor.value = 'error';
+            snackbar.value = true;
+        }
+    }
+
     async function setAsFinished() {
         // provider should not be able to set completed
         if (!isAdmin.value && props.organizationType === 'provider') {
@@ -245,36 +364,8 @@
 
             console.log('Updated values:', updatedValues);
 
-            // Process in batches to avoid Supabase limits
-            const BATCH_SIZE = 100; // Reduced batch size for safety
             const clusterIds = props.selectedRows.map(row => row.cluster_id);
-            const totalRows = clusterIds.length;
-            let totalUpdated = 0;
-            let allUpdatedData = [];
-
-            console.log(`Processing ${totalRows} records in batches of ${BATCH_SIZE}`);
-
-            // Show progress to user
-            snackbarText.value = `Verarbeite ${totalRows} Datensätze in Stapeln...`;
-            snackbarColor.value = 'info';
-            snackbar.value = true;
-
-            for (let i = 0; i < clusterIds.length; i += BATCH_SIZE) {
-                const batch = clusterIds.slice(i, i + BATCH_SIZE);
-                const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-                const totalBatches = Math.ceil(clusterIds.length / BATCH_SIZE);
-                
-                console.log(`Processing batch ${batchNumber}/${totalBatches} with ${batch.length} records`);
-                
-                // Update progress
-                snackbarText.value = `Verarbeite Stapel ${batchNumber}/${totalBatches} (${batch.length} Datensätze)...`;
-
-                let query = supabase
-                    .schema('public')
-                    .from('records')
-                    .update(updatedValues)
-                    .in('cluster_id', batch);
-
+            await updateClustersInBatches(clusterIds, updatedValues, (query) => {
                 // Add conditions based on organization type and admin status
                 if(isAdmin.value) {
                     if (props.organizationType === 'root') {
@@ -288,43 +379,8 @@
                     query = query.is('completed_at_administration', null);
                     query = query.is('completed_at_troop', null);
                 }
-
-                query = query.select();
-
-                const { data, error } = await query;
-
-                if (error) {
-                    console.error(`Batch ${batchNumber} failed:`, {
-                        message: error.message,
-                        details: error.details,
-                        hint: error.hint,
-                        code: error.code,
-                        batchSize: batch.length
-                    });
-                    snackbarText.value = `Fehler bei Stapel ${batchNumber}: ${error.message}`;
-                    snackbarColor.value = 'error';
-                    snackbar.value = true;
-                    return;
-                }
-
-                totalUpdated += data.length;
-                allUpdatedData = allUpdatedData.concat(data);
-                console.log(`Batch ${batchNumber} completed: ${data.length} records updated`);
-                
-                // Small delay to avoid rate limiting
-                if (i + BATCH_SIZE < clusterIds.length) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                }
-            }
-
-            snackbarText.value = `${totalUpdated} von ${totalRows} Datensätzen erfolgreich aktualisiert.`;
-            snackbarColor.value = 'success';
-            snackbar.value = true;
-
-            console.log(`Batch processing complete: ${totalUpdated} total records updated`);
-            
-            emit('confirm', allUpdatedData);
-            closeDialog();
+                return query;
+            });
         } catch (error) {
             console.error('Unexpected error in setAsFinished:', error);
             console.error('Error type:', error.constructor.name);
@@ -360,6 +416,7 @@
         (newVal) => {
             if (!newVal) {
                 isEnabled.value = false;
+                confirmRevoke.value = false;
                 additionalNote.value = '';
                 continueDespiteUnfinished.value = false;
                 unfinishedForestPlots.value = [];
@@ -479,8 +536,43 @@
                             </template>
                         </v-checkbox>
                     </p>
+
+                    <template v-if="canRevokeAcceptance && acceptedClusterIds.length">
+                        <v-divider class="my-4"></v-divider>
+                        <v-alert
+                            type="error"
+                            variant="tonal"
+                            density="comfortable"
+                            title="Abnahme zurücknehmen"
+                        >
+                            {{ acceptedClusterIds.length }}
+                            {{ acceptedClusterIds.length === 1 ? 'ausgewählter Trakt ist' : 'ausgewählte Trakte sind' }}
+                            bereits abgenommen. Beim Zurücknehmen werden die Daten dieser Trakte aus dem Archiv (CI 2027)
+                            gelöscht; die Ecken stehen danach wieder zur Prüfung durch die Bundesinventurleitung bereit.
+                        </v-alert>
+                        <p class="text-caption">
+                            <v-checkbox v-model="confirmRevoke">
+                                <template v-slot:label>
+                                    <span class="text-caption">
+                                        Mir ist bewusst, dass die archivierten Daten der abgenommenen Trakte gelöscht werden.
+                                    </span>
+                                </template>
+                            </v-checkbox>
+                        </p>
+                    </template>
                 </v-card-text>
                 <v-card-actions>
+                    <v-btn
+                        v-if="canRevokeAcceptance && acceptedClusterIds.length"
+                        rounded="xl"
+                        variant="tonal"
+                        color="error"
+                        prepend-icon="mdi-undo"
+                        @click="revokeAcceptance"
+                        :disabled="!confirmRevoke"
+                    >
+                        Abnahme zurücknehmen
+                    </v-btn>
                     <v-spacer></v-spacer>
                     <v-btn
                         rounded="xl"
