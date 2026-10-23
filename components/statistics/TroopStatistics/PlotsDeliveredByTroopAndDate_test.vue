@@ -243,8 +243,9 @@ async function _getOrganizations(userId) {
   if (allUserOrgIds.length > 0) {
     const { data: troopData, error: troopError } = await supabase
       .from('troop')
-      .select('id, name, deleted, organization_id, is_control_troop')
+      .select('id, name, deleted, organization_id, is_control_troop, user_ids')
       .in('organization_id', allUserOrgIds)
+      .contains('user_ids', [userId])   // <-- nur Trupps, in denen der Nutzer Mitglied ist
       .order('name');
 
     if (troopError) {
@@ -423,7 +424,7 @@ function onBtnExport1() {
   <!-- Data Loading Progress Indicator -->
   <v-card v-if="dataload" class="mb-4">
     <v-card-title class="d-flex flex-column align-center">
-      <p><span>Lade Daten ({{ dataloaded }} Datensätze)</span></p>
+      <p><span>Lade Daten...</span></p>
       <p><v-progress-circular indeterminate color="primary" class="mt-2" /></p>
     </v-card-title>
   </v-card>
