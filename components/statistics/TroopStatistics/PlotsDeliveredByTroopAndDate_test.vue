@@ -238,21 +238,21 @@ async function _getOrganizations(userId) {
       color: 'primary'
     }));
 
-  // 2. Query public.troop for troops belonging to the user's organizations
+  // 2. Query public.troop for troops belonging to the user's organizations where user is an active member
   let troopItems = [];
   if (allUserOrgIds.length > 0) {
     const { data: troopData, error: troopError } = await supabase
       .from('troop')
       .select('id, name, deleted, organization_id, is_control_troop, user_ids')
       .in('organization_id', allUserOrgIds)
-      .contains('user_ids', [userId])   // <-- nur Trupps, in denen der Nutzer Mitglied ist
+      .contains('user_ids', [userId])   // Nur Trupps, in denen der Nutzer Mitglied ist
       .order('name');
 
     if (troopError) {
       console.error("Troop Fetch Error:", troopError);
     } else if (troopData) {
       troopItems = troopData
-        .filter(t => !t.deleted)
+        .filter(t => !t.deleted && Array.isArray(t.user_ids) && t.user_ids.includes(userId))
         .map(t => ({
           id: t.id,
           name: t.name,
@@ -266,14 +266,15 @@ async function _getOrganizations(userId) {
     // Fallback if no specific organizations are assigned
     const { data: troopData, error: troopError } = await supabase
       .from('troop')
-      .select('id, name, deleted, is_control_troop')
+      .select('id, name, deleted, is_control_troop, user_ids')
+      .contains('user_ids', [userId])   // Nur Trupps, in denen der Nutzer Mitglied ist
       .order('name');
 
     if (troopError) {
       console.error("Troop Fetch Error:", troopError);
     } else if (troopData) {
       troopItems = troopData
-        .filter(t => !t.deleted)
+        .filter(t => !t.deleted && Array.isArray(t.user_ids) && t.user_ids.includes(userId))
         .map(t => ({
           id: t.id,
           name: t.name,
