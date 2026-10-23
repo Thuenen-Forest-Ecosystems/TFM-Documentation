@@ -214,6 +214,10 @@ layout: home
                     completed_at_state,
                     completed_at_administration,
                     completed_at_troop,
+                    completed_at_survey_troop,
+                    last_control_troop,
+                    completed_at_control_troop,
+                    gnss_measured_at,
                     is_valid,
                     is_plausible,
                     note,
@@ -235,7 +239,10 @@ layout: home
             }
 
             return query;
-        }, { signal, label: tableName });
+        // view_records_details rechnet je Zeile Historien-Unterabfragen auf
+        // record_changes; 10000er-Seiten liefen fuer die BIL in den
+        // statement_timeout (57014).
+        }, { signal, label: tableName, pageSize: 2000 });
     }
     async function _requestPlots(organizationType, organizationId, troopIds = []) {
 

@@ -1284,7 +1284,7 @@ async function fetchAllDataPaginated(tableName, organizationId, companyType) {
         query = applyForestStatusFilter(query);
 
         return query;
-    }, { label: tableName });
+    }, { label: tableName, pageSize: 2000 }); // 10000 lief in den statement_timeout, siehe dashboard/organizations/index.md
 }
 function createGeojsonFeatureCollection(records) {
     console.log('Creating GeoJSON Feature Collection with records:', records.length);

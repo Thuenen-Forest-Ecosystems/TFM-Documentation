@@ -65,6 +65,12 @@
     // nicht der Archivwert aus BWI 2022: ob eine Ecke jetzt aufzunehmen ist,
     // entscheidet die laufende Aufnahme. Ecken ohne Entscheid 2027 werden
     // folglich nicht gemeldet.
+    //
+    // "Abgegeben" heisst: der Aufnahmetrupp hat abgegeben
+    // (completed_at_survey_troop). completed_at_troop gehoert dem aktuell
+    // zugewiesenen Trupp und ist leer, sobald ein Kontrolltrupp zugewiesen
+    // ist -- Ecken, die der KT nicht kontrolliert, wurden sonst faelschlich
+    // gemeldet (#272).
     const FOREST_STATUS_CODES_SURVEYED = [3, 4, 5];
     const UNFINISHED_PLOTS_SHOWN = 10;
 
@@ -112,10 +118,10 @@
             for (let i = 0; i < clusterIds.length; i += BATCH_SIZE) {
                 let query = supabase
                     .from('view_records_details')
-                    .select('plot_id, cluster_name, plot_name, forest_status_ci2027, completed_at_troop')
+                    .select('plot_id, cluster_name, plot_name, forest_status_ci2027, completed_at_survey_troop')
                     .in('cluster_id', clusterIds.slice(i, i + BATCH_SIZE))
                     .in('forest_status_ci2027', FOREST_STATUS_CODES_SURVEYED)
-                    .is('completed_at_troop', null);
+                    .is('completed_at_survey_troop', null);
 
                 // Dieselbe Einschraenkung wie das UPDATE unten: die
                 // Bundesinventurleitung akzeptiert nur Ecken, die die
