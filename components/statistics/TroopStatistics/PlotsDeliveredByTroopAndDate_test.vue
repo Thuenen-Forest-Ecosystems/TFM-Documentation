@@ -208,28 +208,24 @@ async function fetchData() {
  * @param {string} userId - The authenticated user's UUID from the Supabase session
  */
 async function _getOrganizations(userId) {
-  // 1. Fetch user permissions and related organizations
-  const { data, error } = await supabase
+  let orgItems = [];
+  let troopItems = [];
+  let adminOrgIds = [];
+
+  // 1. Fetch organization admin permissions for the user (only for admins)
+  const { data: permData, error: permError } = await supabase
     .from('users_permissions')
     .select("*, organizations(*)")
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('is_organization_admin', true);
 
-  if (error) {
-    console.error("Org Fetch Error:", error);
-    return;
-  }
+  if (permError) {
+    console.error("Org Admin Permissions Fetch Error:", permError);
+  } else if (permData) {
+    const validAdmins = permData.filter(p => p.organizations && !p.organizations.deleted);
+    adminOrgIds = validAdmins.map(p => p.organizations.id);
 
-  const validPermissions = data || [];
-
-  // All organization IDs the user has access to
-  const allUserOrgIds = validPermissions
-    .filter(p => p.organizations && !p.organizations.deleted)
-    .map(p => p.organizations.id);
-
-  // Extract organizations according to admin filter
-  const orgItems = validPermissions
-    .filter(p => p.organizations && !p.organizations.deleted && p.is_organization_admin)
-    .map(item => ({
+    orgItems = validAdmins.map(item => ({
       id: item.organizations.id,
       name: item.organizations.name,
       type: 'org',
@@ -237,56 +233,48 @@ async function _getOrganizations(userId) {
       icon: 'mdi-domain',
       color: 'primary'
     }));
-
-  // 2. Query public.troop for troops belonging to the user's organizations where user is an active member
-  let troopItems = [];
-  if (allUserOrgIds.length > 0) {
-    const { data: troopData, error: troopError } = await supabase
-      .from('troop')
-      .select('id, name, deleted, organization_id, is_control_troop, user_ids')
-      .in('organization_id', allUserOrgIds)
-      .contains('user_ids', [userId])   // Nur Trupps, in denen der Nutzer Mitglied ist
-      .order('name');
-
-    if (troopError) {
-      console.error("Troop Fetch Error:", troopError);
-    } else if (troopData) {
-      troopItems = troopData
-        .filter(t => !t.deleted && Array.isArray(t.user_ids) && t.user_ids.includes(userId))
-        .map(t => ({
-          id: t.id,
-          name: t.name,
-          type: 'troop',
-          typeLabel: t.is_control_troop ? 'Kontrolltrupp' : 'Trupp',
-          icon: t.is_control_troop ? 'mdi-account-check' : 'mdi-account-group',
-          color: t.is_control_troop ? 'warning' : 'teal'
-        }));
-    }
-  } else {
-    // Fallback if no specific organizations are assigned
-    const { data: troopData, error: troopError } = await supabase
-      .from('troop')
-      .select('id, name, deleted, is_control_troop, user_ids')
-      .contains('user_ids', [userId])   // Nur Trupps, in denen der Nutzer Mitglied ist
-      .order('name');
-
-    if (troopError) {
-      console.error("Troop Fetch Error:", troopError);
-    } else if (troopData) {
-      troopItems = troopData
-        .filter(t => !t.deleted && Array.isArray(t.user_ids) && t.user_ids.includes(userId))
-        .map(t => ({
-          id: t.id,
-          name: t.name,
-          type: 'troop',
-          typeLabel: t.is_control_troop ? 'Kontrolltrupp' : 'Trupp',
-          icon: t.is_control_troop ? 'mdi-account-check' : 'mdi-account-group',
-          color: t.is_control_troop ? 'warning' : 'teal'
-        }));
-    }
   }
 
-  // Combine organizations and troops in the selection list
+  // 2. Query public.troop directly
+  // For non-admin troop members: decoupled from organizations, fetching ONLY troops where user is a member
+  // For admins: includes troops belonging to their admin organization(s) or where they are a member
+  let troopQuery = supabase
+    .from('troop')
+    .select('id, name, deleted, is_control_troop, user_ids, organization_id')
+    .order('name');
+
+  if (adminOrgIds.length > 0) {
+    troopQuery = troopQuery.or(`organization_id.in.(${adminOrgIds.join(',')}),user_ids.cs.{${userId}}`);
+  } else {
+    troopQuery = troopQuery.contains('user_ids', [userId]);
+  }
+
+  const { data: troopData, error: troopError } = await troopQuery;
+
+  if (troopError) {
+    console.error("Troop Fetch Error:", troopError);
+  } else if (troopData) {
+    troopItems = troopData
+      .filter(t => {
+        if (t.deleted) return false;
+        if (adminOrgIds.length === 0) {
+          // Simple troop member: strictly must be in user_ids
+          return Array.isArray(t.user_ids) && t.user_ids.includes(userId);
+        }
+        // Admin: troop belongs to admin org OR user is in user_ids
+        return adminOrgIds.includes(t.organization_id) || (Array.isArray(t.user_ids) && t.user_ids.includes(userId));
+      })
+      .map(t => ({
+        id: t.id,
+        name: t.name,
+        type: 'troop',
+        typeLabel: t.is_control_troop ? 'Kontrolltrupp' : 'Trupp',
+        icon: t.is_control_troop ? 'mdi-account-check' : 'mdi-account-group',
+        color: t.is_control_troop ? 'warning' : 'teal'
+      }));
+  }
+
+  // Combine organizations (for admins) and troops in the selection list
   organisationsList.value = [
     ...orgItems,
     ...troopItems
