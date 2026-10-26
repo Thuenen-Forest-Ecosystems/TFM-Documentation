@@ -214,7 +214,7 @@ let hydrateVersion = 0;
 // Ein Klick auf einen Wert im Spaltenkopf-Hinweis erzeugt eine
 // ODER-Bedingung im Textfilter der Spalte; so viele Werte lassen sich
 // gleichzeitig auswaehlen.
-const MAX_FILTER_CONDITIONS = 20;
+const MAX_FILTER_CONDITIONS = 300;
 
 // Grid Options
 const gridOptions = {
@@ -1910,6 +1910,7 @@ function selectByClusterIds(clusterIds) {
             operator: 'OR',
             conditions: conditionsMap
         });
+        
         currentGrid.value.api.onFilterChanged();
 
     // currentGrid.value.api.forEachNode((node) => {
