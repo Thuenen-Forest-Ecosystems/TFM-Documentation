@@ -210,9 +210,8 @@ async function fetchData() {
 async function _getOrganizations(userId) {
   let orgItems = [];
   let troopItems = [];
-  let adminOrgIds = [];
 
-  // 1. Fetch organization admin permissions for the user (only for admins)
+  // 1. Fetch organization admin permissions (only for admins to select whole organizations)
   const { data: permData, error: permError } = await supabase
     .from('users_permissions')
     .select("*, organizations(*)")
@@ -222,48 +221,30 @@ async function _getOrganizations(userId) {
   if (permError) {
     console.error("Org Admin Permissions Fetch Error:", permError);
   } else if (permData) {
-    const validAdmins = permData.filter(p => p.organizations && !p.organizations.deleted);
-    adminOrgIds = validAdmins.map(p => p.organizations.id);
-
-    orgItems = validAdmins.map(item => ({
-      id: item.organizations.id,
-      name: item.organizations.name,
-      type: 'org',
-      typeLabel: 'Organisation',
-      icon: 'mdi-domain',
-      color: 'primary'
-    }));
+    orgItems = permData
+      .filter(p => p.organizations && !p.organizations.deleted)
+      .map(item => ({
+        id: item.organizations.id,
+        name: item.organizations.name,
+        type: 'org',
+        typeLabel: 'Organisation',
+        icon: 'mdi-domain',
+        color: 'primary'
+      }));
   }
 
-  // 2. Query public.troop directly
-  // For non-admin troop members: decoupled from organizations, fetching ONLY troops where user is a member
-  // For admins: includes troops belonging to their admin organization(s) or where they are a member
-  let troopQuery = supabase
+  // 2. Fetch troops: Pure troop query, completely decoupled from organizations
+  const { data: troopData, error: troopError } = await supabase
     .from('troop')
-    .select('id, name, deleted, is_control_troop, user_ids, organization_id')
+    .select('id, name, deleted, is_control_troop, user_ids')
+    .contains('user_ids', [userId])
     .order('name');
-
-  if (adminOrgIds.length > 0) {
-    troopQuery = troopQuery.or(`organization_id.in.(${adminOrgIds.join(',')}),user_ids.cs.{${userId}}`);
-  } else {
-    troopQuery = troopQuery.contains('user_ids', [userId]);
-  }
-
-  const { data: troopData, error: troopError } = await troopQuery;
 
   if (troopError) {
     console.error("Troop Fetch Error:", troopError);
   } else if (troopData) {
     troopItems = troopData
-      .filter(t => {
-        if (t.deleted) return false;
-        if (adminOrgIds.length === 0) {
-          // Simple troop member: strictly must be in user_ids
-          return Array.isArray(t.user_ids) && t.user_ids.includes(userId);
-        }
-        // Admin: troop belongs to admin org OR user is in user_ids
-        return adminOrgIds.includes(t.organization_id) || (Array.isArray(t.user_ids) && t.user_ids.includes(userId));
-      })
+      .filter(t => !t.deleted && Array.isArray(t.user_ids) && t.user_ids.includes(userId))
       .map(t => ({
         id: t.id,
         name: t.name,
@@ -274,7 +255,7 @@ async function _getOrganizations(userId) {
       }));
   }
 
-  // Combine organizations (for admins) and troops in the selection list
+  // Combine organizations (if admin) and troops (where user is a member)
   organisationsList.value = [
     ...orgItems,
     ...troopItems
