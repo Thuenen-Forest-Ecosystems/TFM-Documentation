@@ -236,6 +236,13 @@ const gridOptions = {
         enableClickSelection: true
     },*/
     rowSelection: 'multiple', // Use legacy string value for compatibility
+    // #275: Auswahl nur ueber die Checkbox-Spalte. Ohne diese beiden Flags
+    // ersetzt ein Klick irgendwo in die Zeile (z.B. "verklickt" neben dem
+    // Kaestchen) die komplette bisherige Auswahl durch diese eine Zeile.
+    // Beide Flags zusammen entsprechen rowSelection.enableClickSelection = false
+    // der neuen API (ag-grid _getEnableClickSelection).
+    suppressRowClickSelection: true,
+    suppressRowDeselection: true,
 
 
         components: {

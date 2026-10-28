@@ -63,7 +63,8 @@ import { onMounted, ref, getCurrentInstance, inject, nextTick } from 'vue';
         rowSelection: {
             mode: 'multiRow',
             selectAll: 'filtered',
-            enableClickSelection: true,
+            // #275: Zeilenklick aendert die Auswahl nicht, nur die Checkbox
+            enableClickSelection: false,
         },
         components: {
             actionCellRenderer: ActionCellRenderer // Register the custom cell renderer
