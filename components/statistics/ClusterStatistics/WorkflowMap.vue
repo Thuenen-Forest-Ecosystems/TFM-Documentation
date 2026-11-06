@@ -7,6 +7,7 @@ import { AgGridVue } from "ag-grid-vue3";
 import { useData } from 'vitepress';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import ExportCsvButton from '../ExportCsvButton.vue';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 const { isDark } = useData();
@@ -478,7 +479,6 @@ watch(basemapToggle, () => {
 
 
 function onGridReady1(params) { gridApi1.value = params.api; }
-function onBtnExport1() { gridApi1.value?.exportDataAsCsv({ fileName: `Plots_Status_${new Date().toISOString().slice(0, 10)}.csv` }); }
 </script>
 
 <template>
@@ -528,7 +528,14 @@ function onBtnExport1() { gridApi1.value?.exportDataAsCsv({ fileName: `Plots_Sta
       @model-updated="onTableReady" 
     />
     <v-card-text v-show="!dataload && (!selectedOrganisations.length || !filteredTableData.length)" class="text-center text-grey italic">Keine Daten verfügbar. Bitte Auswahl ändern.</v-card-text> 
-    <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport1" :disabled="!filteredTableData.length" class="ma-2">CSV Export</v-btn>
+    <ExportCsvButton
+      :grid-api="gridApi1"
+      filename-prefix="Plots_Status"
+      :selected-organisation="selectedOrganisations"
+      :organisations-list="organisationsList"
+      :disabled="!filteredTableData.length"
+      class="ma-2"
+    />
   </v-card>
 </template>
 

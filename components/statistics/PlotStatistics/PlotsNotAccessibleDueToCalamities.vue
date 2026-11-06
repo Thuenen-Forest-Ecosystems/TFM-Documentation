@@ -14,6 +14,7 @@ import { AllCommunityModule, ModuleRegistry, colorSchemeDark, colorSchemeLight, 
 import { AgGridVue } from "ag-grid-vue3";
 import { useData } from 'vitepress';
 import OrganizationSelect from '../OrganizationSelect.vue';
+import ExportCsvButton from '../ExportCsvButton.vue';
 const { isDark } = useData();               // VitePress dark‑mode flag
 
 // Register all AG‑Grid community modules (filtering, sorting, …)
@@ -197,16 +198,6 @@ function onGridReady2(params) { gridApi2.value = params.api; }
 function onOrgsLoaded(res) {
   organisationsList.value = res?.organisationsList || [];
 }
-
-function onBtnExport1() {
-  const selectedItem = organisationsList.value.find(item => item.id === selectedOrganisation.value);
-  const namePart = selectedItem?.name ? `${selectedItem.name.trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}_` : '';
-  const datePart = new Date().toISOString().slice(0, 10);
-
-  gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_plots_not_accessible_due_to_calamities_${namePart}${datePart}.csv`
-  });
-}
 </script>
 
 <template>
@@ -249,9 +240,13 @@ function onBtnExport1() {
       Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
-    <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport1"
-      :disabled="!tabledata || tabledata.length === 0">
-      CSV Export (Alle Traktecken)
-    </v-btn>
+    <ExportCsvButton
+      :grid-api="gridApi1"
+      filename-prefix="CI-Statistik_plots_not_accessible_due_to_calamities"
+      :selected-organisation="selectedOrganisation"
+      :organisations-list="organisationsList"
+      :disabled="!tabledata || tabledata.length === 0"
+      label="CSV Export (Alle Traktecken)"
+    />
   </v-card>
 </template>

@@ -37,6 +37,7 @@ import { AllCommunityModule, ModuleRegistry, colorSchemeDark, colorSchemeLight, 
 import { AgGridVue } from "ag-grid-vue3";
 import { useData } from 'vitepress';
 import OrganizationSelect from '../OrganizationSelect.vue';
+import ExportCsvButton from '../ExportCsvButton.vue';
 
 // VitePress dark-mode indicator
 const { isDark } = useData();
@@ -232,21 +233,6 @@ function onGridReady1(params) {
 function onOrgsLoaded(res) {
   organisationsList.value = res?.organisationsList || [];
 }
-
-/**
- * Exports the current grid data to a CSV file.
- * File name contains the selected organization/troop name and current date:
- * CI-Statistik_abgegebene_traktecken_pro_at_<Organisation/Trupp>_YYYY-MM-DD.csv
- */
-function onBtnExport1() {
-  const selectedItem = organisationsList.value.find(item => item.id === selectedOrganisation.value);
-  const namePart = selectedItem?.name ? `${selectedItem.name.trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}_` : '';
-  const datePart = new Date().toISOString().slice(0, 10);
-
-  gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_abgegebene_traktecken_pro_at_${namePart}${datePart}.csv`
-  });
-}
 </script>
 
 <template>
@@ -290,14 +276,14 @@ function onBtnExport1() {
 
     <!-- Card Actions: CSV Export Button -->
     <v-card-actions>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-download"
-        @click="onBtnExport1"
+      <ExportCsvButton
+        :grid-api="gridApi1"
+        filename-prefix="CI-Statistik_abgegebene_traktecken_pro_at"
+        :selected-organisation="selectedOrganisation"
+        :organisations-list="organisationsList"
         :disabled="!tabledata || tabledata.length === 0"
-      >
-        CSV Export (Alle Traktecken)
-      </v-btn>
+        label="CSV Export (Alle Traktecken)"
+      />
     </v-card-actions>
   </v-card>
 </template>
