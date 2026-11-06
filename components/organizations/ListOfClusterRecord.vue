@@ -214,7 +214,7 @@ let hydrateVersion = 0;
 // Ein Klick auf einen Wert im Spaltenkopf-Hinweis erzeugt eine
 // ODER-Bedingung im Textfilter der Spalte; so viele Werte lassen sich
 // gleichzeitig auswaehlen.
-const MAX_FILTER_CONDITIONS = 20;
+const MAX_FILTER_CONDITIONS = 300;
 
 // Grid Options
 const gridOptions = {
@@ -236,6 +236,13 @@ const gridOptions = {
         enableClickSelection: true
     },*/
     rowSelection: 'multiple', // Use legacy string value for compatibility
+    // #275: Auswahl nur ueber die Checkbox-Spalte. Ohne diese beiden Flags
+    // ersetzt ein Klick irgendwo in die Zeile (z.B. "verklickt" neben dem
+    // Kaestchen) die komplette bisherige Auswahl durch diese eine Zeile.
+    // Beide Flags zusammen entsprechen rowSelection.enableClickSelection = false
+    // der neuen API (ag-grid _getEnableClickSelection).
+    suppressRowClickSelection: true,
+    suppressRowDeselection: true,
 
 
         components: {
@@ -1284,7 +1291,7 @@ async function fetchAllDataPaginated(tableName, organizationId, companyType) {
         query = applyForestStatusFilter(query);
 
         return query;
-    }, { label: tableName });
+    }, { label: tableName, pageSize: 2000 }); // 10000 lief in den statement_timeout, siehe dashboard/organizations/index.md
 }
 function createGeojsonFeatureCollection(records) {
     console.log('Creating GeoJSON Feature Collection with records:', records.length);
@@ -1910,6 +1917,7 @@ function selectByClusterIds(clusterIds) {
             operator: 'OR',
             conditions: conditionsMap
         });
+        
         currentGrid.value.api.onFilterChanged();
 
     // currentGrid.value.api.forEachNode((node) => {
