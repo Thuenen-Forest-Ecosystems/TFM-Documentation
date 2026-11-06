@@ -14,6 +14,8 @@ const instance = getCurrentInstance();
 const supabase = instance.appContext.config.globalProperties.$supabase;
 
 const tabledata = ref([]);
+const dataload = ref(false);
+const dataloaded = ref(0);
 const organisationsList = ref([]);
 const selectedOrganisations = ref([]);
 const MyColDefs1 = ref([]);
@@ -113,17 +115,21 @@ function buildColDefs() {
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 20000) {
+async function fetchRecordChangesInBatches(batchSize = 2000) {
   let allRecords = [];
   let from = 0;
   let to = batchSize - 1;
   let hasMore = true;
   if (!selectedOrganisations.value || selectedOrganisations.value.length === 0) { 
     tabledata.value = []; 
+    dataloaded.value = 0;
     nextTick(() => { onTableReady(); });
     return []; 
   }
   
+  dataload.value = true;
+  dataloaded.value = 0;
+
   const ids = selectedOrganisations.value.join(','); // CSV list of org UUIDs
   // Build an OR‑filter that matches any of the four organisation‑type columns
   const orFilters = [
@@ -156,6 +162,8 @@ async function fetchRecordChangesInBatches(batchSize = 20000) {
       console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`);
       
       allRecords.push(...data);
+      dataloaded.value = allRecords.length;
+
       // Advance by the rows actually returned; the server may cap a batch
       // below batchSize (PGRST_DB_MAX_ROWS), so a short batch does not mean
       // the data is exhausted.
@@ -177,6 +185,12 @@ async function fetchRecordChangesInBatches(batchSize = 20000) {
   } catch (err) { 
     console.error('Error fetching plot data:', err.message); 
     throw err; 
+  } finally {
+    dataload.value = false;
+    await nextTick();
+    if (map) {
+      map.resize();
+    }
   }
 }
 
@@ -472,7 +486,13 @@ function onBtnExport1() { gridApi1.value?.exportDataAsCsv({ fileName: `Plots_Sta
     <v-card-title>Organisationen auswählen:</v-card-title>
     <v-select v-model="selectedOrganisations" :items="organisationsList" item-title="name" item-value="id" multiple chips closable-chips :label="organisationsList.length > 1 ? 'Bitte auswählen...' : 'Organisation auswählen'" />
   </v-card>
-  <v-card class="mt-4 map-card">
+  <v-card v-if="dataload === true" class="mt-4">
+    <v-card-title class="d-flex flex-column align-center">
+      <p><span>Lade Daten ({{ dataloaded }} Datensätze geladen...)</span></p>
+      <p><v-progress-circular indeterminate color="primary" class="mt-2" /></p>
+    </v-card-title>
+  </v-card>
+  <v-card v-show="!dataload && selectedOrganisations.length" class="mt-4 map-card">
     <v-card-title class="d-flex justify-between align-center">Karte<v-switch v-model="basemapToggle" label="Satellit / Karte" class="ml-auto" hide-details inset color="primary" /></v-card-title>
     <div class="map-wrapper">
       <div id="api-response-map"></div>
@@ -491,7 +511,7 @@ function onBtnExport1() { gridApi1.value?.exportDataAsCsv({ fileName: `Plots_Sta
   <v-card class="mt-4">
     <v-card-title>Ergebnis</v-card-title>
     <ag-grid-vue 
-      v-show="selectedOrganisations.length && filteredTableData.length" 
+      v-show="!dataload && selectedOrganisations.length && filteredTableData.length" 
       :rowData="filteredTableData" 
       :columnDefs="MyColDefs1" 
       :style="{ height: gridHeight }" 
@@ -507,7 +527,7 @@ function onBtnExport1() { gridApi1.value?.exportDataAsCsv({ fileName: `Plots_Sta
       @first-data-rendered="onTableReady" 
       @model-updated="onTableReady" 
     />
-    <v-card-text v-show="!selectedOrganisations.length || !filteredTableData.length" class="text-center text-grey italic">Keine Daten verfügbar. Bitte Auswahl ändern.</v-card-text> 
+    <v-card-text v-show="!dataload && (!selectedOrganisations.length || !filteredTableData.length)" class="text-center text-grey italic">Keine Daten verfügbar. Bitte Auswahl ändern.</v-card-text> 
     <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport1" :disabled="!filteredTableData.length" class="ma-2">CSV Export</v-btn>
   </v-card>
 </template>

@@ -1,31 +1,57 @@
 <script setup>
-// 1️⃣ Component meta‑information (JSDoc) – helps IDEs & documentation generators
+// ──────────────────────────────────────────────────────────────────────────────
+// 1️⃣ Component Meta-Information (JSDoc)
+// ──────────────────────────────────────────────────────────────────────────────
 /**
- * @component Wann, welcher Trupp welche Ecke abgegeben hat
- * @description A VitePress component for visualizing Supabase records using AG Grid
- * Supports dynamic time‑interval aggregation (Day, Week, Month) and organization‑based filtering.
+ * @component PlotsDeliveredByTroopAndDate
+ * @description VitePress component for visualizing delivered plot corners (Traktecken)
+ * per field inventory team (Trupp) and delivery date using AG Grid.
+ *
+ * Data source:
+ * - Supabase PostgreSQL RPC function: `public.stat_abgegebene_traktecken_pro_at(user_id text)`
+ *   executed via POST request, filtering by the selected organization/troop UUID.
+ *
+ * Columns returned by RPC:
+ * - `landesinventurleitung` (text)    : Landesinventurleitung (LIL)
+ * - `cluster_name`          (integer) : Traktnummer
+ * - `plot_name`             (smallint): Eckennummer (1-4)
+ * - `troop_name`            (text)    : Truppname
+ * - `kontrolltrupp`         (boolean) : Kontrolltrupp-Kennung (KT)
+ * - `abgabedatum`           (timestamp): Abgabedatum des Trupps
+ * - `waldentscheid2027`     (integer) : Waldentscheid für 2027
+ * - `begehbarkeit2027`      (integer) : Begehbarkeit für 2027
+ *
+ * Features:
+ * - Organization selection with single-org auto-selection
+ * - Dynamic AG Grid Quartz theme (Light / Dark mode integration with VitePress)
+ * - Dynamic row-height computation & automatic column width fitting
+ * - AG Grid client-side sorting, text/number/date/boolean filtering & pagination
+ * - CSV export of the loaded records
  */
 
-// imports of needed libraries and utilities are placed here, outside the component definition, to keep the setup function clean and focused on logic.
-// 2️⃣ Imports – Vue core, AG‑Grid, ECharts, VitePress utilities, etc.
 // ──────────────────────────────────────────────────────────────────────────────
-import { ref, onMounted, getCurrentInstance, computed, watch, inject, onUnmounted, nextTick } from 'vue';
+// 2️⃣ Imports – Vue Core, AG Grid, VitePress
+// ──────────────────────────────────────────────────────────────────────────────
+import { ref, onMounted, getCurrentInstance, computed, watch, inject, onUnmounted } from 'vue';
 import { AllCommunityModule, ModuleRegistry, colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 import { AgGridVue } from "ag-grid-vue3";
 import { useData } from 'vitepress';
-const { isDark } = useData();               // VitePress dark‑mode flag
+import OrganizationSelect from '../OrganizationSelect.vue';
 
-// Register all AG‑Grid community modules (filtering, sorting, …)
+// VitePress dark-mode indicator
+const { isDark } = useData();
+
+// Register all AG Grid Community features (sorting, filtering, pagination, etc.)
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Theme handling – we will switch between these two based on VitePress dark‑mode
-// 3️⃣ Theme handling – switch between dark / light AG‑Grid themes
 // ──────────────────────────────────────────────────────────────────────────────
-const darkTheme = themeQuartz.withPart(colorSchemeDark);
-const lightTheme = themeQuartz.withPart(colorSchemeLight);
-const globalIsDark = inject('globalIsDark'); // Provided by the VitePress layout
+// 3️⃣ Theme Handling – AG Grid Quartz Theme (Dark / Light Mode)
+// ──────────────────────────────────────────────────────────────────────────────
+const globalIsDark = inject('globalIsDark', null);
 
-// Computed theme that reacts to VitePress `isDark` (or the injected global flag)
+/**
+ * Dynamically computes the AG Grid theme matching VitePress's current color mode.
+ */
 const currentTheme = computed(() => {
   return isDark?.value
     ? themeQuartz.withPart(colorSchemeDark)
@@ -33,279 +59,218 @@ const currentTheme = computed(() => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 4️⃣ Reactive state variables
+// 4️⃣ Reactive State Variables
 // ──────────────────────────────────────────────────────────────────────────────
-const dataload = ref(false);          // true while a Supabase request is in progress
-const dataloaded = ref([]);           // holds the number of records fetched so far
-const instance = getCurrentInstance();               // Vue component instance
-const supabase = instance.appContext.config.globalProperties.$supabase; // Supabase client
-const my_data = ref([]);               // raw records from Supabase
-const tabledata = ref([]);             // processed/aggregated data for Grid & Chart
-const mysteps = ref('Monat');          // selected time‑step: 'Tag' | 'Woche' | 'Monat'
-const trupps = ref('Inventurtrupp');   // column header for the troop column
-const organisationsList = ref([]);    // list of orgs the user may select
-const selectedOrganisations = ref([]); // UUIDs of orgs currently selected
-const MyColDefs1 = ref([]); // column definitions for Grid 1 (all tracks)
-const MyColDefs2 = ref([]); // column definitions for Grid 2 (begehbare tracks)
-const CheckboxExcludeTrainingTest = ref(false)
+// Loading state indicators
+const dataload = ref(false);             // True while an RPC request is pending
+const dataloaded = ref(0);               // Count of fetched records for progress display
 
-// Grid API references – needed for CSV export, resizing, etc.
+// Supabase client instance injected globally into the Vue application
+const instance = getCurrentInstance();
+const supabase = instance.appContext.config.globalProperties.$supabase;
+
+// Grid data and organization filter state
+const tabledata = ref([]);               // Grid row data (array of records from RPC)
+const organisationsList = ref([]);       // List of available organizations for the dropdown
+const selectedOrganisation = ref(null);   // UUID of the currently selected organization
+const MyColDefs1 = ref([]);              // AG Grid column definitions
+
+// AG Grid API instance reference
 const gridApi1 = ref(null);
-const gridApi2 = ref(null);
 
-// Strategy for automatically sizing the grid: fit the grid width to the container
-// and ensure each column is at least 5 px wide.
+// AG Grid layout options: auto-fit columns to container width with 5px minimum
 const autoSizeStrategy = { type: 'fitGridWidth', defaultMinWidth: 5 };
-const MIN_GRID_HEIGHT = 200;   // px – adjust to your design
+const MIN_GRID_HEIGHT = 200; // Minimum grid height in pixels
+
+/**
+ * Computes grid height dynamically based on the number of rows (up to 50 rows),
+ * enforcing a minimum height of 200px.
+ */
 const gridHeight = computed(() => {
-  const rowHeight = 25;               // default ag‑grid row height
-  const maxRows   = 50;               // rows before pagination kicks in
+  const rowHeight = 25;
+  const maxRows = 50;
   const rows = Math.min(tabledata.value?.length ?? 0, maxRows) || 1;
   const height = rowHeight * rows;
-  return `${Math.max(height, MIN_GRID_HEIGHT)}px`;   // enforce min height
+  return `${Math.max(height, MIN_GRID_HEIGHT)}px`;
 });
 
-// Troop ID → name mapping, loaded from Supabase for better readability in the grid
-const troopsList = ref([]); // raw troop records from Supabase
+/**
+ * Checks whether an organization is currently selected.
+ */
+const isOrgSelected = computed(() => {
+  return !!selectedOrganisation.value;
+});
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 5️⃣ Helper: build column definitions (dynamic period column)
+// 5️⃣ Helper: Build AG Grid Column Definitions
 // ──────────────────────────────────────────────────────────────────────────────
+/**
+ * Configures the column definitions for the AG Grid table.
+ * Field names correspond directly to the `RETURNS TABLE(...)` definition
+ * of the PostgreSQL RPC function `stat_abgegebene_traktecken_pro_at`.
+ */
 function buildColDefs() {
   MyColDefs1.value = [
-  //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
-    { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
-    { field: "cluster_name", headerName: "Trakt", filter: "agNumberColumnFilter" },
-    { field: "plot_name", headerName: "Ecke", filter: "agNumberColumnFilter" },
+    { field: "landesinventurleitung", headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
+    { field: "cluster_name", headerName: "Traktnummer", filter: "agNumberColumnFilter" },
+    { field: "plot_name", headerName: "Eckennummer", filter: "agNumberColumnFilter" },
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
-    { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "completed_as_troop_latest", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
-    { field: "wald2027", headerName: "Waldentscheid", filter: "agNumberColumnFilter" },
-    { field: "begehbar2027", headerName: "Begehbarkeit", filter: "agNumberColumnFilter" }
+    { field: "kontrolltrupp", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
+    { field: "abgabedatum", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
+    { field: "waldentscheid2027", headerName: "Waldentscheid2027", filter: "agNumberColumnFilter" },
+    { field: "begehbarkeit2027", headerName: "Begehbarkeit2027", filter: "agNumberColumnFilter" }
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
+// ──────────────────────────────────────────────────────────────────────────────
+// 6️⃣ Data Loading – Fetch Delivered Plots via RPC
+// ──────────────────────────────────────────────────────────────────────────────
+/**
+ * Fetches delivered plot records for the selected organization by invoking
+ * the PostgreSQL RPC function `stat_abgegebene_traktecken_pro_at`.
+ *
+ * The call sends an HTTP POST request to `/rest/v1/rpc/stat_abgegebene_traktecken_pro_at`
+ * with parameter `{ user_id: selectedOrganisation.value }`.
+ *
+ * Fetched records are sorted client-side by:
+ * 1. Landesinventurleitung (alphabetical)
+ * 2. Truppname (alphabetical)
+ * 3. Abgabedatum (chronological)
+ */
+async function fetchData() {
+  // If no organization or troop is selected, clear table data and return early
+  if (!selectedOrganisation.value) {
+    tabledata.value = [];
+    dataloaded.value = 0;
+    return [];
+  }
 
-  const ids = selectedOrganisations.value.join(','); // CSV list of org UUIDs
-  // Build an OR‑filter that matches any of the four organisation‑type columns
-  const orFilters = [
-    `responsible_administration.in.(${ids})`,
-    `responsible_state.in.(${ids})`,
-    `responsible_provider.in.(${ids})`,
-    `responsible_troop.in.(${ids})`
-  ];
-  console.log("Selected Orgs for batch fetch:", selectedOrganisations.value);
+  dataload.value = true;
+  dataloaded.value = 0;
 
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
   try {
-    // Ruft die primäre Tabelle 'v_stats_troop_completed_latest' in Batches ab
-    while (hasMore) {
-      // 1. Query-Objekt initialisieren (ohne await!)
-      let query = supabase
-        .from('v_stats_troop_completed_latest')
-        .select('responsible_state, responsible_administration, responsible_provider, responsible_troop, lil, cluster_name, plot_name,  troop_name, kt, completed_as_troop_latest, wald2027, begehbar2027')
-        .or(orFilters.join(','))
+    // Invoke Supabase RPC function (HTTP POST to /rest/v1/rpc/<fn>)
+    const { data, error } = await supabase
+      .rpc('stat_abgegebene_traktecken_pro_at', {
+        user_id: selectedOrganisation.value
+      });
 
-      // // 2. Bedingung prüfen und Filter dynamisch anhängen
-      // const filterTrainingData = CheckboxExcludeTrainingTest.value; // Deine Variable/Bedingung
-
-      // if (filterTrainingData) {
-      //   console.warn("Excluding training/test tracks from batch fetch.");
-      //   query = query
-      //     // 1. Schließt alle Werte aus, die kleiner als 100000 sind
-      //     .not('cluster_name', 'gt', 1000000000) 
-      //     // 2. Erlaubt nur Werte außerhalb des Bereichs (Werte müssen < 9900000 ODER > 10000000 sein)
-      //     .or('cluster_name.lt.9999900,cluster_name.gt.10000000'); 
-      // }
-
-      // 3. Range anhängen und Query mit await ausführen
-      const { data, error } = await query.range(from, to);
-
-      if (error) throw error
-
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
-
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      // Fügt die Rohdaten direkt dem Gesamt-Array hinzu
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
+    if (error) {
+      console.warn('RPC stat_abgegebene_traktecken_pro_at returned an error:', error);
+      tabledata.value = [];
+      dataloaded.value = 0;
+      return [];
     }
 
-    // Clientseitige Sortierung basierend auf den Feldern der Haupttabelle
+    // Prevent errors if RPC response is null, undefined, not an array, or empty
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      tabledata.value = [];
+      dataloaded.value = 0;
+      return [];
+    }
+
+    const allRecords = [...data];
+    dataloaded.value = allRecords.length;
+
+    // Client-side multi-column sort: Landesinventurleitung -> Trupp -> Abgabedatum
     allRecords.sort((a, b) => {
-      // Sortierung nach responsible_state (Ersatz für das vorherige 'lil'-Mapping)
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
+      if (!a || !b) return 0;
 
-      // Sortierung nach troop_name (Ersatz für das vorherige 'name'-Lookup)
-      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''))
-      if (compareTroopName !== 0) return compareTroopName
+      const compareLil = String(a.landesinventurleitung || '').localeCompare(String(b.landesinventurleitung || ''));
+      if (compareLil !== 0) return compareLil;
 
-      // Abschließende Sortierung nach Abschlussdatum
-      return String(a.completed_at_troop || '').localeCompare(String(b.completed_at_troop || ''))
-    })
- 
-    tabledata.value = allRecords // Zuweisung an die reaktive Variable für die Grid-Anzeige
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
+      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''));
+      if (compareTroopName !== 0) return compareTroopName;
+
+      return String(a.abgabedatum || '').localeCompare(String(b.abgabedatum || ''));
+    });
+
+    tabledata.value = allRecords;
+    return allRecords;
   } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    console.error('Error fetching or processing RPC data:', err);
+    tabledata.value = [];
+    dataloaded.value = 0;
+    return [];
+  } finally {
+    dataload.value = false;
   }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 8️⃣ Fetch list of organisations the current user may view
-// ──────────────────────────────────────────────────────────────────────────────
-async function _getOrganizations(userId) {
-  const { data, error } = await supabase
-    .from('users_permissions')
-    .select("*, organizations(*)")
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error("Org Fetch Error:", error);
-    return;
-  }
-
-  // Keep only non‑deleted organisations and map to a simple {id, name} object
-  organisationsList.value = data
-    .filter(p => !p.organizations.deleted)
-    .map(item => ({
-      id: item.organizations.id,
-      name: item.organizations.name
-    }));
-  if (organisationsList.value.length === 1) {
-    console.warn("only 1 organization found for user:", userId);
-    selectedOrganisations.value = [organisationsList.value[0].id]; // auto‑select if only one org
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// 9️⃣ Lifecycle hooks
+// 7️⃣ Lifecycle Hooks & Watchers
 // ──────────────────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  // Get the current Supabase session → user ID
-  const { data } = await supabase.auth.getSession();
-  if (data.session) {
-    await _getOrganizations(data.session.user.id); // populate org list
-    buildColDefs();                               // initialise column definitions
-    console.log("instance", instance);
-    //await loadTroopsList();                    // load troop names for better grid display
+  buildColDefs();
+});
+
+onUnmounted(() => {});
+
+/**
+ * Watcher: Re-fetches data whenever the selected organization changes.
+ * Clears the table if selection is cleared.
+ */
+watch(selectedOrganisation, async () => {
+  if (isOrgSelected.value) {
+    await fetchData();
+  } else {
+    tabledata.value = [];
   }
 });
 
-onUnmounted(() => {
-  // (nothing to clean up at the moment)
-});
-
 // ──────────────────────────────────────────────────────────────────────────────
-// 10️⃣ Watchers – react to UI changes & keep everything in sync
+// 8️⃣ AG Grid Event Handlers & Export Actions
 // ──────────────────────────────────────────────────────────────────────────────
-// Watch VitePress dark‑mode flag
-watch(isDark, (val) => {
-  console.log('VitePress Dark Mode ist jetzt:', val)
-}, { immediate: true })
+/**
+ * Stores the AG Grid API reference when the grid is initialized.
+ * @param {import('ag-grid-community').GridReadyEvent} params
+ */
+function onGridReady1(params) {
+  gridApi1.value = params.api;
+}
 
-// When the selected time step changes → rebuild columns & re‑aggregate data
-watch(mysteps, async (val) => {
-  buildColDefs();          // update column list
-  await _transformData(val);
-});
+function onOrgsLoaded(res) {
+  organisationsList.value = res?.organisationsList || [];
+}
 
-// When the organisation selection changes → reload raw records & re‑aggregate
-watch([selectedOrganisations, CheckboxExcludeTrainingTest], async () => {
-  console.log("Selected Orgs:", selectedOrganisations.value);
-  //await _loadRecords();
-  await fetchRecordChangesInBatches(); // reload data from Supabase with new org filter 
-  //await _transformData();
-});
-
-
-// Placeholder watcher – you could trigger chart redraws here
-watch([tabledata, mysteps, selectedOrganisations], async () => {
-  // e.g. update ECharts instance
-});
-
-// Grid‑ready callbacks – store the API objects for later use (CSV export, etc.)
-function onGridReady1(params) { gridApi1.value = params.api; }
-function onGridReady2(params) { gridApi2.value = params.api; }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// 11️⃣ CSV export helpers (one per grid)
-// ──────────────────────────────────────────────────────────────────────────────
+/**
+ * Exports the current grid data to a CSV file.
+ * File name contains the selected organization/troop name and current date:
+ * CI-Statistik_abgegebene_traktecken_pro_at_<Organisation/Trupp>_YYYY-MM-DD.csv
+ */
 function onBtnExport1() {
+  const selectedItem = organisationsList.value.find(item => item.id === selectedOrganisation.value);
+  const namePart = selectedItem?.name ? `${selectedItem.name.trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')}_` : '';
+  const datePart = new Date().toISOString().slice(0, 10);
+
   gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_troop_completed_latest_${new Date().toISOString().slice(0, 10)}.csv`
+    fileName: `CI-Statistik_abgegebene_traktecken_pro_at_${namePart}${datePart}.csv`
   });
 }
 </script>
 
 <template>
-  <!-- ==================== ORGANISATION SELECTION ==================== -->
-  <v-card>
-    <v-card-title>Organisationen auswählen:</v-card-title>
-    <!-- Multi‑select with chips – lets the user pick one or more orgs -->
-    <v-select
-      v-model="selectedOrganisations"
-      :items="organisationsList"
-      item-title="name"
-      item-value="id"
-      multiple
-      chips
-      closable-chips
-      label="Organisation(en) auswählen"
-    />
-<!--     <v-checkbox
-     v-model="CheckboxExcludeTrainingTest"
-     :label="`Test-/Trainingstrakte ausschließen`"
-    /> -->
-  </v-card>
+  <!-- Reusable Organization and Troop Selector Component -->
+  <OrganizationSelect
+    v-model="selectedOrganisation"
+    @loaded="onOrgsLoaded"
+  />
 
-
-  <!-- DEBUG: show selected org IDs (can be removed later) -->
-<!--   <v-card v-if="selectedOrganisations.length > 0">
-    <v-card-title>Ausgewählte Organisationen (nur zum Debuggen, kann später weg):</v-card-title>
-    <v-list>
-      <v-list-item v-for="orgId in selectedOrganisations" :key="orgId" :title="orgId" :value="orgId" />
-    </v-list>
-  </v-card> -->
-
-  <!-- ==================== LOADING INDICATOR ==================== -->
-  <v-card v-if="dataload === true">
+  <!-- Data Loading Progress Indicator -->
+  <v-card v-if="dataload" class="mb-4">
     <v-card-title class="d-flex flex-column align-center">
-      <p><span>Lade Daten ({{ dataloaded }} Datensätze)</span></p>
+      <p><span>Lade Daten...</span></p>
       <p><v-progress-circular indeterminate color="primary" class="mt-2" /></p>
     </v-card-title>
   </v-card>
 
-  <!-- ==================== GRID 1 – ALL ==================== -->
-  <!-- <v-card v-if="tabledata && tabledata.length > 0">-->
+  <!-- Results Card with AG Grid Table and CSV Export -->
   <v-card>
     <v-card-title>Ergebnis</v-card-title>
 
-    <!-- Render the grid only when at least one organisation is selected -->
-    <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
+    <!-- AG Grid Table (rendered when organization is selected and records exist) -->
+    <ag-grid-vue
+      v-if="isOrgSelected && tabledata && tabledata.length > 0"
       :rowData="tabledata"
       :columnDefs="MyColDefs1"
       :style="{ height: gridHeight }"
@@ -315,16 +280,24 @@ function onBtnExport1() {
       :autoSizeStrategy="autoSizeStrategy"
       :key="isDark"
       :theme="currentTheme"
-      @grid-ready="onGridReady1" />
-    <!-- Fallback message when no org is selected -->
-    <v-card-text v-else class="text-center text-grey italic">
+      @grid-ready="onGridReady1"
+    />
+
+    <!-- Empty State Message -->
+    <v-card-text v-else-if="!dataload" class="text-center text-grey italic">
       Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
-    <!-- CSV export button for Grid 1 -->
-    <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport1"
-      :disabled="!tabledata || tabledata.length === 0">
-      CSV Export (Alle Traktecken)
-    </v-btn>
+    <!-- Card Actions: CSV Export Button -->
+    <v-card-actions>
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-download"
+        @click="onBtnExport1"
+        :disabled="!tabledata || tabledata.length === 0"
+      >
+        CSV Export (Alle Traktecken)
+      </v-btn>
+    </v-card-actions>
   </v-card>
 </template>
