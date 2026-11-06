@@ -452,7 +452,4 @@ function onBtnExport2() {
       </v-btn>
     </v-card-actions>
   </v-card>
-      CSV Export (Begehbare Traktecken)
-    </v-btn>
-  </v-card>
 </template>
