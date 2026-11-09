@@ -58,7 +58,11 @@ export async function createSupabaseConnector(supabaseUrl: string, supabaseAnonK
       this.client = createClient(this.config.supabaseUrl, this.config.supabaseAnonKey, {
         auth: {
           persistSession: true
-        }
+        },
+        // Same identification as the main client in index.js: the records
+        // guard only accepts `supabase-flutter/*` and `tfm-web/*` for writes
+        // to properties / completed_at_troop / validation results.
+        global: { headers: { 'X-Client-Info': 'tfm-web/1.0.0' } }
       });
       this.currentSession = null;
       this.ready = false;

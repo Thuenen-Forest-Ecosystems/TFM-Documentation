@@ -15,6 +15,8 @@ const url = import.meta.env.VITE_SUPABASE_URL || 'https://ci.thuenen.de';
 const apikey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzQ1NzkxMjAwLCJleHAiOjE5MDM1NTc2MDB9.hXiYlA_168hHZ6fk3zPgABQUpEcqkYRMzu0A5W5PtYU';
 const redirectTo = import.meta.env.VITE_REDIRECT_TO || 'https://thuenen-forest-ecosystems.github.io/TFM-Documentation';
 const syncUrl = import.meta.env.VITE_SYNC_URL || `${url}/sync`;
+// Must start with `tfm-web/` — see the comment at createClient below.
+const TFM_WEB_CLIENT_INFO = 'tfm-web/1.0.0';
 
 // Create Supabase client - single instance to avoid multiple client warnings
 let supabase = null;
@@ -35,7 +37,14 @@ const createMockSupabase = () => ({
 if (typeof window !== 'undefined') {
   // Only import and create real Supabase client in the browser
   const { createClient } = await import('@supabase/supabase-js');
-  supabase = createClient(url, apikey);
+  // X-Client-Info identifies this web app to the server: the records guard
+  // (TFM-Server guard_records_app_only_columns) only lets clients sending
+  // `supabase-flutter/*` (TFM app) or `tfm-web/*` (this app) change
+  // properties / completed_at_troop / validation results. Without this the
+  // client sends the generic `supabase-js-web/<version>` and gets 42501.
+  supabase = createClient(url, apikey, {
+    global: { headers: { 'X-Client-Info': TFM_WEB_CLIENT_INFO } }
+  });
 } else {
   // Provide mock Supabase for SSR
   supabase = createMockSupabase();
