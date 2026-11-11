@@ -469,6 +469,7 @@ function _countColumnValues(field) {
                         cellDataType: "date",
                         filter: "agDateColumnFilter",
                         valueGetter: (params) => _dayOf(params.data.completed_at_survey_troop),
+                        comparator: _timeComparator('completed_at_survey_troop'),
                         valueFormatter: (params) => params.data.completed_at_survey_troop ? params.data.completed_at_survey_troop.toLocaleString() : '',
                     },
                     {
@@ -492,6 +493,7 @@ function _countColumnValues(field) {
                         cellDataType: "date",
                         filter: "agDateColumnFilter",
                         valueGetter: (params) => _dayOf(params.data.completed_at_control_troop),
+                        comparator: _timeComparator('completed_at_control_troop'),
                         valueFormatter: (params) => params.data.completed_at_control_troop ? params.data.completed_at_control_troop.toLocaleString() : '',
                     },
                     {
@@ -511,6 +513,7 @@ function _countColumnValues(field) {
                         cellDataType: "date",
                         filter: "agDateColumnFilter",
                         valueGetter: (params) => _dayOf(params.data.gnss_measured_at),
+                        comparator: _timeComparator('gnss_measured_at'),
                         valueFormatter: (params) => params.data.gnss_measured_at ? params.data.gnss_measured_at.toLocaleString() : '',
                     },
                 ]
@@ -633,6 +636,7 @@ function _countColumnValues(field) {
                             const date = new Date(params.data.completed_at_troop);
                             return new Date(date.getFullYear(), date.getMonth(), date.getDate());
                         },
+                        comparator: _timeComparator('completed_at_troop'),
                         valueFormatter: (params) => params.data.completed_at_troop ? params.data.completed_at_troop.toLocaleString() : '',
                     },
                     {
@@ -844,6 +848,7 @@ function _countColumnValues(field) {
                 const date = new Date(params.data.completed_at_state);
                 return new Date(date.getFullYear(), date.getMonth(), date.getDate());
             },
+            comparator: _timeComparator('completed_at_state'),
             valueFormatter: (params) => params.data.completed_at_state ? params.data.completed_at_state.toLocaleString() : '',
         },
         {
@@ -860,6 +865,7 @@ function _countColumnValues(field) {
                 const date = new Date(params.data.completed_at_administration);
                 return new Date(date.getFullYear(), date.getMonth(), date.getDate());
             },
+            comparator: _timeComparator('completed_at_administration'),
             valueFormatter: (params) => params.data.completed_at_administration ? params.data.completed_at_administration.toLocaleString() : '',
         }
     ]
@@ -901,6 +907,20 @@ function _renderLookup(tableName, fieldName, code) {
     function _dayOf(date) {
         if (!date) return null;
         return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+    // Sortierung nach voller Uhrzeit. Der valueGetter liefert fuer den
+    // agDateColumnFilter nur den Tag; ohne eigenen comparator wuerden alle
+    // Abgaben eines Tages als gleich gelten und in Datenreihenfolge stehen.
+    // Leere Werte sortieren wie bei AG Grid ueblich vor allen Zeitstempeln.
+    function _timeComparator(field) {
+        return (_a, _b, nodeA, nodeB) => {
+            const a = nodeA.data?.[field];
+            const b = nodeB.data?.[field];
+            if (!a && !b) return 0;
+            if (!a) return -1;
+            if (!b) return 1;
+            return new Date(a).getTime() - new Date(b).getTime();
+        };
     }
 
     function computeSelectable(record) {
