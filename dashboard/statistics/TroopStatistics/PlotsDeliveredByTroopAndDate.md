@@ -14,12 +14,12 @@ layout: home
 [← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
 
 
-# Abgabe von Ecken durch Trupp nach Datum  (View)
+# Abgabe von Ecken durch Trupp nach Datum  (RPC)
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.
 
-(Version 260721)
+(Version 261020)
 :::
 
 <!-- Vuetify application wrapper with a transparent background.

@@ -13,6 +13,8 @@ import { ref, onMounted, getCurrentInstance, computed, watch, inject, onUnmounte
 import { AllCommunityModule, ModuleRegistry, colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 import { AgGridVue } from "ag-grid-vue3";
 import { useData } from 'vitepress';
+import OrganizationSelect from '../OrganizationSelect.vue';
+import ExportCsvButton from '../ExportCsvButton.vue';
 const { isDark } = useData();               // VitePress dark‑mode flag
 
 // Register all AG‑Grid community modules (filtering, sorting, …)
@@ -44,7 +46,7 @@ const tabledata = ref([]);             // processed/aggregated data for Grid & C
 const mysteps = ref('Monat');          // selected time‑step: 'Tag' | 'Woche' | 'Monat'
 const trupps = ref('Inventurtrupp');   // column header for the troop column
 const organisationsList = ref([]);    // list of orgs the user may select
-const selectedOrganisations = ref([]); // UUIDs of orgs currently selected
+const selectedOrganisation = ref(null); // UUID of selected org or troop
 const MyColDefs1 = ref([]); // column definitions for Grid 1 (all tracks)
 const MyColDefs2 = ref([]); // column definitions for Grid 2 (begehbare tracks)
 
@@ -94,18 +96,24 @@ function buildColDefs() {
 // 6️⃣ Data loading – fetch records from Supabase in paginated batches
 // ──────────────────────────────────────────────────────────────────────────────
 async function _loadRecords() {
+  if (!selectedOrganisation.value) {
+    my_data.value = [];
+    tabledata.value = [];
+    return;
+  }
+
   dataload.value = true;                     // show loading spinner
   const batchSize = 1000;                    // rows per request
   let offset = 0;                            // start index for the next batch
   const allRecords = [];                     // accumulator for all pages
-  const ids = selectedOrganisations.value.join(','); // CSV list of org UUIDs
+  const id = selectedOrganisation.value;
 
   // Build an OR‑filter that matches any of the four organisation‑type columns
   const orFilters = [
-    `responsible_administration.in.(${ids})`,
-    `responsible_state.in.(${ids})`,
-    `responsible_provider.in.(${ids})`,
-    `responsible_troop.in.(${ids})`
+    `responsible_administration.eq.${id}`,
+    `responsible_state.eq.${id}`,
+    `responsible_provider.eq.${id}`,
+    `responsible_troop.eq.${id}`
   ];
 
   // Loop until Supabase returns no more rows or an error occurs
@@ -114,28 +122,25 @@ async function _loadRecords() {
       .from('records')
       .select('id, completed_at_troop, responsible_troop, updated_at, updated_by, properties')
       .or(orFilters.join(','))
-      // keep only rows that have a timestamp (comment out in order to get more data for debugging)
       .not('completed_at_troop', 'is', null)
-      .range(offset, offset + batchSize - 1); // pagination
+      .range(offset, offset + batchSize - 1);
 
     if (error) {
       console.error('Fetch Error:', error);
-      break;                                 // abort on error
+      break;
     }
 
-    if (!data?.length) break;                // no more rows → exit loop
+    if (!data?.length) break;
 
-    allRecords.push(...data);                // add this chunk
-    offset += batchSize;                     // advance offset for next request
-    dataloaded.value = allRecords.length;    // update UI counter
+    allRecords.push(...data);
+    offset += batchSize;
+    dataloaded.value = allRecords.length;
     console.log(`Loaded ${allRecords.length} records so far...`);
   }
 
-  // Store the complete result set in the reactive variable
   my_data.value = allRecords;
   console.log(`Total records loaded: ${allRecords.length}`);
-  console.log(allRecords);
-  dataload.value = false;                    // hide spinner
+  dataload.value = false;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -265,131 +270,63 @@ async function _transformData(steps = mysteps.value) {
 // ──────────────────────────────────────────────────────────────────────────────
 // 8️⃣ Fetch list of organisations the current user may view
 // ──────────────────────────────────────────────────────────────────────────────
-async function _getOrganizations(userId) {
-  const { data, error } = await supabase
-    .from('users_permissions')
-    .select("*, organizations(*)")
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error("Org Fetch Error:", error);
-    return;
-  }
-
-  // Keep only non‑deleted organisations and map to a simple {id, name} object
-  organisationsList.value = data
-    .filter(p => !p.organizations.deleted)
-    .map(item => ({
-      id: item.organizations.id,
-      name: item.organizations.name
-    }));
-  if (organisationsList.value.length === 1) {
-    console.warn("only 1 organization found for user:", userId);
-    selectedOrganisations.value = [organisationsList.value[0].id]; // auto‑select if only one org
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// 9️⃣ Lifecycle hooks
-// ──────────────────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  // Get the current Supabase session → user ID
-  const { data } = await supabase.auth.getSession();
-  if (data.session) {
-    await _getOrganizations(data.session.user.id); // populate org list
-    buildColDefs();                               // initialise column definitions
-    console.log("instance", instance);
-    await loadTroopsList();                    // load troop names for better grid display
-  }
+  buildColDefs();
+  await loadTroopsList();
 });
 
-onUnmounted(() => {
-  // (nothing to clean up at the moment)
-});
+onUnmounted(() => {});
 
-// ──────────────────────────────────────────────────────────────────────────────
-// 10️⃣ Watchers – react to UI changes & keep everything in sync
-// ──────────────────────────────────────────────────────────────────────────────
-// Watch VitePress dark‑mode flag
 watch(isDark, (val) => {
   console.log('VitePress Dark Mode ist jetzt:', val)
 }, { immediate: true })
 
-// When the selected time step changes → rebuild columns & re‑aggregate data
 watch(mysteps, async (val) => {
-  buildColDefs();          // update column list
+  buildColDefs();
   await _transformData(val);
 });
 
-// When the organisation selection changes → reload raw records & re‑aggregate
-watch(selectedOrganisations, async () => {
-  console.log("Selected Orgs:", selectedOrganisations.value);
-  await _loadRecords();
-  await _transformData();
+watch(selectedOrganisation, async () => {
+  console.log("Selected Org:", selectedOrganisation.value);
+  if (selectedOrganisation.value) {
+    await _loadRecords();
+    await _transformData();
+  } else {
+    my_data.value = [];
+    tabledata.value = [];
+  }
 });
 
-// Placeholder watcher – you could trigger chart redraws here
-watch([tabledata, mysteps, selectedOrganisations], async () => {
-  // e.g. update ECharts instance
-});
-
-// Grid‑ready callbacks – store the API objects for later use (CSV export, etc.)
 function onGridReady1(params) { gridApi1.value = params.api; }
 function onGridReady2(params) { gridApi2.value = params.api; }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// 11️⃣ CSV export helpers (one per grid)
-// ──────────────────────────────────────────────────────────────────────────────
-function onBtnExport1() {
-  gridApi1.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat1_nach${mysteps.value}_alle_${new Date().toISOString().slice(0, 10)}.csv`
-  });
+function onOrgsLoaded(res) {
+  organisationsList.value = res?.organisationsList || [];
 }
-function onBtnExport2() {
-  gridApi2.value?.exportDataAsCsv({
-    fileName: `CI-Statistik_Gruppe1_Stat1_nach${mysteps.value}_begehbar_${new Date().toISOString().slice(0, 10)}.csv`
-  });
-}
-
 </script>
 
 <template>
-  <!-- ==================== ORGANISATION SELECTION ==================== -->
-  <v-card>
-    <v-card-title>Organisationen auswählen:</v-card-title>
-    <!-- Multi‑select with chips – lets the user pick one or more orgs -->
-    <v-select v-model="selectedOrganisations" :items="organisationsList" item-title="name" item-value="id" multiple
-      chips closable-chips label="Organisation(en) auswählen" />
-  </v-card>
+  <OrganizationSelect
+    v-model="selectedOrganisation"
+    @loaded="onOrgsLoaded"
+  />
 
-  <!-- DEBUG: show selected org IDs (can be removed later) -->
-<!--   <v-card v-if="selectedOrganisations.length > 0">
-    <v-card-title>Ausgewählte Organisationen (nur zum Debuggen, kann später weg):</v-card-title>
-    <v-list>
-      <v-list-item v-for="orgId in selectedOrganisations" :key="orgId" :title="orgId" :value="orgId" />
-    </v-list>
-  </v-card> -->
-
-  <!-- ==================== TIME‑STEP SELECTION ==================== -->
-  <v-card v-if="tabledata && tabledata.length > 0">
+  <v-card v-if="tabledata && tabledata.length > 0" class="mb-4">
     <v-card-title>Zeitschritte auswählen:</v-card-title>
     <v-select v-model="mysteps" :items="['Monat', 'Woche', 'Tag']" />
   </v-card>
 
-  <!-- ==================== LOADING INDICATOR ==================== -->
-  <v-card v-if="dataload === true">
+  <v-card v-if="dataload === true" class="mb-4">
     <v-card-title class="d-flex flex-column align-center">
       <p><span>Lade Daten ({{ dataloaded }} Datensätze)</span></p>
       <p><v-progress-circular indeterminate color="primary" class="mt-2" /></p>
     </v-card-title>
   </v-card>
 
-  <!-- ==================== GRID 1 – ALL ==================== -->
-  <v-card>
+  <v-card class="mb-4">
     <v-card-title>Alle Traktecken</v-card-title>
 
-    <!-- Render the grid only when at least one organisation is selected -->
-    <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
+    <ag-grid-vue v-if="selectedOrganisation && tabledata && tabledata.length > 0"
       :rowData="tabledata"
       :columnDefs="MyColDefs1"
       :style="{ height: gridHeight }"
@@ -400,23 +337,26 @@ function onBtnExport2() {
       :key="isDark"
       :theme="currentTheme"
       @grid-ready="onGridReady1" />
-    <!-- Fallback message when no org is selected -->
     <v-card-text v-else class="text-center text-grey italic">
       Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
-    <!-- CSV export button for Grid 1 -->
-    <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport1"
-      :disabled="!tabledata || tabledata.length === 0">
-      CSV Export (Alle Traktecken)
-    </v-btn>
+    <v-card-actions>
+      <ExportCsvButton
+        :grid-api="gridApi1"
+        filename-prefix="CI-Statistik_performance_by_troop_average_alle"
+        :selected-organisation="selectedOrganisation"
+        :organisations-list="organisationsList"
+        :disabled="!tabledata || tabledata.length === 0"
+        label="CSV Export (Alle Traktecken)"
+      />
+    </v-card-actions>
   </v-card>
 
-  <!-- ==================== GRID 2 – BEGEHBARE ==================== -->
   <v-card>
     <v-card-title>Begehbare Traktecken</v-card-title>
 
-    <ag-grid-vue v-if="selectedOrganisations.length > 0 && tabledata && tabledata.length > 0"
+    <ag-grid-vue v-if="selectedOrganisation && tabledata && tabledata.length > 0"
       :rowData="tabledata"
       :columnDefs="MyColDefs2"
       :style="{ height: gridHeight }"
@@ -431,10 +371,15 @@ function onBtnExport2() {
       Keine Daten für die aktuelle Auswahl verfügbar. Bitte Auswahl ändern.
     </v-card-text>
 
-    <!-- CSV export button for Grid 2 -->
-    <v-btn color="primary" prepend-icon="mdi-download" @click="onBtnExport2"
-      :disabled="!tabledata || tabledata.length === 0">
-      CSV Export (Begehbare Traktecken)
-    </v-btn>
+    <v-card-actions>
+      <ExportCsvButton
+        :grid-api="gridApi2"
+        filename-prefix="CI-Statistik_performance_by_troop_average_begehbar"
+        :selected-organisation="selectedOrganisation"
+        :organisations-list="organisationsList"
+        :disabled="!tabledata || tabledata.length === 0"
+        label="CSV Export (Begehbare Traktecken)"
+      />
+    </v-card-actions>
   </v-card>
 </template>
