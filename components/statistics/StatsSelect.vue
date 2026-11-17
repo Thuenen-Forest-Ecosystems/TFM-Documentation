@@ -40,7 +40,8 @@ const availableStats = ref([
       { "id": "ForestStatusChange", "name": "2.3.1 Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Traktecken"},
       { "id": "ForestStatusChangeByTroop", "name": "2.3.2 Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Anzahl pro Trupp"},
       { "id": "ForestBoundariesUnchanged", "name": "2.4 Statistik zu übernommenen Bestandesgrenzen (42)" },
-      { "id": "PlotsNotAccessibleDueToCalamities", "name": "2.6 Statistik zu nicht begehbaren Traktecken wegen Kalamitäten" }
+      { "id": "PlotsNotAccessibleDueToCalamities", "name": "2.6 Statistik zu nicht begehbaren Traktecken wegen Kalamitäten" },
+      { "id": "PlotsNotAccessibleDueToASP", "name": "2.7 Statistik zu nicht begehbaren Traktecken wegen ASP" }
 /*      { "id": "s2", "name": "Stat2.2"},
       { "id": "s3", "name": "Stat2.3"}*/
     ]

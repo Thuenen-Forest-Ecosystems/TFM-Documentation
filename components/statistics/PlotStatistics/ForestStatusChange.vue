@@ -49,7 +49,6 @@ const organisationsList = ref([]);    // list of orgs the user may select
 const selectedOrganisation = ref(null); // UUID of selected org or troop
 const MyColDefs1 = ref([]); // column definitions for Grid 1 (all tracks)
 const MyColDefs2 = ref([]); // column definitions for Grid 2 (begehbare tracks)
-const CheckboxExcludeTrainingTest = ref(false)
 
 // Grid API references – needed for CSV export, resizing, etc.
 const gridApi1 = ref(null);
@@ -75,99 +74,59 @@ const troopsList = ref([]); // raw troop records from Supabase
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-  //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
-    { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
+    { field: "landesinventurleitung" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
     { field: "cluster_name", headerName: "Trakt", filter: "agNumberColumnFilter" },
     { field: "plot_name", headerName: "Ecke", filter: "agNumberColumnFilter" },
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
-    { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "completed_at_troop", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
-    { field: "wald2027_text", headerName: "Waldentscheid_2027", filter: "agNumberColumnFilter" }, 
-    { field: "wald_vorgaenger_text", headerName: "Waldentscheid_Vorgänger", filter: "agNumberColumnFilter" },
-    { field: "begehbar2027", headerName: "Begehbarkeit_2027", filter: "agNumberColumnFilter" },
-    { field: "begehbar_vorgaenger", headerName: "Begehbarkeit_Vorgänger", filter: "agNumberColumnFilter" }
+    { field: "kontrolltrupp", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
+    { field: "abgabedatum", headerName: "Abgabedatum", filter: "agDateColumnFilter" },
+    { field: "wald2027_text", headerName: "Waldentscheid_2027", filter: "agTextColumnFilter" }, 
+    { field: "wald_vorgaenger_text", headerName: "Waldentscheid_Vorgänger", filter: "agTextColumnFilter" },
+    { field: "begehbar2027", headerName: "Begehbarkeit_2027", filter: "agTextColumnFilter" },
+    { field: "begehbar_vorgaenger", headerName: "Begehbarkeit_Vorgänger", filter: "agTextColumnFilter" }
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
+async function fetchRecordChangesInBatches() {
   if (!selectedOrganisation.value) {
     tabledata.value = [];
     return [];
   }
 
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
-
-  const id = selectedOrganisation.value;
-  const orFilters = [
-    `responsible_administration.eq.${id}`,
-    `responsible_state.eq.${id}`,
-    `responsible_provider.eq.${id}`,
-    `responsible_troop.eq.${id}`
-  ];
-  console.log("Selected Org for batch fetch:", selectedOrganisation.value);
-
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
+  dataload.value = true;
   try {
-    while (hasMore) {
-      let query = supabase
-        .from('v_stats_forest_status_changed')
-        .select('lil, cluster_name, plot_name, troop_name, kt, completed_at_troop, wald2027_text, wald_vorgaenger_text, begehbar2027, begehbar_vorgaenger, responsible_state, responsible_administration, responsible_provider, responsible_troop')
-        .or(orFilters.join(','))
+    const { data, error } = await supabase.rpc('stat_changed_forest_status_per_plot', {
+      user_id: selectedOrganisation.value
+    });
 
-      const filterTrainingData = CheckboxExcludeTrainingTest.value;
+    if (error) throw error;
 
-      if (filterTrainingData) {
-        console.warn("Excluding training/test tracks from batch fetch.");
-        query = query
-          .not('cluster_name', 'gt', 1000000000) 
-          .or('cluster_name.lt.9999900,cluster_name.gt.10000000'); 
-      }
+    let records = data || [];
 
-      const { data, error } = await query.range(from, to);
+    const formatted = records.map(r => ({
+      ...r,
+      lil: r.landesinventurleitung || r.lil,
+      kt: r.kontrolltrupp ?? r.kt,
+      completed_at_troop: r.abgabedatum || r.completed_at_troop,
+      landesinventurleitung: r.landesinventurleitung || r.lil,
+      kontrolltrupp: r.kontrolltrupp ?? r.kt,
+      abgabedatum: r.abgabedatum || r.completed_at_troop,
+      wald2027: r.wald2027 || r.Wald2027,
+      wald2027_text: r.wald2027_text || r.Wald2027_text,
+      wald_vorgaenger: r.wald_vorgaenger || r.wald_vorgänger || r.Wald_Vorgänger,
+      wald_vorgaenger_text: r.wald_vorgaenger_text || r.wald_vorgänger_text || r.Wald_Vorgänger_text,
+      begehbar2027: r.begehbar2027 || r.begehbarkeit2027 || r.Begehbarkeit2027,
+      begehbar_vorgaenger: r.begehbar_vorgaenger || r.begehbarkeit_vorgänger || r.Begehbarkeit_Vorgänger
+    }));
 
-      if (error) throw error
-
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
-
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
-    }
-
-    allRecords.sort((a, b) => {
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
-
-      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''))
-      if (compareTroopName !== 0) return compareTroopName
-
-      return String(a.completed_at_troop || '').localeCompare(String(b.completed_at_troop || ''))
-    })
- 
-    tabledata.value = allRecords
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
+    tabledata.value = formatted;
+    return formatted;
   } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    console.error('Error fetching RPC stat_changed_forest_status_per_plot:', err);
+    tabledata.value = [];
+    return [];
+  } finally {
+    dataload.value = false;
   }
 }
 
@@ -184,7 +143,7 @@ watch(isDark, (val) => {
   console.log('VitePress Dark Mode ist jetzt:', val)
 }, { immediate: true })
 
-watch([selectedOrganisation, CheckboxExcludeTrainingTest], async () => {
+watch(selectedOrganisation, async () => {
   console.log("Selected Org:", selectedOrganisation.value);
   if (selectedOrganisation.value) {
     await fetchRecordChangesInBatches();
@@ -206,15 +165,6 @@ function onOrgsLoaded(res) {
     v-model="selectedOrganisation"
     @loaded="onOrgsLoaded"
   />
-  <v-card class="mb-4">
-    <v-card-text>
-      <v-checkbox
-        v-model="CheckboxExcludeTrainingTest"
-        label="Test-/Trainingstrakte ausschließen"
-        hide-details
-      />
-    </v-card-text>
-  </v-card>
 
   <v-card v-if="dataload === true" class="mb-4">
     <v-card-title class="d-flex flex-column align-center">

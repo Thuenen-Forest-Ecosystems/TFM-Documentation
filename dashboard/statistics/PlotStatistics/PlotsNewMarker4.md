@@ -14,7 +14,7 @@ layout: home
 [← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
 
 
-# Alle Ecken bei denen die alte Markierung nicht wieder gefunden wurde, eine neue Markierung gesetzt wurde und eine Neuaufnahme erfolgte  (View)
+# Alle Ecken bei denen die alte Markierung nicht wieder gefunden wurde, eine neue Markierung gesetzt wurde und eine Neuaufnahme erfolgte  (RPC)
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.
