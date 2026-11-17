@@ -24,8 +24,6 @@ const availableStats = ref([
       { "id": "ListControlledByKT", "name": "1.3.1 Liste kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp" },
       { "id": "CountControlledByKT", "name": "1.3.2 Anzahl abgegebener und kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp"}//,
     //  { "id": "PerformanceByTroopAverage", "name": "2. Durchschnittliche Leistung pro Inventurtrupp" },
-    //  { "id": "PlotsDeliveredByToopAndDate_old", "name": "3. Abgabe von Ecken durch Trupp nach Datum" },
-
 
     ]
   },
