@@ -735,16 +735,13 @@ function _countColumnValues(field) {
             {
                 field: "updated_at",
                 headerName: "letzte Änderung",
-                filter: true,
                 sortable: true,
                 tooltipField: "updated_at",
                 cellDataType: "date",
                 filter: "agDateColumnFilter",
-                valueGetter: (params) => {
-                    if (!params.data.updated_at) return null;
-                    const date = new Date(params.data.updated_at);
-                    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                },
+                // Issue #276 — Tag fuer den Filter, Sortierung nach voller Uhrzeit
+                valueGetter: (params) => _dayOf(params.data.updated_at),
+                comparator: _timeComparator('updated_at'),
                 valueFormatter: (params) => params.data.updated_at ? params.data.updated_at.toLocaleString() : '',
             },
             {
