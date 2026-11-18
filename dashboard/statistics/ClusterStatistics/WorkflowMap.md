@@ -19,7 +19,7 @@ layout: home
 ::: warning Hinweis
 Diese Karte ust derzeit ein erster Vorschlag und kann noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Karten. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.
 
-(Version 260723)
+(Version 261020)
 :::
 
 <!-- Vuetify application wrapper with a transparent background.
