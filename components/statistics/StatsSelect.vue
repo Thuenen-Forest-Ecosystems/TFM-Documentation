@@ -41,6 +41,21 @@ const availableStats = ref([
 /*      { "id": "s2", "name": "Stat2.2"},
       { "id": "s3", "name": "Stat2.3"}*/
     ]
+  },
+  {
+    "id": "TreeStatistics",
+    "name": "4. Baumstatistiken",
+    "stats": [
+      { "id": "ListOfShrinkedTreesPerAt", "name": "4.1. Liste mit Bäumen mit geschrumpftem BHD pro Aufnahmetrupp" },
+      { "id": "NumberOfShrinkedTreesPerAt", "name": "4.2. Anzahl Bäume mit geschrumpftem BHD pro Aufnahmetrupp" }
+    ]
+  },
+  {
+    "id": "ClusterStatistics",
+    "name": "5. Workflowkarte",
+    "stats": [
+      { "id": "WorkflowMap", "name": "5.1 Workflowkarte" }
+    ]
   }
 ]);
 
@@ -62,12 +77,16 @@ watch(selectedStatsGrp, (newGroup) => {
   if (newGroup && newGroup.stats) {
     // Wenn Gruppe gewählt: Stats zuweisen
     availableElements.value = newGroup.stats;
+    if (newGroup.stats.length === 1) {
+      selectedStatInGrp.value = newGroup.stats[0];
+    } else {
+      selectedStatInGrp.value = null;
+    }
   } else {
     // Falls Auswahl gelöscht wird: zurück auf Standard
     availableElements.value = [""];
+    selectedStatInGrp.value = null;
   }
-  // Reset der zweiten Auswahl bei Gruppenwechsel
-  selectedStatInGrp.value = null;
 });
 
 </script>
