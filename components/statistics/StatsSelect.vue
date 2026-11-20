@@ -47,7 +47,8 @@ const availableStats = ref([
     "name": "4. Baumstatistiken",
     "stats": [
       { "id": "ListOfShrinkedTreesPerAt", "name": "4.1. Liste mit Bäumen mit geschrumpftem BHD pro Aufnahmetrupp" },
-      { "id": "NumberOfShrinkedTreesPerAt", "name": "4.2. Anzahl Bäume mit geschrumpftem BHD pro Aufnahmetrupp" }
+      { "id": "NumberOfShrinkedTreesPerAt", "name": "4.2. Anzahl Bäume mit geschrumpftem BHD pro Aufnahmetrupp" },
+      { "id": "MapOfShrinkedTrees", "name": "4.3. Karte der Traktecken mit geschrumpftem BHD" }
     ]
   },
   {
