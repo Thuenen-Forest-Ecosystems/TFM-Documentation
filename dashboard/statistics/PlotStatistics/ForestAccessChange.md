@@ -14,7 +14,7 @@ layout: home
 [← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
 
 
-# Statistik zur geänderten Begehbarkeit gegenüber der Vorgängerinventur (View)
+# Statistik zur geänderten Begehbarkeit gegenüber der Vorgängerinventur (RPC)
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.

@@ -38,12 +38,12 @@ const currentTheme = computed(() => {
 // 4️⃣ Reactive state variables
 // ──────────────────────────────────────────────────────────────────────────────
 const dataload = ref(false);          // true while a Supabase request is in progress
-const dataloaded = ref([]);           // holds the number of records fetched so far
+const dataloaded = ref(0);           // holds the number of records fetched so far
 const instance = getCurrentInstance();               // Vue component instance
 const supabase = instance.appContext.config.globalProperties.$supabase; // Supabase client
 const my_data = ref([]);               // raw records from Supabase
 const tabledata = ref([]);             // processed/aggregated data for Grid & Chart
-const mysteps = ref('Monat');          // selected time‑step: 'Tag' | 'Woche' | 'Monat'
+const mysteps = ref('Woche');          // selected time‑step: 'Tag' | 'Woche' | 'Monat'
 const trupps = ref('Inventurtrupp');   // column header for the troop column
 const organisationsList = ref([]);    // list of orgs the user may select
 const selectedOrganisation = ref(null); // UUID of selected org or troop
@@ -74,85 +74,53 @@ const troopsList = ref([]); // raw troop records from Supabase
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-  //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
     { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
     { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
     { field: "woche", headerName: "Woche", filter: "agTextColumnFilter" },
-    { field: "anzahl", headerName: "Anzahl", filter: "agNumberColumnFilter" } 
+    { field: "abgegebene_ecken", headerName: "Abgegebene Ecken", filter: "agNumberColumnFilter" },
+    { field: "davon_wald_ecken", headerName: "Davon Wald-Ecken", filter: "agNumberColumnFilter" },
+    { field: "davon_begehbare_wald_ecken", headerName: "Davon begehbare Wald-Ecken", filter: "agNumberColumnFilter" },
+    { field: "davon_holzboden_ecken", headerName: "Davon Holzboden-Ecken", filter: "agNumberColumnFilter" },
+    { field: "davon_begehbare_holzboden_ecken", headerName: "Davon begehbare Holzboden-Ecken", filter: "agNumberColumnFilter" }
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
+async function fetchRecordChangesInBatches() {
   if (!selectedOrganisation.value) {
     tabledata.value = [];
+    dataloaded.value = 0;
     return [];
   }
 
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
-
-  const id = selectedOrganisation.value;
-  const orFilters = [
-    `responsible_administration.eq.${id}`,
-    `responsible_state.eq.${id}`,
-    `responsible_provider.eq.${id}`,
-    `responsible_troop.eq.${id}`
-  ];
-  console.log("Selected Org for batch fetch:", selectedOrganisation.value);
-
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
+  dataload.value = true;
   try {
-    while (hasMore) {
-      let query = supabase
-        .from('v_stats_performance_by_troop_by_week')
-        .select('lil, troop_name, kt, woche, anzahl, responsible_state, responsible_administration, responsible_provider, responsible_troop')
-        .or(orFilters.join(','))
+    const { data, error } = await supabase.rpc('stat_abgegebene_traktecken_pro_woche', {
+      user_id: selectedOrganisation.value
+    });
 
-      const { data, error } = await query.range(from, to);
+    if (error) throw error;
 
-      if (error) throw error
+    let records = data || [];
 
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
+    const formatted = records.map(r => ({
+      ...r,
+      lil: r.landesinventurleitung || r.lil,
+      kt: r.kontrolltrupp ?? r.kt,
+      landesinventurleitung: r.landesinventurleitung || r.lil,
+      kontrolltrupp: r.kontrolltrupp ?? r.kt,
+      anzahl: r.abgegebene_ecken ?? r.anzahl
+    }));
 
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
-    }
-
-    allRecords.sort((a, b) => {
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
-
-      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''))
-      if (compareTroopName !== 0) return compareTroopName
-
-      return String(a.completed_at_troop || '').localeCompare(String(b.completed_at_troop || ''))
-    })
- 
-    tabledata.value = allRecords
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
+    dataloaded.value = formatted.length;
+    tabledata.value = formatted;
+    return formatted;
   } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    console.error('Error fetching RPC stat_abgegebene_traktecken_pro_woche:', err);
+    tabledata.value = [];
+    return [];
+  } finally {
+    dataload.value = false;
   }
 }
 

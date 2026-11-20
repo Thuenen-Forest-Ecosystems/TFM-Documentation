@@ -74,85 +74,46 @@ const troopsList = ref([]); // raw troop records from Supabase
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-  //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
-    { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
+    { field: "landesinventurleitung" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
     { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
-    { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "aenderung_waldentscheid", headerName: "Änderung Waldentscheid zw. 2022 und 2027", filter: "agTextColumnFilter" },
-    { field: "aenderung_begehbar", headerName: "Änderung Begehbarkeit zw. 2022 und 2027", filter: "agTextColumnFilter" } 
+    { field: "kontrolltrupp", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
+    { field: "aenderung_waldentscheid", headerName: "Änderung Waldentscheid zw. 2022 und 2027", filter: "agNumberColumnFilter" },
+    { field: "aenderung_begehbar", headerName: "Änderung Begehbarkeit zw. 2022 und 2027", filter: "agNumberColumnFilter" } 
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
+async function fetchRecordChangesInBatches() {
   if (!selectedOrganisation.value) {
     tabledata.value = [];
     return [];
   }
 
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
-
-  const id = selectedOrganisation.value;
-  const orFilters = [
-    `responsible_administration.eq.${id}`,
-    `responsible_state.eq.${id}`,
-    `responsible_provider.eq.${id}`,
-    `responsible_troop.eq.${id}`
-  ];
-  console.log("Selected Org for batch fetch:", selectedOrganisation.value);
-
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
+  dataload.value = true;
   try {
-    while (hasMore) {
-      let query = supabase
-        .from('v_stats_forest_status_changed_by_troop')
-        .select('lil, troop_name, kt, aenderung_waldentscheid, aenderung_begehbar, responsible_state, responsible_administration, responsible_provider, responsible_troop')
-        .or(orFilters.join(','))
+    const { data, error } = await supabase.rpc('stat_changed_forest_status_per_troop', {
+      user_id: selectedOrganisation.value
+    });
 
-      const { data, error } = await query.range(from, to);
+    if (error) throw error;
 
-      if (error) throw error
+    let records = data || [];
 
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
+    const formatted = records.map(r => ({
+      ...r,
+      lil: r.landesinventurleitung || r.lil,
+      kt: r.kontrolltrupp ?? r.kt,
+      landesinventurleitung: r.landesinventurleitung || r.lil,
+      kontrolltrupp: r.kontrolltrupp ?? r.kt
+    }));
 
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
-    }
-
-    allRecords.sort((a, b) => {
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
-
-      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''))
-      if (compareTroopName !== 0) return compareTroopName
-
-      return String(a.completed_at_troop || '').localeCompare(String(b.completed_at_troop || ''))
-    })
- 
-    tabledata.value = allRecords
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
+    tabledata.value = formatted;
+    return formatted;
   } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    console.error('Error fetching RPC stat_changed_forest_status_per_troop:', err);
+    tabledata.value = [];
+    return [];
+  } finally {
+    dataload.value = false;
   }
 }
 

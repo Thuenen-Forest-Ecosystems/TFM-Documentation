@@ -1,15 +1,13 @@
 <script setup>
-// 1️⃣ Component meta‑information (JSDoc) – helps IDEs & documentation generators
+// 1️⃣ Component meta‑information (JSDoc)
 /**
- * @component Wann, welcher Trupp welche Ecke abgegeben hat
+ * @component Liste mit Bäumen mit geschrumpftem BHD pro Aufnahmetrupp
  * @description A VitePress component for visualizing Supabase records using AG Grid
- * Supports dynamic time‑interval aggregation (Day, Week, Month) and organization‑based filtering.
  */
 
-// imports of needed libraries and utilities are placed here, outside the component definition, to keep the setup function clean and focused on logic.
-// 2️⃣ Imports – Vue core, AG‑Grid, ECharts, VitePress utilities, etc.
+// 2️⃣ Imports – Vue core, AG‑Grid, VitePress utilities, etc.
 // ──────────────────────────────────────────────────────────────────────────────
-import { ref, onMounted, getCurrentInstance, computed, watch, inject, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, getCurrentInstance, computed, watch, inject, onUnmounted } from 'vue';
 import { AllCommunityModule, ModuleRegistry, colorSchemeDark, colorSchemeLight, themeQuartz } from 'ag-grid-community';
 import { AgGridVue } from "ag-grid-vue3";
 import { useData } from 'vitepress';
@@ -20,7 +18,6 @@ const { isDark } = useData();               // VitePress dark‑mode flag
 // Register all AG‑Grid community modules (filtering, sorting, …)
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Theme handling – we will switch between these two based on VitePress dark‑mode
 // 3️⃣ Theme handling – switch between dark / light AG‑Grid themes
 // ──────────────────────────────────────────────────────────────────────────────
 const darkTheme = themeQuartz.withPart(colorSchemeDark);
@@ -38,26 +35,20 @@ const currentTheme = computed(() => {
 // 4️⃣ Reactive state variables
 // ──────────────────────────────────────────────────────────────────────────────
 const dataload = ref(false);          // true while a Supabase request is in progress
-const dataloaded = ref([]);           // holds the number of records fetched so far
+const dataloaded = ref(0);            // holds the number of records fetched so far
 const instance = getCurrentInstance();               // Vue component instance
 const supabase = instance.appContext.config.globalProperties.$supabase; // Supabase client
-const my_data = ref([]);               // raw records from Supabase
-const tabledata = ref([]);             // processed/aggregated data for Grid & Chart
-const mysteps = ref('Monat');          // selected time‑step: 'Tag' | 'Woche' | 'Monat'
-const trupps = ref('Inventurtrupp');   // column header for the troop column
+const tabledata = ref([]);             // processed data for Grid
 const organisationsList = ref([]);    // list of orgs the user may select
 const selectedOrganisation = ref(null); // UUID of selected org or troop
-const MyColDefs1 = ref([]); // column definitions for Grid 1 (all tracks)
-const MyColDefs2 = ref([]); // column definitions for Grid 2 (begehbare tracks)
+const MyColDefs1 = ref([]);            // column definitions for Grid
 
 // Grid API references – needed for CSV export, resizing, etc.
 const gridApi1 = ref(null);
-const gridApi2 = ref(null);
 
 // Strategy for automatically sizing the grid: fit the grid width to the container
-// and ensure each column is at least 5 px wide.
 const autoSizeStrategy = { type: 'fitGridWidth', defaultMinWidth: 5 };
-const MIN_GRID_HEIGHT = 200;   // px – adjust to your design
+const MIN_GRID_HEIGHT = 200;   // px
 const gridHeight = computed(() => {
   const rowHeight = 25;               // default ag‑grid row height
   const maxRows   = 50;               // rows before pagination kicks in
@@ -66,98 +57,71 @@ const gridHeight = computed(() => {
   return `${Math.max(height, MIN_GRID_HEIGHT)}px`;   // enforce min height
 });
 
-// Troop ID → name mapping, loaded from Supabase for better readability in the grid
-const troopsList = ref([]); // raw troop records from Supabase
-
 // ──────────────────────────────────────────────────────────────────────────────
-// 5️⃣ Helper: build column definitions (dynamic period column)
+// 5️⃣ Helper: build column definitions
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-  //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
-    { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
-    { field: "troop_name", headerName: "Trupp", filter: "agTextColumnFilter" },
+    { field: "lil", headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
+    { field: "cluster_name", headerName: "Trakt", filter: "agNumberColumnFilter" },
+    { field: "plot_name", headerName: "Traktecke", filter: "agNumberColumnFilter" },
+    { field: "troop_name", headerName: "Aufnahmetrupp", filter: "agTextColumnFilter" },
     { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
-    { field: "woche", headerName: "Woche", filter: "agTextColumnFilter" },
-    { field: "anzahl", headerName: "Anzahl", filter: "agNumberColumnFilter" } 
+    { field: "abgabedatum_at", headerName: "Abgabedatum AT", filter: "agDateColumnFilter" },
+    { field: "baumnummer27", headerName: "Baumnummer 2027", filter: "agNumberColumnFilter" },
+    { field: "bhd27", headerName: "BHD 2027 [mm]", filter: "agNumberColumnFilter" },
+    { field: "baumnummer22", headerName: "Baumnummer 2022", filter: "agNumberColumnFilter" },
+    { field: "bhd22", headerName: "BHD 2022 [mm]", filter: "agNumberColumnFilter" },
+    { field: "differenz", headerName: "Differenz [mm]", filter: "agNumberColumnFilter" }
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
+async function fetchRecordChangesInBatches() {
   if (!selectedOrganisation.value) {
     tabledata.value = [];
+    dataloaded.value = 0;
     return [];
   }
 
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
-
-  const id = selectedOrganisation.value;
-  const orFilters = [
-    `responsible_administration.eq.${id}`,
-    `responsible_state.eq.${id}`,
-    `responsible_provider.eq.${id}`,
-    `responsible_troop.eq.${id}`
-  ];
-  console.log("Selected Org for batch fetch:", selectedOrganisation.value);
-
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
+  dataload.value = true;
   try {
-    while (hasMore) {
-      let query = supabase
-        .from('v_stats_performance_by_troop_by_week_forest')
-        .select('lil, troop_name, kt, woche, anzahl, responsible_state, responsible_administration, responsible_provider, responsible_troop')
-        .or(orFilters.join(','))
+    const { data, error } = await supabase.rpc('stat_list_of_shrinked_trees_per_at', {
+      user_id: selectedOrganisation.value
+    });
 
-      const { data, error } = await query.range(from, to);
+    if (error) throw error;
 
-      if (error) throw error
+    let records = data || [];
 
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
+    const formatted = records.map(r => ({
+      ...r,
+      lil: r.landesinventurleitung || r.lil,
+      landesinventurleitung: r.landesinventurleitung || r.lil,
+      troop_name: r.troop_name,
+      kt: r.kt ?? r.kontrolltrupp,
+      kontrolltrupp: r.kt ?? r.kontrolltrupp,
+      abgabedatum_at: r.abgabedatum_at || r.completed_at_survey_troop,
+      baumnummer27: r.baumnummer27 ?? r.tree_id27,
+      bhd27: r.bhd27 ?? r.bdh27 ?? r.dbh27,
+      baumnummer22: r.baumnummer22 ?? r.tree_id22,
+      bhd22: r.bhd22 ?? r.dbh22,
+      differenz: r.differenz
+    }));
 
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
-    }
-
-    allRecords.sort((a, b) => {
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
-
-      const compareTroopName = String(a.troop_name || '').localeCompare(String(b.troop_name || ''))
-      if (compareTroopName !== 0) return compareTroopName
-
-      return String(a.completed_at_troop || '').localeCompare(String(b.completed_at_troop || ''))
-    })
- 
-    tabledata.value = allRecords
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
+    dataloaded.value = formatted.length;
+    tabledata.value = formatted;
+    return formatted;
   } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    console.error('Error fetching RPC stat_list_of_shrinked_trees_per_at:', err);
+    tabledata.value = [];
+    return [];
+  } finally {
+    dataload.value = false;
   }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// 8️⃣ Lifecycle hooks & Watchers
+// 6️⃣ Lifecycle hooks & Watchers
 // ──────────────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   buildColDefs();
@@ -167,7 +131,7 @@ onUnmounted(() => {});
 
 watch(isDark, (val) => {
   console.log('VitePress Dark Mode ist jetzt:', val)
-}, { immediate: true })
+}, { immediate: true });
 
 watch(selectedOrganisation, async () => {
   console.log("Selected Org:", selectedOrganisation.value);
@@ -175,6 +139,7 @@ watch(selectedOrganisation, async () => {
     await fetchRecordChangesInBatches();
   } else {
     tabledata.value = [];
+    dataloaded.value = 0;
   }
 });
 
@@ -219,11 +184,11 @@ function onOrgsLoaded(res) {
     <v-card-actions>
       <ExportCsvButton
         :grid-api="gridApi1"
-        filename-prefix="CI-Statistik_performance_by_troop_by_week_forest"
+        filename-prefix="CI-Statistik_list_of_shrinked_trees_per_at"
         :selected-organisation="selectedOrganisation"
         :organisations-list="organisationsList"
         :disabled="!tabledata || tabledata.length === 0"
-        label="CSV Export (Alle Traktecken)"
+        label="CSV Export"
       />
     </v-card-actions>
   </v-card>

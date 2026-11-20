@@ -13,13 +13,9 @@ const availableStats = ref([
     "stats": [
       { "name": "1. Abgabe von Ecken durch Trupp", "props": { "disabled": true } },
       { "id": "PlotsDeliveredByTroopAndDate", "name": "1.1 nach Datum" },
-      { "name": "1.2 Leistung pro Inventurtrupp (abgegebene Trakte)","props": { "disabled": true } },
-      { "name": "1.2.a Leistung pro Inventurtrupp: abgegebene Traktecken (Wald und Nichtwald)","props": { "disabled": true } },
+      { "name": "1.2 Leistung pro Inventurtrupp (abgegebene Traktecken)","props": { "disabled": true } },
       { "id": "PerformanceByTroopByMonth", "name": "1.2.1 pro Monat" },
       { "id": "PerformanceByTroopByWeek", "name": "1.2.2 pro Woche" },
-      { "name": "1.2.b Leistung pro Inventurtrupp: abgegebene Traktecken (nur Wald, begehbar in 2027)","props": { "disabled": true } },
-      { "id": "PerformanceByTroopByMonthForest", "name": "1.2.3 pro Monat" },
-      { "id": "PerformanceByTroopByWeekForest", "name": "1.2.4 pro Woche" },
       { "name": "1.3 Statistiken zu kontrollierten Trakten","props": { "disabled": true } },
       { "id": "ListControlledByKT", "name": "1.3.1 Liste kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp" },
       { "id": "CountControlledByKT", "name": "1.3.2 Anzahl abgegebener und kontrollierte Trakte nach Aufnahmetrupp und Kontrolltrupp"}//,
@@ -40,9 +36,25 @@ const availableStats = ref([
       { "id": "ForestStatusChange", "name": "2.3.1 Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Traktecken"},
       { "id": "ForestStatusChangeByTroop", "name": "2.3.2 Statistik zu geändertem Waldentscheid gegenüber der Vorgängerinventur nach Anzahl pro Trupp"},
       { "id": "ForestBoundariesUnchanged", "name": "2.4 Statistik zu übernommenen Bestandesgrenzen (42)" },
-      { "id": "PlotsNotAccessibleDueToCalamities", "name": "2.6 Statistik zu nicht begehbaren Traktecken wegen Kalamitäten" }
+      { "id": "PlotsNotAccessibleDueToCalamities", "name": "2.6 Statistik zu nicht begehbaren Traktecken wegen Kalamitäten" },
+      { "id": "PlotsNotAccessibleDueToASP", "name": "2.7 Statistik zu nicht begehbaren Traktecken wegen ASP" }
 /*      { "id": "s2", "name": "Stat2.2"},
       { "id": "s3", "name": "Stat2.3"}*/
+    ]
+  },
+  {
+    "id": "TreeStatistics",
+    "name": "4. Baumstatistiken",
+    "stats": [
+      { "id": "ListOfShrinkedTreesPerAt", "name": "4.1. Liste mit Bäumen mit geschrumpftem BHD pro Aufnahmetrupp" },
+      { "id": "NumberOfShrinkedTreesPerAt", "name": "4.2. Anzahl Bäume mit geschrumpftem BHD pro Aufnahmetrupp" }
+    ]
+  },
+  {
+    "id": "ClusterStatistics",
+    "name": "5. Workflowkarte",
+    "stats": [
+      { "id": "WorkflowMap", "name": "5.1 Workflowkarte" }
     ]
   }
 ]);
@@ -65,12 +77,16 @@ watch(selectedStatsGrp, (newGroup) => {
   if (newGroup && newGroup.stats) {
     // Wenn Gruppe gewählt: Stats zuweisen
     availableElements.value = newGroup.stats;
+    if (newGroup.stats.length === 1) {
+      selectedStatInGrp.value = newGroup.stats[0];
+    } else {
+      selectedStatInGrp.value = null;
+    }
   } else {
     // Falls Auswahl gelöscht wird: zurück auf Standard
     availableElements.value = [""];
+    selectedStatInGrp.value = null;
   }
-  // Reset der zweiten Auswahl bei Gruppenwechsel
-  selectedStatInGrp.value = null;
 });
 
 </script>

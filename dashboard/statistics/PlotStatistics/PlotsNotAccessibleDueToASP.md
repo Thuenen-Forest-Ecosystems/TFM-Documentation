@@ -6,15 +6,15 @@ layout: home
      imports and prepares any components or utilities needed by the template. -->
 <script setup>
     /*  Import the specific Stats component from its relative path.*/
-    import Stats from '../../../components/statistics/TroopStatistics/PerformanceByTroopByMonthForest.vue';
+    import Stats from '../../../components/statistics/PlotStatistics/PlotsNotAccessibleDueToASP.vue';
 </script>
 
 <!-- Markdown heading that will be rendered as an <h1> element.
-     It describes the content: "Cumulative performance per inventory team". -->
+     It describes the content. -->
 [← Zurück zur Statistikauswahl](/dashboard/statistics/){.vp-button .brand}
 
 
-# Leistung pro Inventurtrupp (abgegebene Trakte) pro Monat (nur Wald, begehbar in 2027) (View)
+# Statistik zu nicht begehbaren Traktecken wegen ASP (RPC)
 
 ::: warning Hinweis
 Diese Statistik(en) sind derzeit ein erster Vorschlag und können noch Fehler enthalten. Weitere Ergänzungen und Korrekturen folgen. Wir bitten um kritische Prüfung und um Vorschläge für weitere Statistiken. Anmerkungen und Vorschläge schicken Sie bitte an bwi-support@thuenen.de.

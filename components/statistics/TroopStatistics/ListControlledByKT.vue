@@ -38,7 +38,7 @@ const currentTheme = computed(() => {
 // 4️⃣ Reactive state variables
 // ──────────────────────────────────────────────────────────────────────────────
 const dataload = ref(false);          // true while a Supabase request is in progress
-const dataloaded = ref([]);           // holds the number of records fetched so far
+const dataloaded = ref(0);           // holds the number of records fetched so far
 const instance = getCurrentInstance();               // Vue component instance
 const supabase = instance.appContext.config.globalProperties.$supabase; // Supabase client
 const my_data = ref([]);               // raw records from Supabase
@@ -74,87 +74,52 @@ const troopsList = ref([]); // raw troop records from Supabase
 // ──────────────────────────────────────────────────────────────────────────────
 function buildColDefs() {
   MyColDefs1.value = [
-  //  { field: "responsible_state", headerName: "Land", filter: "agTextColumnFilter" },
     { field: "lil" , headerName: "Landesinventurleitung", filter: "agTextColumnFilter" },
     { field: "cluster_name", headerName: "Trakt", filter: "agNumberColumnFilter" },
     { field: "plot_name", headerName: "Traktecke", filter: "agNumberColumnFilter" },
-    { field: "aufnahmetrupp", headerName: "Aufnahmetrupp", filter: "agTextColumnFilter" },
-    { field: "abgabe_at", headerName: "Abgabedatum_AT", filter: "agDateColumnFilter" },
-    { field: "kontrolltrupp", headerName: "Kontrolltrupp", filter: "agTextColumnFilter" }, 
-    { field: "abgabe_kt", headerName: "Abgabedatum_KT", filter: "agDateColumnFilter" }
+    { field: "troop_name", headerName: "Aufnahmetrupp", filter: "agTextColumnFilter" },
+    { field: "kt", headerName: "Kontrolltrupp?", filter: "agBooleanColumnFilter" },
+    { field: "abgabedatum_at", headerName: "Abgabedatum_AT", filter: "agDateColumnFilter" },
+    { field: "abgabedatum_kt", headerName: "Abgabedatum_KT", filter: "agDateColumnFilter" },
+    { field: "waldentscheid2027", headerName: "Waldentscheid 2027", filter: "agNumberColumnFilter" },
+    { field: "begehbarkeit2027", headerName: "Begehbarkeit 2027", filter: "agNumberColumnFilter" }
   ];
 }
 
-async function fetchRecordChangesInBatches(batchSize = 1000) {
+async function fetchRecordChangesInBatches() {
   if (!selectedOrganisation.value) {
     tabledata.value = [];
+    dataloaded.value = 0;
     return [];
   }
 
-  let allRecords = []
-  let from = 0
-  let to = batchSize - 1
-  let hasMore = true
-
-  const id = selectedOrganisation.value;
-  const orFilters = [
-    `responsible_administration.eq.${id}`,
-    `responsible_state.eq.${id}`,
-    `responsible_provider.eq.${id}`,
-    `responsible_troop.eq.${id}`
-  ];
-  console.log("Selected Org for batch fetch:", selectedOrganisation.value);
-
-  console.log("Starting batch fetch from Supabase with batch size:", batchSize) 
-  
+  dataload.value = true;
   try {
-    while (hasMore) {
-      let query = supabase
-        .from('v_stats_list_controlled_by_kt')
-        .select('lil, cluster_name, plot_name, aufnahmetrupp, abgabe_at, kontrolltrupp, abgabe_kt, responsible_state, responsible_administration, responsible_provider')
-        .or(orFilters.join(','))
+    const { data, error } = await supabase.rpc('stat_kontrollierte_traktecken_pro_at', {
+      user_id: selectedOrganisation.value
+    });
 
-      const { data, error } = await query.range(from, to);
+    if (error) throw error;
 
-      if (error) throw error
+    let records = data || [];
 
-      if (!data || data.length === 0) {
-        if (hasMore === true) {
-          console.warn("No data returned from Supabase, ending batch fetch.")
-        }
-        hasMore = false
-        break
-      }
+    const formatted = records.map(r => ({
+      ...r,
+      lil: r.landesinventurleitung || r.lil,
+      kt: r.kontrolltrupp ?? r.kt,
+      landesinventurleitung: r.landesinventurleitung || r.lil,
+      kontrolltrupp: r.kontrolltrupp ?? r.kt
+    }));
 
-      console.log(`Fetched batch: ${data.length} records (from ${from} to ${to})`)
-      
-      allRecords.push(...data)
-
-      from += batchSize
-      to += batchSize
-
-      if (data.length < batchSize) {
-        hasMore = false
-      }
-    }
-
-    allRecords.sort((a, b) => {
-      const compareState = String(a.responsible_state || '').localeCompare(String(b.responsible_state || ''))
-      if (compareState !== 0) return compareState
-
-      const compareTroopName = String(a.aufnahmetrupp || '').localeCompare(String(b.aufnahmetrupp || ''))
-      if (compareTroopName !== 0) return compareTroopName
-
-      return String(a.abgabe_at || '').localeCompare(String(b.abgabe_at || ''))
-    })
- 
-    tabledata.value = allRecords
-    console.log("Total records fetched and sorted:", tabledata.value.length)
-    return allRecords
- 
+    dataloaded.value = formatted.length;
+    tabledata.value = formatted;
+    return formatted;
   } catch (err) {
-    console.error('Error fetching or processing data:', err.message)
-    throw err
+    console.error('Error fetching RPC stat_kontrollierte_traktecken_pro_at:', err);
+    tabledata.value = [];
+    return [];
+  } finally {
+    dataload.value = false;
   }
 }
 
